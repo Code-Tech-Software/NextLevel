@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Selección de Jugador - {{ clase.nombre }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;800;900&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-color: #f4f7f6;
+            --primary-color: #4361ee;
+            --primary-dark: #314bce;
+            --accent-color: #f72585;
+            --success-color: #10b981;
+            --gold-coin: #ffd166; /* Agregamos la variable de la moneda */
+        }
+
+        body {
+            font-family: 'Nunito', sans-serif;
+            background-color: var(--bg-color);
+            background-image: radial-gradient(#cbd5e1 1.5px, transparent 1.5px);
+            background-size: 30px 30px;
+            min-height: 100vh;
+        }
+
+        /* --- Título Principal --- */
+        .title-game {
+            font-weight: 900;
+            font-size: 3rem;
+            color: #1e293b;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 3px 3px 0px white, 5px 5px 0px rgba(0,0,0,0.05);
+        }
+
+        .subtitle-game {
+            font-weight: 800;
+            color: var(--primary-color);
+            background: white;
+            padding: 8px 25px;
+            border-radius: 50px;
+            display: inline-block;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+
+        /* --- Tarjetas de Avatar (Personajes) --- */
+        .avatar-card {
+            background: white;
+            border-radius: 24px;
+            border: 4px solid transparent;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            cursor: pointer;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+            height: 100%;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .avatar-card:hover {
+            transform: translateY(-10px) scale(1.02);
+            border-color: var(--primary-color);
+            box-shadow: 0 15px 30px rgba(67, 97, 238, 0.2);
+        }
+
+        /* Efecto de brillo en hover */
+        .avatar-card::after {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%; width: 50%; height: 100%;
+            background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.8) 50%, rgba(255,255,255,0) 100%);
+            transform: skewX(-25deg);
+            transition: 0.5s;
+        }
+        .avatar-card:hover::after { left: 150%; }
+
+        /* --- NUEVO: Indicador de Monedas --- */
+        .coin-badge {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(255, 255, 255, 0.9);
+            border: 2px solid var(--gold-coin);
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-weight: 900;
+            color: #334155;
+            font-size: 1rem;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            backdrop-filter: blur(5px);
+        }
+
+        .avatar-img-container {
+            padding: 20px 20px 0 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .avatar-img {
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 5px solid #f1f5f9;
+            box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+            background-color: #e2e8f0; /* Fondo por si no hay imagen */
+        }
+
+        .student-name {
+            font-weight: 900;
+            color: #334155;
+            font-size: 1.25rem;
+            margin-top: 15px;
+        }
+
+        /* --- Modal del PIN --- */
+        .modal-content {
+            border-radius: 24px;
+            border: none;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+
+        .modal-header {
+            background: var(--primary-color);
+            color: white;
+            border-radius: 24px 24px 0 0;
+            border-bottom: none;
+            padding: 20px;
+        }
+
+        .modal-title { font-weight: 900; font-size: 1.5rem; }
+        
+        .btn-close-custom {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            border-radius: 50%;
+            width: 30px; height: 30px;
+            color: white;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.2s;
+        }
+        .btn-close-custom:hover { background: rgba(255,255,255,0.4); }
+
+        /* Estilo del input del PIN */
+        .pin-input {
+            letter-spacing: 15px;
+            font-size: 2.5rem;
+            font-weight: 900;
+            text-align: center;
+            border-radius: 16px;
+            border: 3px solid #e2e8f0;
+            background-color: #f8fafc;
+            color: var(--primary-color);
+            transition: all 0.3s;
+        }
+
+        .pin-input:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 4px rgba(247, 37, 133, 0.15);
+            outline: none;
+            background-color: white;
+        }
+
+        /* Ocultar las flechas de los inputs number */
+        .pin-input::-webkit-outer-spin-button,
+        .pin-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        /* --- Botón 3D --- */
+        .btn-play {
+            background: var(--success-color);
+            color: white;
+            font-weight: 900;
+            font-size: 1.2rem;
+            text-transform: uppercase;
+            border-radius: 16px;
+            padding: 15px;
+            border: none;
+            box-shadow: 0 6px 0 #047857, 0 10px 15px rgba(16, 185, 129, 0.3);
+            transition: all 0.1s;
+            width: 100%;
+        }
+
+        .btn-play:hover { transform: translateY(2px); box-shadow: 0 4px 0 #047857, 0 8px 10px rgba(16, 185, 129, 0.3); color: white; }
+        .btn-play:active { transform: translateY(6px); box-shadow: 0 0px 0 #047857; }
+
+        /* Alerta personalizada */
+        .alert-custom {
+            border-radius: 16px;
+            font-weight: 800;
+            border: none;
+            background: #fee2e2;
+            color: #b91c1c;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container py-5">
+
+    {% if messages %}
+        <div class="row justify-content-center mb-4">
+            <div class="col-md-6">
+                {% for message in messages %}
+                    <div class="alert alert-custom text-center py-3">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i> {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
+    <div class="text-center mb-5">
+        <h1 class="title-game mb-3">¡Selecciona tu Jugador!</h1>
+        <div class="subtitle-game fs-5">
+            <i class="bi bi-controller me-2"></i> Grado {{ clase.grado }} Grupo {{ clase.grupo }} | {{ clase.nombre }}
+        </div>
+    </div>
+    
+    <div class="row g-4 justify-content-center">
+        {% for alumno in alumnos %}
+            <div class="col-6 col-md-4 col-lg-3">
+                <div class="avatar-card text-center" data-bs-toggle="modal" data-bs-target="#modalPIN{{ alumno.id }}">
+                    
+                    <div class="coin-badge">
+                        <i class="bi bi-coin" style="color: var(--gold-coin);"></i>
+                        {{ alumno.monedas }}
+                    </div>
+
+                    <div class="avatar-img-container">
+                        {% if alumno.avatar %}
+                            <img src="{{ alumno.avatar.url }}" class="avatar-img" alt="Avatar de {{ alumno.nombre }}">
+                        {% else %}
+                            <div class="avatar-img d-flex align-items-center justify-content-center bg-white">
+                                <i class="bi bi-emoji-smile-fill text-primary" style="font-size: 4rem;"></i>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="card-body">
+                        <h5 class="student-name mb-0">{{ alumno.nombre }}</h5>
+                        <p class="text-muted small fw-bold mt-1">{{ alumno.apellido }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal fade" id="modalPIN{{ alumno.id }}" tabindex="-1" aria-hidden="true">
+              <div class="modal-dialog modal-sm modal-dialog-centered">
+                <div class="modal-content">
+                  <div class="modal-header d-flex justify-content-between align-items-center">
+                    <h5 class="modal-title mb-0">¡Hola, {{ alumno.nombre }}!</h5>
+                    <button type="button" class="btn-close-custom" data-bs-dismiss="modal">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                  </div>
+                  <form action="{% url 'ingresar_pin' clase.id alumno.id %}" method="POST">
+                      {% csrf_token %}
+                      <div class="modal-body text-center p-4">
+                          <label class="form-label fw-bold text-muted mb-3">Ingresa tu Código Secreto</label>
+                          <input type="password" inputmode="numeric" pattern="[0-9]*" name="pin" class="form-control pin-input" maxlength="4" required autocomplete="off" placeholder="••••">
+                      </div>
+                      <div class="modal-footer border-0 p-4 pt-0">
+                          <button type="submit" class="btn-play">
+                              <i class="bi bi-joystick me-2"></i> Entrar a jugar
+                          </button>
+                      </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+        {% empty %}
+            <div class="col-12 text-center py-5">
+                <div class="bg-white rounded-4 p-5 shadow-sm d-inline-block">
+                    <i class="bi bi-inbox text-muted" style="font-size: 4rem;"></i>
+                    <h3 class="fw-bold mt-3 text-secondary">Aún no hay jugadores</h3>
+                    <p class="text-muted">Los alumnos de esta clase aparecerán aquí.</p>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var modals = document.querySelectorAll('.modal');
+        modals.forEach(function(modal) {
+            modal.addEventListener('shown.bs.modal', function () {
+                var input = modal.querySelector('.pin-input');
+                if(input) {
+                    input.focus();
+                }
+            });
+        });
+
+        var pinInputs = document.querySelectorAll('.pin-input');
+        pinInputs.forEach(function(input) {
+            input.addEventListener('input', function() {
+                if (this.value.length > 4) {
+                    this.value = this.value.slice(0, 4);
+                }
+            });
+        });
+    });
+</script>
+</body>
+</html>

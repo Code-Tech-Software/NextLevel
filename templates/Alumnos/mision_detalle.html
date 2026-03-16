@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ mision.nombre }} - Detalles de la Misión</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;800;900&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-color: #f4f7f6;
+            --primary-color: #4361ee;
+            --primary-dark: #314bce;
+            --unlocked-color: #f72585;
+            --approved-color: #10b981;
+            --approved-dark: #047857;
+            --pending-color: #f59e0b;
+            --pending-dark: #b45309;
+            --gold-coin: #ffd166;
+            --xp-blue: #4cc9f0;
+        }
+
+        body {
+            font-family: 'Nunito', sans-serif;
+            background-color: var(--bg-color);
+            background-image: radial-gradient(#cbd5e1 1.5px, transparent 1.5px);
+            background-size: 30px 30px;
+        }
+
+        /* --- Barra de Navegación --- */
+        .gamified-nav {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border-bottom: 2px solid #e2e8f0;
+        }
+        
+        .stat-pill {
+            background: white;
+            border-radius: 50px;
+            padding: 5px 15px;
+            font-weight: 800;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* --- Tarjeta Principal de la Misión --- */
+        .quest-card {
+            background: white;
+            border-radius: 24px;
+            border: 2px solid #e2e8f0;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.05);
+            overflow: hidden;
+        }
+
+        .quest-image-container {
+            background: #1e293b;
+            position: relative;
+        }
+
+        .quest-image-container img {
+            border-radius: 24px 24px 0 0;
+            transition: opacity 0.3s;
+        }
+
+        .quest-image-container:hover img {
+            opacity: 0.8;
+        }
+
+        .quest-image-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 3rem;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+
+        .quest-image-container:hover .quest-image-overlay {
+            opacity: 1;
+        }
+
+        .quest-type-badge {
+            background: #e2e8f0;
+            color: #475569;
+            font-weight: 800;
+            letter-spacing: 1px;
+            padding: 8px 16px;
+            border-radius: 12px;
+            display: inline-block;
+        }
+
+        /* --- Estilos Especiales para Contenido --- */
+        .terminal-window {
+            background: #1e293b;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        .terminal-header {
+            background: #334155;
+            padding: 8px 15px;
+            display: flex;
+            gap: 6px;
+        }
+
+        .terminal-dot {
+            width: 12px; height: 12px; border-radius: 50%;
+        }
+
+        .quest-link {
+            background: rgba(67, 97, 238, 0.1);
+            border: 2px dashed var(--primary-color);
+            color: var(--primary-color);
+            border-radius: 16px;
+            transition: all 0.2s;
+        }
+
+        .quest-link:hover {
+            background: rgba(67, 97, 238, 0.2);
+            transform: translateY(-2px);
+        }
+
+        /* --- Caja de Recompensas --- */
+        .reward-box {
+            background: linear-gradient(135deg, #fffbeb, #fef3c7);
+            border: 2px solid #fde68a;
+            border-radius: 16px;
+            padding: 20px;
+        }
+
+        .reward-pill {
+            background: white;
+            padding: 8px 20px;
+            border-radius: 50px;
+            font-weight: 900;
+            font-size: 1.1rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+
+        /* --- Botones Gamificados 3D --- */
+        .btn-game {
+            font-weight: 900;
+            font-size: 1.2rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-radius: 20px;
+            padding: 18px 40px;
+            border: none;
+            transition: all 0.1s;
+            width: 100%;
+        }
+
+        .btn-submit {
+            background: var(--primary-color);
+            color: white;
+            box-shadow: 0 8px 0 var(--primary-dark), 0 15px 20px rgba(67, 97, 238, 0.3);
+        }
+
+        .btn-submit:hover { color: white; transform: translateY(2px); box-shadow: 0 6px 0 var(--primary-dark), 0 10px 15px rgba(67, 97, 238, 0.3); }
+        .btn-submit:active { transform: translateY(8px); box-shadow: 0 0px 0 var(--primary-dark); }
+
+        .btn-approved {
+            background: var(--approved-color); color: white;
+            box-shadow: 0 8px 0 var(--approved-dark); cursor: default;
+        }
+
+        .btn-pending {
+            background: var(--pending-color); color: white;
+            box-shadow: 0 8px 0 var(--pending-dark); cursor: default;
+        }
+    </style>
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg gamified-nav sticky-top mb-4">
+    <div class="container d-flex justify-content-between align-items-center py-2">
+        <a href="{% url 'dashboard_alumno' clase.id %}" class="btn btn-light rounded-pill text-secondary shadow-sm fw-bold px-4 hover-scale">
+            <i class="bi bi-arrow-left-circle-fill text-primary me-2"></i> Volver al Mapa
+        </a>
+        <div class="d-flex align-items-center gap-3">
+            <div class="stat-pill text-dark">
+                <i class="bi bi-coin" style="color: var(--gold-coin); font-size: 1.3rem;"></i> 
+                <span>{{ alumno.monedas }}</span>
+            </div>
+            <div class="stat-pill text-dark">
+                <i class="bi bi-lightning-charge-fill" style="color: var(--xp-blue); font-size: 1.3rem;"></i> 
+                <span>{{ alumno.xp_total }} XP</span>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<div class="container pb-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8 col-md-10">
+            <div class="quest-card">
+                
+                {% if mision.imagen %}
+                    <div class="quest-image-container">
+                        <a href="{{ mision.imagen.url }}" target="_blank" data-bs-toggle="modal" data-bs-target="#imageModal" class="d-block position-relative">
+                            <img src="{{ mision.imagen.url }}" alt="Imagen de misión" class="w-100" style="max-height: 350px; object-fit: cover; cursor: pointer;">
+                            <i class="bi bi-arrows-fullscreen quest-image-overlay"></i>
+                        </a>
+                    </div>
+
+                    <div class="modal fade" id="imageModal" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered modal-xl">
+                            <div class="modal-content bg-transparent border-0">
+                                <div class="modal-header border-0 justify-content-end pb-0">
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body p-0 d-flex justify-content-center align-items-center">
+                                    <img src="{{ mision.imagen.url }}" alt="Imagen completa" class="img-fluid rounded-4 shadow-lg" style="max-width: 90vw; max-height: 85vh; object-fit: contain;">
+                                </div>
+                                <div class="modal-footer border-0 justify-content-center">
+                                    <a href="{{ mision.imagen.url }}" target="_blank" class="btn btn-light rounded-pill px-4 fw-bold shadow">
+                                        <i class="bi bi-box-arrow-up-right me-2"></i> Abrir en nueva pestaña
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+
+                <div class="card-body p-4 p-md-5">
+                    
+                    <div class="d-flex align-items-center mb-3">
+                        <span class="quest-type-badge text-uppercase"><i class="bi bi-journal-text me-2"></i>{{ mision.get_tipo_display }}</span>
+                    </div>
+                    
+                    <h1 class="fw-black text-dark mb-4" style="font-weight: 900; font-size: 2.2rem;">{{ mision.nombre }}</h1>
+                    
+                    <div class="fs-5 text-secondary mb-5 lh-lg" style="font-weight: 600;">
+                        {{ mision.descripcion|linebreaks }}
+                    </div>
+
+                    {% if mision.codigo %}
+                        <div class="terminal-window mb-5">
+                            <div class="terminal-header">
+                                <div class="terminal-dot bg-danger"></div>
+                                <div class="terminal-dot bg-warning"></div>
+                                <div class="terminal-dot bg-success"></div>
+                            </div>
+                            <div class="p-4 text-light font-monospace" style="overflow-x: auto; font-size: 0.95rem;">
+                                <pre class="m-0"><code>{{ mision.codigo }}</code></pre>
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    {% if mision.link_formulario %}
+                        <a href="{{ mision.link_formulario }}" target="_blank" class="text-decoration-none">
+                            <div class="quest-link p-4 text-center fs-5 fw-bold mb-5">
+                                <i class="bi bi-link-45deg fs-4"></i> Clic aquí para completar el Formulario
+                            </div>
+                        </a>
+                    {% endif %}
+
+                    <div class="reward-box mb-5 text-center">
+                        <h5 class="fw-bold text-muted mb-3 text-uppercase" style="letter-spacing: 1px; font-size: 0.9rem;">Botín al completar</h5>
+                        <div class="d-flex justify-content-center gap-3 flex-wrap">
+                            <div class="reward-pill text-dark">
+                                <i class="bi bi-coin" style="color: var(--gold-coin);"></i> +{{ mision.monedas_recompensa }}
+                            </div>
+                            <div class="reward-pill text-dark">
+                                <i class="bi bi-lightning-charge-fill" style="color: var(--xp-blue);"></i> +{{ mision.xp_recompensa }} XP
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="text-center mt-2">
+                        {% if progreso.estado == 'aprobado' %}
+                            <button class="btn-game btn-approved" disabled>
+                                <i class="bi bi-check-circle-fill me-2"></i> Misión Aprobada
+                            </button>
+                        {% elif progreso.estado == 'pendiente' %}
+                            <button class="btn-game btn-pending" disabled>
+                                <i class="bi bi-hourglass-split me-2"></i> En revisión por el maestro
+                            </button>
+                        {% else %}
+                            <form action="{% url 'marcar_completada' clase.id mision.id %}" method="POST">
+                                {% csrf_token %}
+                                {% if progreso.estado == 'rechazado' %}
+                                    <div class="alert alert-danger rounded-4 fw-bold mb-4 shadow-sm">
+                                        <i class="bi bi-exclamation-triangle-fill me-2"></i> ¡Ups! Esta misión necesita correcciones. Revísala y vuelve a enviarla.
+                                    </div>
+                                {% endif %}
+                                <button type="submit" class="btn-game btn-submit">
+                                    ¡Ya terminé esta misión!
+                                </button>
+                            </form>
+                        {% endif %}
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
