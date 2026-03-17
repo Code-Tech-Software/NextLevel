@@ -222,7 +222,7 @@
     <div class="text-center mb-5">
         <h1 class="title-game mb-3">¡Selecciona tu Jugador!</h1>
         <div class="subtitle-game fs-5">
-            <i class="bi bi-controller me-2"></i> Grado {{ clase.grado }} Grupo {{ clase.grupo }} | {{ clase.nombre }}
+            <i class="bi bi-controller me-2"></i>{{ clase.grado }} {{ clase.grupo }} | {{ clase.nombre }}
         </div>
     </div>
     
@@ -241,7 +241,7 @@
                             <img src="{{ alumno.avatar.url }}" class="avatar-img" alt="Avatar de {{ alumno.nombre }}">
                         {% else %}
                             <div class="avatar-img d-flex align-items-center justify-content-center bg-white">
-                                <i class="bi bi-emoji-smile-fill text-primary" style="font-size: 4rem;"></i>
+                               <i class="bi bi-emoji-smile-fill text-muted opacity-25" style="font-size: 4rem;"></i>
                             </div>
                         {% endif %}
                     </div>

@@ -9,7 +9,7 @@ urlpatterns = [
     path('clase/<int:clase_id>/mision/<int:mision_id>/', views.ver_mision, name='ver_mision'),
     path('clase/<int:clase_id>/mision/<int:mision_id>/completar/', views.marcar_completada, name='marcar_completada'),
     path('salir/', views.salir_alumno, name='salir_alumno'),
-path('clase/<int:clase_id>/panel-profesor/', views.panel_profesor, name='panel_profesor'),
+    path('clase/<int:clase_id>/panel-profesor/', views.panel_profesor, name='panel_profesor'),
     path('progreso/<int:progreso_id>/aprobar/', views.aprobar_mision, name='aprobar_mision'),
     path('progreso/<int:progreso_id>/rechazar/', views.rechazar_mision, name='rechazar_mision'),
 ]
