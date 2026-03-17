@@ -26,7 +26,7 @@ from .models import Clase, Alumno, Mision, ProgresoMision
 # Vista original (solo le agregamos el request al render)
 def lista_alumnos(request, clase_id):
     clase = get_object_or_404(Clase, id=clase_id)
-    alumnos = clase.alumnos.filter(activo=True)
+    alumnos = clase.alumnos.filter(activo=True).order_by('apellido', 'nombre')
     return render(request, 'Alumnos/lista_alumnos.html', {'clase': clase, 'alumnos': alumnos})
 
 
