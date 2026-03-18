@@ -12,4 +12,7 @@ urlpatterns = [
     path('clase/<int:clase_id>/panel-profesor/', views.panel_profesor, name='panel_profesor'),
     path('progreso/<int:progreso_id>/aprobar/', views.aprobar_mision, name='aprobar_mision'),
     path('progreso/<int:progreso_id>/rechazar/', views.rechazar_mision, name='rechazar_mision'),
+    # ... Tienda ...
+    path('clase/<int:clase_id>/tienda/', views.tienda_alumno, name='tienda_alumno'),
+    path('clase/<int:clase_id>/tienda/comprar/<int:articulo_id>/', views.comprar_articulo, name='comprar_articulo'),
 ]

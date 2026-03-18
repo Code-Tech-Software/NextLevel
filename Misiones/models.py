@@ -80,3 +80,32 @@ class ProgresoMision(models.Model):
 
     def __str__(self):
         return f"{self.alumno} - {self.mision}"
+
+
+# ========================
+# TIENDA Y RECOMPENSAS
+# ========================
+class ArticuloTienda(models.Model):
+    nombre = models.CharField(max_length=100)
+    descripcion = models.TextField()
+    costo_monedas = models.IntegerField()
+    imagen = models.ImageField(upload_to="tienda/", blank=True, null=True)
+
+    # Si es algo físico o un permiso (ej. "Elegir la música de hoy"), el profe debe validarlo.
+    # Si es solo digital (ej. "Avatar de Robot"), no requiere validación.
+    requiere_validacion = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"{self.nombre} - {self.costo_monedas} monedas"
+
+
+class CompraAlumno(models.Model):
+    alumno = models.ForeignKey(Alumno, on_delete=models.CASCADE, related_name="compras")
+    articulo = models.ForeignKey(ArticuloTienda, on_delete=models.CASCADE)
+    fecha_compra = models.DateTimeField(auto_now_add=True)
+
+    # Si el artículo requiere validación, el profesor lo marcará como usado cuando se lo entregue al alumno
+    entregado_usado = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.alumno.nombre} compró {self.articulo.nombre}"

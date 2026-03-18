@@ -2,8 +2,7 @@ import json
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse, HttpResponseForbidden
 from django.views.decorators.http import require_POST
-from .models import Clase, Alumno
-
+from .models import Clase, Alumno, ArticuloTienda, CompraAlumno
 
 from django.http import HttpResponseRedirect
 
@@ -200,3 +199,57 @@ def rechazar_mision(request, progreso_id):
         messages.warning(request, f"Misión de {progreso.alumno.nombre} rechazada. Deberá corregirla.")
 
     return redirect('panel_profesor', clase_id=progreso.mision.clase.id)
+
+
+from django.db import transaction
+
+
+def tienda_alumno(request, clase_id):
+    alumno_id = request.session.get('alumno_id')
+    if not alumno_id:
+        return redirect('lista_alumnos', clase_id=clase_id)
+
+    alumno = get_object_or_404(Alumno, id=alumno_id)
+    clase = get_object_or_404(Clase, id=clase_id)
+
+    # CAMBIO AQUÍ: Traemos absolutamente todos los artículos de la tienda
+    articulos = ArticuloTienda.objects.all()
+
+    # El inventario sigue siendo personal del alumno
+    mis_compras = CompraAlumno.objects.filter(alumno=alumno).order_by('-fecha_compra')
+
+    return render(request, 'Alumnos/tienda.html', {
+        'alumno': alumno,
+        'clase': clase,  # Lo pasamos para que el botón "Volver" sepa a qué clase regresar
+        'articulos': articulos,
+        'mis_compras': mis_compras
+    })
+
+
+def comprar_articulo(request, clase_id, articulo_id):
+    alumno_id = request.session.get('alumno_id')
+    if not alumno_id or request.method != 'POST':
+        return redirect('lista_alumnos', clase_id=clase_id)
+
+    alumno = get_object_or_404(Alumno, id=alumno_id)
+    articulo = get_object_or_404(ArticuloTienda, id=articulo_id)
+
+    # Verificamos si tiene suficientes monedas
+    if alumno.monedas >= articulo.costo_monedas:
+        with transaction.atomic():
+            # Descontamos monedas
+            alumno.monedas -= articulo.costo_monedas
+            alumno.save()
+
+            # Registramos la compra
+            CompraAlumno.objects.create(
+                alumno=alumno,
+                articulo=articulo,
+                entregado_usado=not articulo.requiere_validacion  # Si es digital, ya está "entregado"
+            )
+
+            messages.success(request, f"¡Compraste '{articulo.nombre}' con éxito! 🎉")
+    else:
+        messages.error(request, "¡Oh no! No tienes suficientes monedas para este artículo.")
+
+    return redirect('tienda_alumno', clase_id=clase_id)
