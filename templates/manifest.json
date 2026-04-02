@@ -1,0 +1,21 @@
+{
+  "name": "Next-Level by Mr.David",
+  "short_name": "Next-Level",
+  "description": "Plataforma educativa gamificada para que estudiantes de primaria aprendan robótica y TIC de manera interactiva.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#000000",
+  "icons": [
+    {
+      "src": "/static/img/192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/img/512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
