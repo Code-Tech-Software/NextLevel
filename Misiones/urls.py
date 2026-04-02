@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from django.contrib.auth import views as auth_views
 
 urlpatterns = [
     path('seleccionar-clase/', views.seleccionar_clase, name='seleccionar_clase'),
@@ -22,4 +23,7 @@ urlpatterns = [
     path('clase/<int:clase_id>/matriz/', views.matriz_calificaciones, name='matriz_calificaciones'),
 
     path('clase/<int:clase_id>/progreso/', views.mi_progreso, name='mi_progreso'),
+
+    path('login/', auth_views.LoginView.as_view(), name='login'),
+path('logout/', auth_views.LogoutView.as_view(), name='logout'),
 ]

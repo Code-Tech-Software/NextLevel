@@ -222,6 +222,38 @@
 
         .status-alert { color: #ef4444; font-weight: 600; }
         .status-ok { color: #10b981; font-weight: 600; }
+        
+        
+        
+        
+        
+        /* --- ESTILOS NUEVOS PARA CERRAR SESIÓN --- */
+        .dropdown-toggle::after {
+            display: none; /* Oculta la flechita por defecto del dropdown */
+        }
+        .profile-avatar {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .dropdown-toggle:hover .profile-avatar {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        .btn-logout {
+            color: #ef4444; /* Rojo para indicar acción de salida */
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+        .btn-logout:hover {
+            background-color: rgba(239, 68, 68, 0.1); /* Fondo rojo suave */
+            color: #ef4444;
+        }
+        /* ----------------------------------------- */
+        
+        
+        
+        
+        
+        
     </style>
 </head>
 <body>
@@ -232,13 +264,31 @@
             <i class="bi bi-controller text-primary fs-3 me-2"></i> 
             <span class="brand-text">Next-Level by Mr. David</span>
         </span>
-        <div class="d-flex align-items-center">
+        
+      <div class="d-flex align-items-center">
             <div class="level-badge border-0 bg-dark text-white me-3 d-none d-md-block">
                 <i class="bi bi-person-fill-gear me-1"></i> Admin Panel
             </div>
-            <img src="https://api.dicebear.com/7.x/bottts/svg?seed=Admin" alt="Admin" width="40" height="40"
-                 class="rounded-circle bg-light border border-2 border-primary">
-        </div>
+            
+            <div class="dropdown">
+                <a href="#" class="d-block text-decoration-none dropdown-toggle" id="dropdownUser1" data-bs-toggle="dropdown" aria-expanded="false">
+                    <img src="https://api.dicebear.com/7.x/bottts/svg?seed=Admin" alt="Admin" width="40" height="40"
+                         class="rounded-circle bg-light border border-2 border-secondary profile-avatar">
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 mt-2 p-2" aria-labelledby="dropdownUser1">
+                    <li>
+                        <form method="post" action="{% url 'logout' %}">
+                            {% csrf_token %}
+                            <button type="submit" class="dropdown-item btn-logout rounded">
+                                <i class="bi bi-box-arrow-right me-2"></i>Cerrar Sesión
+                            </button>
+                        </form>
+                    </li>
+                </ul>
+            </div>
+            </div>
+        
+        
     </div>
 </nav>
 

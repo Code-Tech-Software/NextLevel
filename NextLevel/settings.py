@@ -28,6 +28,7 @@ SECRET_KEY = 'django-insecure-362+my=6#wjjfx-1#%wnyf_rdk5$09%($j^p=rc)cp!jg61fjn
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 ALLOWED_HOSTS = ['*']
+
 CSRF_TRUSTED_ORIGINS = [
     "https://next-level.up.railway.app",
 ]
@@ -144,3 +145,8 @@ CLOUDINARY_STORAGE = {
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+
+LOGIN_REDIRECT_URL = 'dashboard_profesor'
+LOGIN_URL = 'login'
+LOGOUT_REDIRECT_URL = '/login/'

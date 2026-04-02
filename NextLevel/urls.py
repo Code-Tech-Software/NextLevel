@@ -7,6 +7,7 @@ from Misiones.views import home_redirect
 
 urlpatterns = [
     path('', home_redirect),
+    path('', include('Misiones.urls')),
     path('admin/', admin.site.urls),
-    path('misiones/', include('Misiones.urls')),
+
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -8,7 +8,7 @@ from django.http import HttpResponseRedirect
 
 
 def home_redirect(request):
-    return HttpResponseRedirect('/misiones/seleccionar-clase/')
+    return HttpResponseRedirect('/seleccionar-clase/')
 
 
 # Vista para seleccionar la clase (ya la tienes)
@@ -30,6 +30,7 @@ def lista_alumnos(request, clase_id):
 
 
 # 1. Vista para procesar el PIN
+
 def ingresar_pin(request, clase_id, alumno_id):
     if request.method == 'POST':
         pin_ingresado = request.POST.get('pin')
@@ -207,7 +208,7 @@ from django.contrib import messages
 from django.db import transaction
 from .models import Clase, ProgresoMision
 
-
+@login_required()
 def panel_profesor(request, clase_id):
     clase = get_object_or_404(Clase, id=clase_id)
 
@@ -222,7 +223,7 @@ def panel_profesor(request, clase_id):
         'entregas_pendientes': entregas_pendientes
     })
 
-
+@login_required()
 def aprobar_mision(request, progreso_id):
     progreso = get_object_or_404(ProgresoMision, id=progreso_id)
 
@@ -254,7 +255,7 @@ def aprobar_mision(request, progreso_id):
 
     return redirect('panel_profesor', clase_id=progreso.mision.clase.id)
 
-
+@login_required()
 def rechazar_mision(request, progreso_id):
     progreso = get_object_or_404(ProgresoMision, id=progreso_id)
 
@@ -319,7 +320,7 @@ def comprar_articulo(request, clase_id, articulo_id):
 
     return redirect('tienda_alumno', clase_id=clase_id)
 
-
+@login_required()
 def dashboard_profesor(request):
     # Obtenemos todas las clases registradas
     clases = Clase.objects.all().order_by('anio', 'grado', 'grupo')
@@ -345,7 +346,7 @@ def dashboard_profesor(request):
         'entregas_tienda': entregas_tienda
     })
 
-
+@login_required()
 def entregar_articulo_tienda(request, compra_id):
     # Vista rápida para marcar que ya le diste su premio físico al alumno
     if request.method == 'POST':
@@ -359,7 +360,7 @@ def entregar_articulo_tienda(request, compra_id):
     return redirect('dashboard_profesor')
 
 
-
+@login_required()
 def matriz_calificaciones(request, clase_id):
     clase = get_object_or_404(Clase, id=clase_id)
 
