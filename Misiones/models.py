@@ -47,6 +47,7 @@ class Mision(models.Model):
     TIPO_MISION = (
         ("arduino", "Arduino"),
         ("cuestionario", "Cuestionario"),
+        ("link", "Link"),
     )
     clase = models.ForeignKey(Clase, on_delete=models.CASCADE, related_name="misiones")
     nivel = models.ForeignKey(Nivel, on_delete=models.CASCADE, related_name="misiones")
@@ -55,7 +56,7 @@ class Mision(models.Model):
     tipo = models.CharField(max_length=20, choices=TIPO_MISION)
     imagen = models.ImageField(upload_to="misiones/", blank=True, null=True)
     codigo = models.TextField(blank=True, null=True)
-    link_formulario = models.URLField(blank=True, null=True)
+    link = models.URLField(blank=True, null=True)
     xp_recompensa = models.IntegerField(default=50)
     monedas_recompensa = models.IntegerField(default=10)
     orden = models.IntegerField(default=1)
@@ -80,6 +81,60 @@ class ProgresoMision(models.Model):
 
     def __str__(self):
         return f"{self.alumno} - {self.mision}"
+
+    @property
+    def calificacion_escala_10(self):
+        return self.puntuacion / 10.0
+
+    @property
+    def monedas_obtenidas(self):
+        return int((self.puntuacion / 100.0) * self.mision.monedas_recompensa)
+
+
+# ========================
+# PREGUNTAS DEL CUESTIONARIO
+# ========================
+class Pregunta(models.Model):
+    mision = models.ForeignKey(Mision, on_delete=models.CASCADE, related_name="preguntas")
+    texto = models.TextField(help_text="Escribe la pregunta aquí")
+    orden = models.IntegerField(default=1)
+    puntos = models.IntegerField(default=10, help_text="Puntos que otorga esta pregunta")
+
+    class Meta:
+        ordering = ['orden']
+
+    def __str__(self):
+        return f"{self.mision.nombre} - {self.texto[:50]}"
+
+
+# ========================
+# OPCIONES DE RESPUESTA
+# ========================
+class OpcionRespuesta(models.Model):
+    pregunta = models.ForeignKey(Pregunta, on_delete=models.CASCADE, related_name="opciones")
+    texto = models.CharField(max_length=255)
+    es_correcta = models.BooleanField(default=False)
+
+    def __str__(self):
+        return self.texto
+
+
+# ========================
+# RESPUESTAS DEL ALUMNO
+# ========================
+class RespuestaAlumno(models.Model):
+    progreso = models.ForeignKey(ProgresoMision, on_delete=models.CASCADE, related_name="respuestas_detalladas")
+    pregunta = models.ForeignKey(Pregunta, on_delete=models.CASCADE)
+    opcion_seleccionada = models.ForeignKey(OpcionRespuesta, on_delete=models.CASCADE, null=True, blank=True)
+    respuesta_texto = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return f"{self.progreso.alumno} - {self.pregunta}"
+
+
+
+
+
 
 
 # ========================

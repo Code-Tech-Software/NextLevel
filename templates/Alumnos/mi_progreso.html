@@ -1,0 +1,213 @@
+{% extends 'Alumnos/base.html' %}
+
+{% block title %}Mi Progreso - {{ clase.nombre }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --primary-dark: #314bce;
+        --approved-color: #10b981;
+        --approved-dark: #047857;
+        --pending-color: #f59e0b;
+        --pending-dark: #b45309;
+        --rejected-color: #ef4444;
+        --gold-coin: #f59e0b;
+        --xp-blue: #3b82f6;
+    }
+
+    .progreso-container {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding-bottom: 5rem;
+    }
+
+    /* --- Tarjeta Principal --- */
+    .quest-card {
+        background: white;
+        border-radius: 24px;
+        border: 2px solid #e2e8f0;
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.05);
+        overflow: hidden;
+    }
+    
+    /* --- Tabla Gamificada --- */
+    .table-progreso {
+        border-collapse: separate;
+        border-spacing: 0 12px;
+    }
+    
+    .table-progreso thead th {
+        border: none;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-size: 0.9rem;
+        font-weight: 900;
+        color: #64748b;
+        padding-bottom: 10px;
+    }
+
+    .table-progreso tbody tr {
+        background: #f8fafc;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+  
+    .table-progreso td {
+        border: 2px solid #e2e8f0;
+        border-style: solid none;
+        padding: 16px;
+        vertical-align: middle;
+    }
+
+    .table-progreso td:first-child {
+        border-left-style: solid;
+        border-top-left-radius: 16px;
+        border-bottom-left-radius: 16px;
+    }
+
+    .table-progreso td:last-child {
+        border-right-style: solid;
+        border-top-right-radius: 16px;
+        border-bottom-right-radius: 16px;
+    }
+
+    /* --- Badges de Estado --- */
+    .badge-estado {
+        font-size: 0.85rem;
+        padding: 8px 16px;
+        border-radius: 12px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .aprobado-badge { background-color: rgba(16, 185, 129, 0.15); color: var(--approved-dark); }
+    .rechazado-badge { background-color: rgba(239, 68, 68, 0.15); color: #991b1b; }
+    .pendiente-badge { background-color: rgba(245, 158, 11, 0.15); color: var(--pending-dark); }
+
+    /* --- Botones Gamificados 3D --- */
+    .btn-game {
+        font-weight: 900;
+        font-size: 1.1rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        border-radius: 20px;
+        padding: 16px 32px;
+        border: none;
+        transition: all 0.1s;
+    }
+
+    .btn-back {
+        background: #cbd5e1;
+        color: #334155;
+        box-shadow: 0 8px 0 #94a3b8, 0 15px 20px rgba(148, 163, 184, 0.3);
+    }
+
+    .btn-back:hover {
+        color: #1e293b;
+        transform: translateY(2px);
+        box-shadow: 0 6px 0 #94a3b8, 0 10px 15px rgba(148, 163, 184, 0.3);
+    }
+
+    .btn-back:active {
+        transform: translateY(8px);
+        box-shadow: 0 0px 0 #94a3b8;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4 progreso-container">
+    <div class="quest-card p-4 p-md-5">
+        
+        <div class="text-center mb-5">
+            <h1 class="text-dark mb-4" style="font-weight: 900; font-size: 2rem;">
+                 Mi Progreso
+            </h1>
+            
+    
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-progreso align-middle text-center mb-0">
+                <thead>
+                    <tr>
+                        <th class="text-start ps-4">Misión</th>
+                        <th>Nivel</th>
+                        <th>Estado</th>
+                        <th>Calificación</th>
+                        <th>Botín Obtenido</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for progreso in progresos %}
+                    <tr>
+                        <td class="text-start ps-4">
+                            <span class="d-block fw-bold fs-5 text-dark">{{ progreso.mision.nombre }}</span>
+                            <span class="text-muted small fw-bold text-uppercase"><i class="bi bi-journal-text me-1"></i>{{ progreso.mision.get_tipo_display }}</span>
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-secondary border fw-bold px-3 py-2 rounded-pill">
+                                {{ progreso.mision.nivel.nombre }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if progreso.estado == 'aprobado' %}
+                                <span class="badge-estado aprobado-badge"><i class="bi bi-check-circle-fill"></i> Aprobado</span>
+                            {% elif progreso.estado == 'rechazado' %}
+                                <span class="badge-estado rechazado-badge"><i class="bi bi-x-circle-fill"></i> Rechazado</span>
+                            {% else %}
+                                <span class="badge-estado pendiente-badge"><i class="bi bi-hourglass-split"></i> Pendiente</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if progreso.estado == 'aprobado' %}
+                                <span class="fs-5 fw-black text-dark" style="font-weight: 700; ">{{ progreso.calificacion_escala_10|floatformat:1 }}</span>
+                                
+                                <span class="text-muted fw-bold">/ 10.0</span>
+                            {% else %}
+                                <span class="text-muted fs-4">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if progreso.estado == 'aprobado' %}
+                                <div class="d-flex justify-content-center gap-2">
+                                    <span class="badge bg-light text-dark border px-2 py-1 fw-bold fs-6">
+                                        <i class="bi bi-coin" style="color: var(--gold-coin);"></i> +{{ progreso.monedas_obtenidas }}
+                                    </span>
+                                    <span class="badge bg-light text-dark border px-2 py-1 fw-bold fs-6">
+                                        <i class="bi bi-lightning-charge-fill" style="color: var(--xp-blue);"></i> +{{ progreso.mision.xp_recompensa }}
+                                    </span>
+                                </div>
+                            {% else %}
+                                <span class="text-muted fs-4"><i class="bi bi-lock-fill opacity-50"></i></span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="py-5 text-center text-muted border-0 bg-transparent shadow-none">
+                            <div class="p-5 rounded-4" style="background: #f8fafc; border: 2px dashed #cbd5e1;">
+                                <i class="bi bi-map fs-1 d-block mb-3 text-secondary"></i>
+                                <h4 class="fw-bold text-dark">Tu inventario está vacío</h4>
+                                <p class="fs-5 mb-0">Aún no has completado ninguna misión en esta clase.<br>¡Vuelve al mapa y comienza tu aventura!</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="text-center mt-5 pt-4 border-top">
+            <a href="javascript:history.back()" class="btn-game btn-back d-inline-block text-decoration-none">
+                <i class="bi bi-pin-map me-2"></i> Volver al Mapa
+            </a>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

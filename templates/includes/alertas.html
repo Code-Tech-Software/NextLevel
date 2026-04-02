@@ -1,0 +1,133 @@
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<style>
+    .premium-popup {
+        border-radius: 20px !important;
+        padding: 2em !important;
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15) !important;
+        border: 2px solid #f1f5f9 !important;
+        background: #ffffff !important;
+    }
+
+    .premium-title {
+        color: #334155 !important;
+        font-weight: 800 !important;
+        font-size: 1.7rem !important;
+    }
+
+    .premium-text {
+        color: #64748b !important;
+        font-weight: 600 !important;
+        font-size: 1.1rem !important;
+    }
+
+    /* Botón 3D estilo Duolingo/Tienda de Recompensas */
+    .premium-btn {
+        background-color: #10b981 !important;
+        color: white !important;
+        font-weight: 800 !important;
+        font-size: 1.1rem !important;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-radius: 14px !important;
+        padding: 14px 28px !important;
+        border: 0px solid transparent !important;
+        outline: none !important;
+        -webkit-tap-highlight-color: transparent !important;
+        box-shadow: 0 5px 0 #059669 !important;
+        transition: transform 0.1s, box-shadow 0.1s !important;
+        margin-top: 15px;
+    }
+
+    .premium-btn:focus {
+        outline: none !important;
+        box-shadow: 0 5px 0 #059669 !important;
+    }
+
+
+    .premium-btn:active {
+        transform: translateY(5px) !important;
+        box-shadow: 0 0 0 #059669 !important;
+        outline: none !important;
+    }
+
+    .premium-backdrop {
+        backdrop-filter: blur(4px);
+        background: rgba(15, 23, 42, 0.4) !important;
+    }
+
+
+    /* Botón 3D Rojo (Peligro/Rechazar) */
+    /* Botón 3D Rojo (Peligro/Rechazar) */
+    .premium-btn-danger {
+        background-color: #ef4444 !important;
+        box-shadow: 0 5px 0 #b91c1c !important;
+    }
+
+    .premium-btn-danger:focus {
+        box-shadow: 0 5px 0 #b91c1c !important;
+    }
+
+    .premium-btn-danger:active {
+        box-shadow: 0 0 0 #b91c1c !important;
+    }
+
+    /* Botón 3D Gris (Cancelar) */
+    .premium-btn-cancel {
+        background-color: #94a3b8 !important;
+        box-shadow: 0 5px 0 #64748b !important;
+        color: white !important;
+    }
+
+    .premium-btn-cancel:focus {
+        box-shadow: 0 5px 0 #64748b !important;
+    }
+
+    .premium-btn-cancel:active {
+        box-shadow: 0 0 0 #64748b !important;
+    }
+
+</style>
+
+{% if messages %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            {% for message in messages %}
+                let icono = 'info';
+                let titulo = '¡Notificación!';
+
+                {% if 'error' in message.tags %}
+                    icono = 'error';
+                    titulo = '¡Ups! Algo falló';
+                {% elif 'success' in message.tags %}
+                    icono = 'success';
+                    titulo = '¡Completado!';
+                {% elif 'warning' in message.tags %}
+                    icono = 'warning';
+                    titulo = '¡Cuidado!';
+                {% elif 'info' in message.tags %}
+                    icono = 'info';
+                    titulo = 'Información';
+                {% endif %}
+
+                Swal.fire({
+                    title: titulo,
+                    text: "{{ message|escapejs }}",
+                    icon: icono,
+                    timer: 4500,
+                    timerProgressBar: true,
+                    showConfirmButton: true,
+                    buttonsStyling: false,
+                    confirmButtonText: 'Continuar',
+                    customClass: {
+                        popup: 'premium-popup',
+                        title: 'premium-title',
+                        htmlContainer: 'premium-text',
+                        confirmButton: 'premium-btn',
+                        backdrop: 'premium-backdrop'
+                    }
+                });
+            {% endfor %}
+        });
+    </script>
+{% endif %}

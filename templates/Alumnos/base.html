@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Plataforma Gamificada{% endblock %}</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;800;900&display=swap" rel="stylesheet">
+
+    <style>
+        /* --- Variables y Estilos Globales --- */
+        :root {
+            --bg-color: #f4f7f6;
+            --primary-color: #4361ee;
+            --locked-color: #e2e8f0;
+            --locked-icon: #94a3b8;
+            --unlocked-color: #f72585;
+            --approved-color: #10b981;
+            --gold-coin: #ffd166;
+            --xp-blue: #4cc9f0;
+            --shop-purple: #9b59b6;
+        }
+
+        body {
+            font-family: 'Nunito', sans-serif;
+            background-color: var(--bg-color);
+            background-image: radial-gradient(#cbd5e1 1.5px, transparent 1.5px);
+            background-size: 30px 30px;
+        }
+
+        /* --- Barra de Navegación Gamificada (Mejorada) --- */
+        .gamified-nav {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 2px solid #e2e8f0;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.03); /* Sombra suave para dar profundidad */
+        }
+
+        .stat-pill {
+            background: white;
+            border-radius: 50px;
+            padding: 6px 16px;
+            font-weight: 800;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.95rem;
+        }
+
+        /* Efectos base para todos los botones interactivos en la Top Bar */
+        .stat-pill.btn-mapa,
+        .stat-pill.btn-tienda,
+        .stat-pill.btn-salir {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        /* Efectos Hover específicos por color */
+        .stat-pill.btn-mapa:hover {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 5px 15px rgba(67, 97, 238, 0.25); /* Sombra Azul */
+        }
+
+        .stat-pill.btn-tienda:hover {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 5px 15px rgba(155, 89, 182, 0.25); /* Sombra Morada */
+        }
+
+        .stat-pill.btn-salir:hover {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 5px 15px rgba(220, 53, 69, 0.25); /* Sombra Roja */
+        }
+
+        /* Ocultar texto del nombre en pantallas extra pequeñas para evitar desbordes */
+        @media (max-width: 576px) {
+            .nav-user-name { display: none; }
+            .stat-pill { padding: 6px 10px; }
+            .stat-pill span { display: none; } /* Solo muestra iconos de stats en móvil */
+        }
+    </style>
+
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+    <nav class="navbar navbar-expand-lg gamified-nav sticky-top">
+        <div class="container d-flex justify-content-between align-items-center py-2 flex-wrap">
+            
+            <a href="{% if clase %}{% url 'dashboard_alumno' clase.id %}{% else %}#{% endif %}" class="d-flex align-items-center mb-2 mb-sm-0 text-decoration-none perfil-enlace" title="Ir al Mapa">
+                {% if alumno.avatar %}
+                    <img src="{{ alumno.avatar.url }}" width="50" height="50"
+                         class="rounded-circle me-3 border border-3 border-white shadow-sm img-perfil" style="object-fit:cover;">
+                {% else %}
+                    <div class="rounded-circle me-3 border border-3 border-white shadow-sm bg-primary d-flex align-items-center justify-content-center text-white img-perfil"
+                         style="width: 50px; height: 50px; font-size: 1.5rem;">
+                        <i class="bi bi-person-fill"></i>
+                    </div>
+                {% endif %}
+                <span class="fs-4 fw-black text-dark nav-user-name nombre-perfil" style="font-weight: 900;">{{ alumno.nombre }}</span>
+            </a>
+
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <div class="stat-pill text-dark" title="Monedas">
+                    <i class="bi bi-coin" style="color: var(--gold-coin); font-size: 1.3rem;"></i>
+                    <span>{{ alumno.monedas }}</span>
+                </div>
+                
+                <div class="stat-pill text-dark" title="Experiencia">
+                    <i class="bi bi-lightning-charge-fill" style="color: var(--xp-blue); font-size: 1.3rem;"></i>
+                    <span>{{ alumno.xp_total }} XP</span>
+                </div>
+
+                <div class="d-flex gap-2 ms-sm-2">
+                    {% if clase %}
+                    <a href="{% url 'dashboard_alumno' clase.id %}" class="stat-pill btn-mapa" title="Volver al Mapa">
+                        <i class="bi bi-pin-map" style="color: var(--primary-color); font-size: 1.3rem;"></i>
+                    </a>
+
+                    <a href="{% url 'tienda_alumno' clase.id %}" class="stat-pill btn-tienda" title="Tienda">
+                        <i class="bi bi-shop" style="color: var(--shop-purple); font-size: 1.3rem;"></i>
+                    </a>
+                    {% endif %}
+
+                    <a href="{% url 'salir_alumno' %}" class="stat-pill btn-salir" title="Salir">
+                        <i class="bi bi-box-arrow-right" style="color: #dc3545; font-size: 1.3rem;"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        {% block content %}
+        {% endblock %}
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    {% include 'includes/alertas.html' %}
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

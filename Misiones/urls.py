@@ -15,4 +15,11 @@ urlpatterns = [
     # ... Tienda ...
     path('clase/<int:clase_id>/tienda/', views.tienda_alumno, name='tienda_alumno'),
     path('clase/<int:clase_id>/tienda/comprar/<int:articulo_id>/', views.comprar_articulo, name='comprar_articulo'),
+
+    path('profesor/dashboard/', views.dashboard_profesor, name='dashboard_profesor'),
+    path('profesor/tienda/entregar/<int:compra_id>/', views.entregar_articulo_tienda, name='entregar_articulo_tienda'),
+
+    path('clase/<int:clase_id>/matriz/', views.matriz_calificaciones, name='matriz_calificaciones'),
+
+    path('clase/<int:clase_id>/progreso/', views.mi_progreso, name='mi_progreso'),
 ]
