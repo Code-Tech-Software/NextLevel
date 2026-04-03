@@ -10,7 +10,7 @@
         <title>Panel de Control - Evaluaciones</title>
 
         <style>
-           
+
 
             .level-badge {
                 background: rgba(99, 102, 241, 0.1);
@@ -44,7 +44,7 @@
 
             .table > :not(caption) > * > * {
                 padding: 1rem 1rem;
-                border-bottom: 1px solid rgba(0, 0, 0, 0.2) ;
+                border-bottom: 1px solid rgba(0, 0, 0, 0.2);
             }
 
             .table-light {
@@ -129,11 +129,16 @@
             }
 
             .modal-header-game {
-                background: linear-gradient(135deg, var(--primary-game), var(--secondary-game));
-                color: white;
+                background-color: rgba(99, 102, 241, 0.08);
+                color: var(--primary-game);
                 border-top-left-radius: 20px;
                 border-top-right-radius: 20px;
-                border-bottom: none;
+                border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            }
+           
+            .modal-header-game .btn-close {
+                filter: invert(37%) sepia(93%) saturate(3452%) hue-rotate(221deg) brightness(96%) contrast(97%);
+                opacity: 0.8;
             }
 
             .reward-badge-xp {
@@ -158,9 +163,9 @@
 
 
         <div class="quest-panel">
-        
-        
-           <div class="quest-header d-flex align-items-center">
+
+
+            <div class="quest-header d-flex align-items-center">
                 <div class="bg-light rounded-circle p-2 text-secondary me-3 d-flex align-items-center justify-content-center"
                      style="width: 45px; height: 45px;">
                     <i class="bi bi-inbox-fill fs-4"></i>
@@ -173,7 +178,7 @@
                     <p class="text-muted small mb-0 mt-1">Visión general para calificar trabajos</p>
                 </div>
             </div>
-        
+
 
             <div class="card-body p-4">
                 {% if entregas_pendientes %}
