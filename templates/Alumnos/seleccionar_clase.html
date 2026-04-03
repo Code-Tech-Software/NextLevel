@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -32,16 +33,23 @@
             padding-bottom: 80px; /* Espacio para el botón flotante */
         }
 
-        /* --- Encabezado del Lobby --- */
-        .lobby-title {
-            font-weight: 900;
-            font-size: clamp(2.5rem, 6vw, 4rem);
-            color: var(--text-main);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            text-shadow: 3px 3px 0px white, 5px 5px 0px rgba(0, 0, 0, 0.08);
-            margin-bottom: 1rem;
+        /* --- Logo Principal --- */
+        .main-logo {
+            width: 100%;
+            max-width: 320px; /* Tamaño ideal para móviles */
+            height: auto;
+            margin-bottom: 2rem;
+            filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.08));
+            transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
         }
+
+        @media (min-width: 768px) {
+            .main-logo {
+                max-width: 450px; /* Crece en pantallas más grandes */
+            }
+        }
+
+        /* --- Encabezado del Lobby --- */
 
         .lobby-subtitle {
             font-weight: 800;
@@ -53,7 +61,7 @@
             display: inline-flex;
             align-items: center;
             box-shadow: 0 4px 15px rgba(67, 97, 238, 0.15);
-            margin-bottom: 3rem;
+            margin-bottom: 2rem;
         }
 
         /* --- Tarjetas de Clase (Mundos) --- */
@@ -170,7 +178,7 @@
         .class-card:hover .btn-enter-world {
             background: var(--accent-color);
             color: white;
-            box-shadow: 0 6px 0 #0d8a63, 0 10px 15px rgba(247, 37, 133, 0.2);
+            box-shadow: 0 6px 0 #0d8a63, 0 10px 15px rgba(33, 210, 255, 0.2);
             transform: translateY(-2px);
         }
 
@@ -211,7 +219,8 @@
 
 <div class="container py-5 text-center w-100">
 
-    <h1 class="lobby-title">¡Bienvenido!</h1>
+    <img src="{% static 'img/logo.svg' %}" alt="Logo de la Plataforma" class="main-logo">
+<br>
     <div class="lobby-subtitle">
         <i class="bi bi-geo-alt-fill me-2 fs-5"></i> ¿A qué clase vas a entrar hoy?
     </div>

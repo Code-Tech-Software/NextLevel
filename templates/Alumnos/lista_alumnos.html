@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -29,8 +30,22 @@
             min-height: 100vh;
             display: flex;
             align-items: center;
+            position: relative; /* Para asegurar el contexto de los elementos absolutos */
         }
 
+        /* --- Marca de Agua --- */
+        .watermark-bg {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 85vw; /* Ocupa el 85% del ancho de la pantalla */
+            max-width: 800px; /* Tope máximo para pantallas gigantes */
+            opacity: 0.06; /* Ajusta este valor (ej. 0.08) si la quieres más oscura */
+            z-index: -1; /* Detrás de todo */
+            pointer-events: none; /* Fundamental para que no estorbe los clics */
+            user-select: none; /* Evita que se pueda seleccionar arrastrando */
+        }
 
         /* --- Encabezado --- */
         .title-game {
@@ -237,52 +252,50 @@
             }
         }
         
-        
-/* --- Botón Volver Sutil --- */
-.btn-back {
-    position: fixed;
-    top: 25px;
-    left: 0;
-    background-color: rgba(255, 255, 255, 0.5);
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-    border: 1px solid rgba(203, 213, 225, 0.4);
-    border-left: none;
-    color: var(--text-muted);
-    text-decoration: none;
-    font-weight: 700;
-    font-size: 1rem;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 16px 8px 12px;
-    border-radius: 0 12px 12px 0;
-    z-index: 1000;
-    transition: all 0.3s ease;
-    box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.03);
-}
+        /* --- Botón Volver Sutil --- */
+        .btn-back {
+            position: fixed;
+            top: 25px;
+            left: 0;
+            background-color: rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            border: 1px solid rgba(203, 213, 225, 0.4);
+            border-left: none;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 1rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px 8px 12px;
+            border-radius: 0 12px 12px 0;
+            z-index: 1000;
+            transition: all 0.3s ease;
+            box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.03);
+        }
 
-.btn-back:hover {
-    background-color: white;
-    color: var(--primary-color);
-    padding-left: 18px;
-    padding-right: 20px;
-    box-shadow: 2px 4px 12px rgba(67, 97, 238, 0.1);
-}
+        .btn-back:hover {
+            background-color: white;
+            color: var(--primary-color);
+            padding-left: 18px;
+            padding-right: 20px;
+            box-shadow: 2px 4px 12px rgba(67, 97, 238, 0.1);
+        }
 
-@media (max-width: 576px) {
-    .btn-back {
-        top: 15px;
-        padding: 6px 12px 6px 10px;
-        font-size: 0.9rem;
-    }
-}
-        
-        
-        
+        @media (max-width: 576px) {
+            .btn-back {
+                top: 15px;
+                padding: 6px 12px 6px 10px;
+                font-size: 0.9rem;
+            }
+        }
     </style>
 </head>
 <body>
+
+<img src="{% static 'img/logoSC.svg' %}" alt="" class="watermark-bg">
 
 <a href="{% url 'seleccionar_clase' %}" class="btn-back" title="Volver">
     <i class="bi bi-arrow-left"></i> 

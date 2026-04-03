@@ -1,5 +1,5 @@
 {% extends 'Alumnos/base.html' %}
-
+{% load static %}
 {% block title %}Ruta de Aprendizaje - {{ alumno.nombre }}{% endblock %}
 
 {% block extra_css %}
@@ -24,6 +24,20 @@
             z-index: 2;
             position: relative;
         }
+        
+        .watermark-bg {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 85vw; /* Ocupa el 85% del ancho de la pantalla */
+            max-width: 800px; /* Tope máximo para pantallas gigantes */
+            opacity: 0.06; /* Ajusta este valor (ej. 0.08) si la quieres más oscura */
+            z-index: -1; /* Detrás de todo */
+            pointer-events: none; /* Fundamental para que no estorbe los clics */
+            user-select: none; /* Evita que se pueda seleccionar arrastrando */
+        }
+
 
         .mision-wrapper {
             position: relative;
@@ -180,6 +194,8 @@
 {% endblock %}
 
 {% block content %}
+    <img src="{% static 'img/logoSC.svg' %}" alt="" class="watermark-bg">
+    
     <div class="container mt-4 text-center ruta-container">
         <h2 class="mb-5 fw-black text-dark" style="font-weight: 900; font-size: 2.5rem;">
             {{ clase.nombre }}
