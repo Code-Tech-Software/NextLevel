@@ -1,0 +1,107 @@
+{% extends 'Profesor/baseProfesor.html' %}
+
+{% block extra_css %}
+    <style>
+
+        .form-panel {
+            background: var(--surface-color, #ffffff);
+            border-radius: 24px;
+            padding: 32px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+            border: 1px solid rgba(0, 0, 0, 0.03);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .form-icon-box {
+            width: 56px;
+            height: 56px;
+            flex-shrink: 0;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(139, 92, 246, 0.1);
+            color: var(--epic-purple);
+            font-size: 1.8rem;
+        }
+
+        .custom-label {
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            display: block;
+            font-size: 0.95rem;
+        }
+
+        .btn-submit-game {
+            background-color: var(--epic-purple);
+            color: white;
+            border: 2px solid var(--epic-purple);
+            border-radius: 14px;
+            padding: 14px 28px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            transition: all 0.2s ease-in-out;
+            width: 100%;
+        }
+
+        .btn-submit-game:hover {
+            background-color: white;
+            color: var(--epic-purple);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2);
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="container mb-5 mt-4">
+        <div class="row justify-content-center">
+            <div class="col-lg-10 col-xl-9">
+                <div class="form-panel">
+                    <div class="d-flex align-items-center gap-4 mb-4 pb-4 border-bottom border-light">
+                        <div class="form-icon-box">
+                            <i class="bi bi-bar-chart-steps"></i>
+                        </div>
+                        <div>
+                            <h3 class="fw-bold text-dark mb-1">Crear Nuevo Nivel</h3>
+                            <p class="text-muted small mb-0">Crea etapas de aprendizaje para organizar las misiones de
+                                tus grupos.</p>
+                        </div>
+                    </div>
+
+                    <form method="POST">
+                        {% csrf_token %}
+                        <div class="row g-4">
+                            <div class="col-md-12">
+                                <label class="custom-label"><i class="bi bi-journal-bookmark text-secondary me-1"></i>
+                                    Seleccionar Clase:</label>
+                                {{ form.clase }}
+                            </div>
+
+                            <div class="col-md-9">
+                                <label class="custom-label"><i class="bi bi-fonts text-secondary me-1"></i> Nombre del
+                                    Nivel:</label>
+                                {{ form.nombre }}
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="custom-label"><i class="bi bi-sort-numeric-down text-secondary me-1"></i>
+                                    Orden:</label>
+                                {{ form.orden }}
+                            </div>
+                        </div>
+
+                        <div class="mt-5 pt-2">
+                            <button type="submit"
+                                    class="btn-submit-game d-flex justify-content-center align-items-center gap-2">
+                                <i class="bi bi-plus-circle-fill"></i> Crear Nuevo Nivel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

@@ -1,25 +1,22 @@
 import json
 from django.shortcuts import render, get_object_or_404, redirect
-from django.http import JsonResponse, HttpResponseForbidden
+from django.http import JsonResponse, HttpResponseForbidden, HttpResponseRedirect
 from django.views.decorators.http import require_POST
-from .models import Clase, Alumno, ArticuloTienda, CompraAlumno
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponseRedirect
+from django.contrib import messages
+from django.db import transaction
+from .models import Clase, Alumno, ArticuloTienda, CompraAlumno, Pregunta, OpcionRespuesta
+from .forms import AlumnoForm, ClaseForm, ArticuloTiendaForm, MisionForm, NivelForm
 
 
 def home_redirect(request):
     return HttpResponseRedirect('/seleccionar-clase/')
 
 
-# Vista para seleccionar la clase (ya la tienes)
+# Vista para seleccionar la clase
 def seleccionar_clase(request):
     clases = Clase.objects.all()
     return render(request, 'Alumnos/seleccionar_clase.html', {'clases': clases})
-
-
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib import messages
-from .models import Clase, Alumno, Mision, ProgresoMision
 
 
 # Vista original (solo le agregamos el request al render)
@@ -203,11 +200,6 @@ def marcar_completada(request, clase_id, mision_id):
     return redirect('dashboard_alumno', clase_id=clase_id)
 
 
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib import messages
-from django.db import transaction
-from .models import Clase, ProgresoMision
-
 @login_required()
 def panel_profesor(request, clase_id):
     clase = get_object_or_404(Clase, id=clase_id)
@@ -222,6 +214,7 @@ def panel_profesor(request, clase_id):
         'clase': clase,
         'entregas_pendientes': entregas_pendientes
     })
+
 
 @login_required()
 def aprobar_mision(request, progreso_id):
@@ -255,6 +248,7 @@ def aprobar_mision(request, progreso_id):
 
     return redirect('panel_profesor', clase_id=progreso.mision.clase.id)
 
+
 @login_required()
 def rechazar_mision(request, progreso_id):
     progreso = get_object_or_404(ProgresoMision, id=progreso_id)
@@ -266,9 +260,6 @@ def rechazar_mision(request, progreso_id):
         messages.warning(request, f"Misión de {progreso.alumno.nombre} rechazada. Deberá corregirla.")
 
     return redirect('panel_profesor', clase_id=progreso.mision.clase.id)
-
-
-from django.db import transaction
 
 
 def tienda_alumno(request, clase_id):
@@ -291,6 +282,7 @@ def tienda_alumno(request, clase_id):
         'articulos': articulos,
         'mis_compras': mis_compras
     })
+
 
 def comprar_articulo(request, clase_id, articulo_id):
     alumno_id = request.session.get('alumno_id')
@@ -320,6 +312,7 @@ def comprar_articulo(request, clase_id, articulo_id):
 
     return redirect('tienda_alumno', clase_id=clase_id)
 
+
 @login_required()
 def dashboard_profesor(request):
     # Obtenemos todas las clases registradas
@@ -345,6 +338,7 @@ def dashboard_profesor(request):
         'clases': clases,
         'entregas_tienda': entregas_tienda
     })
+
 
 @login_required()
 def entregar_articulo_tienda(request, compra_id):
@@ -402,8 +396,6 @@ def matriz_calificaciones(request, clase_id):
     return render(request, 'Profesor/matriz_calificaciones.html', context)
 
 
-
-
 def mi_progreso(request, clase_id):
     # 1. Obtener el alumno actual (Ajusta esto según cómo manejes tu login)
     alumno_id = request.session.get('alumno_id')
@@ -425,3 +417,100 @@ def mi_progreso(request, clase_id):
     }
 
     return render(request, 'Alumnos/mi_progreso.html', context)
+
+
+def alta_alumno(request):
+    if request.method == 'POST':
+        form = AlumnoForm(request.POST, request.FILES)
+        if form.is_valid():
+            form.save()
+            messages.success(request, '¡Nuevo alumno registrado con éxito en la plataforma!')
+            return redirect('dashboard_profesor')
+    else:
+        form = AlumnoForm()
+
+    context = {
+        'form': form
+    }
+    return render(request, 'Administrativo/alta_alumno.html', context)
+
+
+def alta_clase(request):
+    if request.method == 'POST':
+        form = ClaseForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, '¡Nueva clase registrada con éxito!')
+            return redirect('dashboard_profesor')
+    else:
+        form = ClaseForm()
+
+    context = {
+        'form': form
+    }
+    return render(request, 'Administrativo/alta_clase.html', context)
+
+
+def alta_articulo(request):
+    if request.method == 'POST':
+        form = ArticuloTiendaForm(request.POST, request.FILES)
+        if form.is_valid():
+            form.save()
+            messages.success(request, '¡Nuevo artículo añadido al inventario de la tienda!')
+            return redirect('dashboard_profesor')
+    else:
+        form = ArticuloTiendaForm()
+
+    context = {
+        'form': form
+    }
+    return render(request, 'Administrativo/alta_articulo.html', context)
+
+
+def alta_mision(request):
+    if request.method == 'POST':
+        form = MisionForm(request.POST, request.FILES)
+        preguntas_data = request.POST.get('preguntas_json', '[]')
+
+        if form.is_valid():
+            try:
+                with transaction.atomic():
+                    mision = form.save()
+
+                    if mision.tipo == 'cuestionario':
+                        preguntas = json.loads(preguntas_data)
+                        for idx_p, p_data in enumerate(preguntas):
+                            nueva_pregunta = Pregunta.objects.create(
+                                mision=mision,
+                                texto=p_data.get('texto', ''),
+                                orden=idx_p + 1,
+                                puntos=p_data.get('puntos', 10)
+                            )
+                            for o_data in p_data.get('opciones', []):
+                                OpcionRespuesta.objects.create(
+                                    pregunta=nueva_pregunta,
+                                    texto=o_data.get('texto', ''),
+                                    es_correcta=o_data.get('es_correcta', False)
+                                )
+
+                messages.success(request, '¡Nueva misión creada y asignada con éxito!')
+                return redirect('dashboard_profesor')
+            except Exception as e:
+                messages.error(request, f'Ocurrió un error al procesar el cuestionario: {str(e)}')
+    else:
+        form = MisionForm()
+
+    return render(request, 'Administrativo/alta_mision.html', {'form': form})
+
+
+def alta_nivel(request):
+    if request.method == 'POST':
+        form = NivelForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, '¡Nuevo nivel creado con éxito! Ya puedes asignarle misiones.')
+            return redirect('dashboard_profesor')
+    else:
+        form = NivelForm()
+
+    return render(request, 'Administrativo/alta_nivel.html', {'form': form})

@@ -1,440 +1,396 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel de Control - Evaluaciones</title>
+{% extends 'Profesor/baseProfesor.html' %}
+{% block content %}
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" href="https://cdn.datatables.net/2.2.2/css/dataTables.dataTables.min.css">
+        <title>Panel de Control - Evaluaciones</title>
 
-    <style>
-        :root {
-            --bg-color: #f4f6f9;
-            --surface-color: #ffffff;
-            --primary-game: #6366f1; /* Índigo vibrante */
-            --secondary-game: #ec4899; /* Rosa neón apagado */
-            --accent-gold: #f59e0b; /* Dorado */
-            --success-game: #10b981; /* Verde victoria */
-            --danger-game: #ef4444; /* Rojo derrota */
-            --text-main: #1e293b;
-            --text-muted: #64748b;
-        }
+        <style>
+           
 
-        body {
-            font-family: 'Outfit', sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            background-image: radial-gradient(#cbd5e1 1.5px, transparent 1.5px);
-            background-size: 30px 30px;
-        }
+            .level-badge {
+                background: rgba(99, 102, 241, 0.1);
+                color: var(--primary-game);
+                border: 1px solid rgba(99, 102, 241, 0.2);
+                border-radius: 8px;
+                padding: 4px 10px;
+                font-weight: 600;
+                font-size: 0.85rem;
+            }
 
-        /* --- HUD NAVBAR --- */
-        .hud-navbar {
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(12px);
-            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-        }
+            /* --- CONTENEDORES Y PANELES --- */
+            .quest-panel {
+                background: var(--surface-color);
+                border-radius: 24px;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+                border: 1px solid rgba(0, 0, 0, 0.03);
+                overflow: hidden;
+            }
 
-        .brand-text {
-            background: linear-gradient(135deg, var(--primary-game), var(--secondary-game));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            font-weight: 800;
-            letter-spacing: -0.5px;
-        }
+            .quest-header {
+                background: rgba(255, 255, 255, 0.9);
+                border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+                padding: 20px 24px;
+            }
 
-        .level-badge {
-            background: rgba(99, 102, 241, 0.1);
-            color: var(--primary-game);
-            border: 1px solid rgba(99, 102, 241, 0.2);
-            border-radius: 8px;
-            padding: 4px 10px;
-            font-weight: 600;
-            font-size: 0.85rem;
-        }
+            /* --- TABLA (DataTables Customization) --- */
+            .table {
+                color: var(--text-main);
+            }
 
-        /* --- CONTENEDORES Y PANELES --- */
-        .quest-panel {
-            background: var(--surface-color);
-            border-radius: 24px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
-            border: 1px solid rgba(0, 0, 0, 0.03);
-            overflow: hidden;
-        }
+            .table > :not(caption) > * > * {
+                padding: 1rem 1rem;
+                border-bottom: 1px solid rgba(0, 0, 0, 0.2) ;
+            }
 
-        .quest-header {
-            background: rgba(255, 255, 255, 0.9);
-            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-            padding: 20px 24px;
-        }
+            .table-light {
+                background-color: #f8fafc;
+                color: var(--text-muted);
+                font-weight: 600;
+            }
 
-        /* --- TABLA (DataTables Customization) --- */
-        .table {
-            color: var(--text-main);
-        }
+            /* --- BOTONES GAMIFICADOS --- */
+            .btn-game-outline {
+                border-radius: 10px;
+                font-weight: 600;
+                transition: all 0.2s;
+                border: 1px solid rgba(99, 102, 241, 0.3);
+                color: var(--primary-game);
+                background: transparent;
+            }
 
-        .table > :not(caption) > * > * {
-            padding: 1rem 1rem;
-            border-bottom-color: rgba(0, 0, 0, 0.03);
-        }
+            .btn-game-outline:hover {
+                background: rgba(99, 102, 241, 0.1);
+                transform: translateY(-2px);
+            }
 
-        .table-light {
-            background-color: #f8fafc;
-            color: var(--text-muted);
-            font-weight: 600;
-        }
+            .btn-approve {
+                background: rgba(16, 185, 129, 0.1);
+                color: var(--success-game);
+                border: 1px solid var(--success-game);
+                border-radius: 10px;
+                font-weight: 600;
+                transition: all 0.2s;
+            }
 
-        /* --- BOTONES GAMIFICADOS --- */
-        .btn-game-outline {
-            border-radius: 10px;
-            font-weight: 600;
-            transition: all 0.2s;
-            border: 1px solid rgba(99, 102, 241, 0.3);
-            color: var(--primary-game);
-            background: transparent;
-        }
+            .btn-approve:hover {
+                background: var(--success-game);
+                color: white;
+                box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3);
+                transform: translateY(-2px);
+            }
 
-        .btn-game-outline:hover {
-            background: rgba(99, 102, 241, 0.1);
-            transform: translateY(-2px);
-        }
+            .btn-reject {
+                background: rgba(239, 68, 68, 0.1);
+                color: var(--danger-game);
+                border: 1px solid var(--danger-game);
+                border-radius: 10px;
+                font-weight: 600;
+                transition: all 0.2s;
+            }
 
-        .btn-approve {
-            background: rgba(16, 185, 129, 0.1);
-            color: var(--success-game);
-            border: 1px solid var(--success-game);
-            border-radius: 10px;
-            font-weight: 600;
-            transition: all 0.2s;
-        }
+            .btn-reject:hover {
+                background: var(--danger-game);
+                color: white;
+                box-shadow: 0 4px 10px rgba(239, 68, 68, 0.3);
+                transform: translateY(-2px);
+            }
 
-        .btn-approve:hover {
-            background: var(--success-game);
-            color: white;
-            box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3);
-            transform: translateY(-2px);
-        }
+            /* --- INPUTS --- */
+            .input-xp {
+                border: 2px solid rgba(16, 185, 129, 0.2);
+                border-radius: 8px 0 0 8px !important;
+                font-weight: 800;
+                color: var(--success-game);
+                box-shadow: none !important;
+            }
 
-        .btn-reject {
-            background: rgba(239, 68, 68, 0.1);
-            color: var(--danger-game);
-            border: 1px solid var(--danger-game);
-            border-radius: 10px;
-            font-weight: 600;
-            transition: all 0.2s;
-        }
+            .input-xp:focus {
+                border-color: var(--success-game);
+            }
 
-        .btn-reject:hover {
-            background: var(--danger-game);
-            color: white;
-            box-shadow: 0 4px 10px rgba(239, 68, 68, 0.3);
-            transform: translateY(-2px);
-        }
+            .input-xp-addon {
+                border: 2px solid rgba(16, 185, 129, 0.2);
+                border-left: none;
+                border-radius: 0 8px 8px 0 !important;
+                background: rgba(16, 185, 129, 0.05);
+                color: var(--success-game);
+                font-weight: 800;
+            }
 
-        /* --- INPUTS --- */
-        .input-xp {
-            border: 2px solid rgba(16, 185, 129, 0.2);
-            border-radius: 8px 0 0 8px !important;
-            font-weight: 800;
-            color: var(--success-game);
-            box-shadow: none !important;
-        }
+            /* --- MODALES --- */
+            .modal-content {
+                border-radius: 20px;
+                border: none;
+            }
 
-        .input-xp:focus {
-            border-color: var(--success-game);
-        }
+            .modal-header-game {
+                background: linear-gradient(135deg, var(--primary-game), var(--secondary-game));
+                color: white;
+                border-top-left-radius: 20px;
+                border-top-right-radius: 20px;
+                border-bottom: none;
+            }
 
-        .input-xp-addon {
-            border: 2px solid rgba(16, 185, 129, 0.2);
-            border-left: none;
-            border-radius: 0 8px 8px 0 !important;
-            background: rgba(16, 185, 129, 0.05);
-            color: var(--success-game);
-            font-weight: 800;
-        }
+            .reward-badge-xp {
+                background: rgba(99, 102, 241, 0.1);
+                color: var(--primary-game);
+                border: 1px solid rgba(99, 102, 241, 0.3);
+            }
 
-        /* --- MODALES --- */
-        .modal-content {
-            border-radius: 20px;
-            border: none;
-        }
-
-        .modal-header-game {
-            background: linear-gradient(135deg, var(--primary-game), var(--secondary-game));
-            color: white;
-            border-top-left-radius: 20px;
-            border-top-right-radius: 20px;
-            border-bottom: none;
-        }
-
-        .reward-badge-xp {
-            background: rgba(99, 102, 241, 0.1);
-            color: var(--primary-game);
-            border: 1px solid rgba(99, 102, 241, 0.3);
-        }
-
-        .reward-badge-coin {
-            background: rgba(245, 158, 11, 0.1);
-            color: var(--accent-gold);
-            border: 1px solid rgba(245, 158, 11, 0.3);
-        }
+            .reward-badge-coin {
+                background: rgba(245, 158, 11, 0.1);
+                color: var(--accent-gold);
+                border: 1px solid rgba(245, 158, 11, 0.3);
+            }
 
 
-    </style>
-</head>
-<body>
-
-<nav class="navbar hud-navbar mb-4 py-3">
-    <div class="container d-flex justify-content-between align-items-center">
-        <span class="navbar-brand mb-0 h1 d-flex align-items-center">
-            <i class="bi bi-shield-lock-fill text-primary fs-3 me-2"></i>
-            <span class="brand-text d-none d-sm-inline">Revisión de Misiones</span>
-            <span class="level-badge ms-3">{{ clase.nombre }}  {{ clase.grado }} {{ clase.grupo }}</span>
-        </span>
-        <a href="{% url 'dashboard_profesor' %}" class="btn btn-game-outline btn-sm">
-            <i class="bi bi-arrow-left me-1"></i> Base de Operaciones
-        </a>
-    </div>
-</nav>
-
-<div class="container mt-4 mb-5">
+        </style>
+    </head>
+    <body>
 
 
-    <div class="quest-panel">
-        <div class="quest-header d-flex align-items-center">
-            <div class="bg-light rounded-circle p-2 text-primary me-3 d-flex align-items-center justify-content-center"
-                 style="width: 45px; height: 45px;">
-                <i class="bi bi-inbox-fill fs-4"></i>
+    <div class="container mt-4 mb-5">
+
+
+        <div class="quest-panel">
+        
+        
+           <div class="quest-header d-flex align-items-center">
+                <div class="bg-light rounded-circle p-2 text-secondary me-3 d-flex align-items-center justify-content-center"
+                     style="width: 45px; height: 45px;">
+                    <i class="bi bi-inbox-fill fs-4"></i>
+                </div>
+                <div>
+                    <div class="d-flex align-items-center gap-2">
+                        <h4 class="mb-0 fw-bold text-dark">Registro de Entregas</h4>
+                        <span class="level-badge">{{ clase.nombre }} {{ clase.grado }} {{ clase.grupo }}</span>
+                    </div>
+                    <p class="text-muted small mb-0 mt-1">Visión general para calificar trabajos</p>
+                </div>
             </div>
-            <h4 class="mb-0 fw-bold text-dark">Registro de Entregas</h4>
-        </div>
+        
 
-        <div class="card-body p-4">
-            {% if entregas_pendientes %}
-                <div class="table-responsive">
-                    <table id="tablaMisiones" class="table table-hover align-middle mb-0 w-100 border-0">
-                        <thead class="table-light">
-                        <tr>
-                            <th class="border-0 rounded-start">Jugador</th>
-                            <th class="border-0">Misión</th>
-                            <th class="border-0">Detalles</th>
-                            <th class="text-center border-0">Calificar</th>
-                            <th class="text-center border-0 rounded-end">Rechazar</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        {% for entrega in entregas_pendientes %}
+            <div class="card-body p-4">
+                {% if entregas_pendientes %}
+                    <div class="table-responsive">
+                        <table id="tablaMisiones" class="table table-hover align-middle mb-0 w-100 border-0">
+                            <thead class="table-light">
                             <tr>
-                                <td class="fw-bold">
-                                    <div class="d-flex align-items-center">
-                                        {% if entrega.alumno.avatar %}
-                                            <img src="{{ entrega.alumno.avatar.url }}" width="40" height="40"
-                                                 class="rounded-circle me-3 border border-2 border-primary shadow-sm"
-                                                 style="object-fit: cover;">
-                                        {% else %}
-                                            <div class="rounded-circle bg-secondary text-white me-3 d-flex align-items-center justify-content-center shadow-sm"
-                                                 style="width:40px; height:40px; font-weight: 800;">
-                                                {{ entrega.alumno.nombre|slice:":1" }}
-                                            </div>
-                                        {% endif %}
-                                        <span class="text-dark">{{ entrega.alumno.nombre }} {{ entrega.alumno.apellido }}</span>
-                                    </div>
-                                </td>
-
-                                <td>
-                                    <span class="d-block fw-bold text-dark">{{ entrega.mision.nombre }}</span>
-                                    <span class="level-badge mt-1 d-inline-block"
-                                          style="font-size: 0.75rem;">{{ entrega.mision.get_tipo_display }}</span>
-                                </td>
-
-                                <td>
-                                    <button type="button" class="btn btn-game-outline btn-sm px-3"
-                                            data-bs-toggle="modal" data-bs-target="#modalEntrega{{ entrega.id }}">
-                                        <i class="bi bi-search me-1"></i> Inspeccionar
-                                    </button>
-                                </td>
-
-                                <td class="text-center">
-                                    <form action="{% url 'aprobar_mision' entrega.id %}" method="POST"
-                                          class="d-flex justify-content-center align-items-center gap-2 m-0">
-                                        {% csrf_token %}
-                                        <div class="input-group input-group-sm" style="width: 110px;">
-                                            <input type="number" name="puntuacion"
-                                                   class="form-control text-center input-xp" value="100" min="0"
-                                                   max="100" required title="Calificación del 0 al 100">
-                                            <span class="input-group-text input-xp-addon">%</span>
-                                        </div>
-                                        <button type="submit" class="btn btn-approve btn-sm px-3"
-                                                title="Aprobar Misión">
-                                            <i class="bi bi-check-lg"></i> Aprobar
-                                        </button>
-                                    </form>
-                                </td>
-
-                                <td class="text-center">
-                                    <form action="{% url 'rechazar_mision' entrega.id %}" method="POST" class="m-0"
-                                          id="form-rechazar-{{ entrega.id }}">
-                                        {% csrf_token %}
-                                        <button type="button" class="btn btn-reject btn-sm px-3"
-                                                onclick="confirmarRechazo('form-rechazar-{{ entrega.id }}', '{{ entrega.alumno.nombre }}');"
-                                                title="Rechazar y pedir corrección">
-                                            <i class="bi bi-x-lg"></i>
-                                        </button>
-                                    </form>
-                                </td>
+                                <th class="border-0 rounded-start">Jugador</th>
+                                <th class="border-0">Misión</th>
+                                <th class="border-0">Detalles</th>
+                                <th class="text-center border-0">Calificar</th>
+                                <th class="text-center border-0 rounded-end">Rechazar</th>
                             </tr>
-
-                            <div class="modal fade" id="modalEntrega{{ entrega.id }}" tabindex="-1"
-                                 aria-labelledby="modalLabel{{ entrega.id }}" aria-hidden="true">
-                                <div class="modal-dialog modal-lg modal-dialog-centered">
-                                    <div class="modal-content shadow-lg">
-                                        <div class="modal-header modal-header-game">
-                                            <h5 class="modal-title fw-bold" id="modalLabel{{ entrega.id }}">
-                                                <i class="bi bi-journal-text me-2"></i> Datos de la Misión
-                                            </h5>
-                                            <button type="button" class="btn-close btn-close-white"
-                                                    data-bs-dismiss="modal" aria-label="Close"></button>
+                            </thead>
+                            <tbody>
+                            {% for entrega in entregas_pendientes %}
+                                <tr>
+                                    <td class="fw-bold">
+                                        <div class="d-flex align-items-center">
+                                            {% if entrega.alumno.avatar %}
+                                                <img src="{{ entrega.alumno.avatar.url }}" width="40" height="40"
+                                                     class="rounded-circle me-3 border border-2 border-primary shadow-sm"
+                                                     style="object-fit: cover;">
+                                            {% else %}
+                                                <div class="rounded-circle bg-secondary text-white me-3 d-flex align-items-center justify-content-center shadow-sm"
+                                                     style="width:40px; height:40px; font-weight: 800;">
+                                                    {{ entrega.alumno.nombre|slice:":1" }}
+                                                </div>
+                                            {% endif %}
+                                            <span class="text-dark">{{ entrega.alumno.nombre }} {{ entrega.alumno.apellido }}</span>
                                         </div>
-                                        <div class="modal-body p-4">
-                                            <div class="row g-4">
-                                                <div class="col-md-6">
-                                                    <h6 class="text-muted fw-bold mb-1"><i
-                                                            class="bi bi-person-fill me-1"></i> Jugador</h6>
-                                                    <p class="fs-5 fw-bold text-dark mb-0">{{ entrega.alumno.nombre }} {{ entrega.alumno.apellido }}</p>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <h6 class="text-muted fw-bold mb-1"><i
-                                                            class="bi bi-bookmark-star-fill me-1"></i> Objetivo</h6>
-                                                    <p class="fs-5 fw-bold text-dark mb-0">{{ entrega.mision.nombre }}</p>
-                                                    <span class="level-badge mt-1 d-inline-block">{{ entrega.mision.get_tipo_display }}</span>
-                                                </div>
+                                    </td>
 
-                                                <div class="col-12">
-                                                    <h6 class="text-muted fw-bold mb-2"><i
-                                                            class="bi bi-card-text me-1"></i> Descripción del Lore</h6>
-                                                    <div class="p-3 bg-light rounded-4 border-0 text-dark"
-                                                         style="font-size: 0.95rem;">
-                                                        {{ entrega.mision.descripcion|linebreaks }}
+                                    <td>
+                                        <span class="d-block fw-bold text-dark">{{ entrega.mision.nombre }}</span>
+                                        <span class="level-badge mt-1 d-inline-block"
+                                              style="font-size: 0.75rem;">{{ entrega.mision.get_tipo_display }}</span>
+                                    </td>
+
+                                    <td>
+                                        <button type="button" class="btn btn-game-outline btn-sm px-3"
+                                                data-bs-toggle="modal" data-bs-target="#modalEntrega{{ entrega.id }}">
+                                            <i class="bi bi-search me-1"></i> Inspeccionar
+                                        </button>
+                                    </td>
+
+                                    <td class="text-center">
+                                        <form action="{% url 'aprobar_mision' entrega.id %}" method="POST"
+                                              class="d-flex justify-content-center align-items-center gap-2 m-0">
+                                            {% csrf_token %}
+                                            <div class="input-group input-group-sm" style="width: 110px;">
+                                                <input type="number" name="puntuacion"
+                                                       class="form-control text-center input-xp" value="100" min="0"
+                                                       max="100" required title="Calificación del 0 al 100">
+                                                <span class="input-group-text input-xp-addon">%</span>
+                                            </div>
+                                            <button type="submit" class="btn btn-approve btn-sm px-3"
+                                                    title="Aprobar Misión">
+                                                <i class="bi bi-check-lg"></i> Aprobar
+                                            </button>
+                                        </form>
+                                    </td>
+
+                                    <td class="text-center">
+                                        <form action="{% url 'rechazar_mision' entrega.id %}" method="POST" class="m-0"
+                                              id="form-rechazar-{{ entrega.id }}">
+                                            {% csrf_token %}
+                                            <button type="button" class="btn btn-reject btn-sm px-3"
+                                                    onclick="confirmarRechazo('form-rechazar-{{ entrega.id }}', '{{ entrega.alumno.nombre }}');"
+                                                    title="Rechazar y pedir corrección">
+                                                <i class="bi bi-x-lg"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+
+                                <div class="modal fade" id="modalEntrega{{ entrega.id }}" tabindex="-1"
+                                     aria-labelledby="modalLabel{{ entrega.id }}" aria-hidden="true">
+                                    <div class="modal-dialog modal-lg modal-dialog-centered">
+                                        <div class="modal-content shadow-lg">
+                                            <div class="modal-header modal-header-game">
+                                                <h5 class="modal-title fw-bold" id="modalLabel{{ entrega.id }}">
+                                                    <i class="bi bi-journal-text me-2"></i> Datos de la Misión
+                                                </h5>
+                                                <button type="button" class="btn-close btn-close-white"
+                                                        data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <div class="modal-body p-4">
+                                                <div class="row g-4">
+                                                    <div class="col-md-6">
+                                                        <h6 class="text-muted fw-bold mb-1"><i
+                                                                class="bi bi-person-fill me-1"></i> Jugador</h6>
+                                                        <p class="fs-5 fw-bold text-dark mb-0">{{ entrega.alumno.nombre }} {{ entrega.alumno.apellido }}</p>
                                                     </div>
-                                                </div>
+                                                    <div class="col-md-6">
+                                                        <h6 class="text-muted fw-bold mb-1"><i
+                                                                class="bi bi-bookmark-star-fill me-1"></i> Objetivo</h6>
+                                                        <p class="fs-5 fw-bold text-dark mb-0">{{ entrega.mision.nombre }}</p>
+                                                        <span class="level-badge mt-1 d-inline-block">{{ entrega.mision.get_tipo_display }}</span>
+                                                    </div>
 
-                                                <div class="col-12">
-                                                    <h6 class="text-muted fw-bold mb-2"><i
-                                                            class="bi bi-gift-fill me-1"></i> Recompensa del Botín</h6>
-                                                    <div class="d-flex gap-3">
+                                                    <div class="col-12">
+                                                        <h6 class="text-muted fw-bold mb-2"><i
+                                                                class="bi bi-card-text me-1"></i> Descripción del Lore
+                                                        </h6>
+                                                        <div class="p-3 bg-light rounded-4 border-0 text-dark"
+                                                             style="font-size: 0.95rem;">
+                                                            {{ entrega.mision.descripcion|linebreaks }}
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="col-12">
+                                                        <h6 class="text-muted fw-bold mb-2"><i
+                                                                class="bi bi-gift-fill me-1"></i> Recompensa del Botín
+                                                        </h6>
+                                                        <div class="d-flex gap-3">
                                                     <span class="badge reward-badge-xp fs-6 px-3 py-2 rounded-pill">
                                                         <i class="bi bi-lightning-charge-fill"></i> {{ entrega.mision.xp_recompensa }} XP
                                                     </span>
-                                                        <span class="badge reward-badge-coin fs-6 px-3 py-2 rounded-pill">
+                                                            <span class="badge reward-badge-coin fs-6 px-3 py-2 rounded-pill">
                                                         <i class="bi bi-coin"></i> {{ entrega.mision.monedas_recompensa }} Monedas
                                                     </span>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                        <div class="modal-footer border-0 bg-light rounded-bottom-4">
-                                            <button type="button" class="btn btn-game-outline" data-bs-dismiss="modal">
-                                                Cerrar Archivo
-                                            </button>
+                                            <div class="modal-footer border-0 bg-light rounded-bottom-4">
+                                                <button type="button" class="btn btn-game-outline"
+                                                        data-bs-dismiss="modal">
+                                                    Cerrar Archivo
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            {% else %}
-                <div class="text-center py-5">
-                    <div class="d-inline-block bg-light rounded-circle p-4 mb-3">
-                        <i class="bi bi-emoji-sunglasses fs-1 text-primary opacity-75"></i>
+                            {% endfor %}
+                            </tbody>
+                        </table>
                     </div>
-                    <h4 class="fw-bold text-dark">¡Bandeja Despejada!</h4>
-                    <p class="text-muted">No hay misiones pendientes de revisión en este momento.</p>
-                </div>
-            {% endif %}
+                {% else %}
+                    <div class="text-center py-5">
+                        <div class="d-inline-block bg-light rounded-circle p-4 mb-3">
+                            <i class="bi bi-emoji-sunglasses fs-1 text-primary opacity-75"></i>
+                        </div>
+                        <h4 class="fw-bold text-dark">¡Bandeja Despejada!</h4>
+                        <p class="text-muted">No hay misiones pendientes de revisión en este momento.</p>
+                    </div>
+                {% endif %}
+            </div>
         </div>
     </div>
-</div>
 
-<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
-<script>
-    function confirmarRechazo(formId, nombreAlumno) {
-        Swal.fire({
-            title: '¿Rechazar Misión?',
-            text: `¿Seguro que deseas rechazar el trabajo de ${nombreAlumno}? El jugador deberá enviarlo nuevamente.`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonText: 'Sí, rechazar',
-            cancelButtonText: 'Cancelar',
-            buttonsStyling: false,
-            customClass: {
-                popup: 'premium-popup',
-                title: 'premium-title',
-                htmlContainer: 'premium-text',
-                /* Aquí usamos la clase original más la variante roja y un margen (me-3) */
-                confirmButton: 'premium-btn premium-btn-danger me-3',
-                cancelButton: 'premium-btn premium-btn-cancel',
-                backdrop: 'premium-backdrop'
-            }
-        }).then((result) => {
-            if (result.isConfirmed) {
-                // Si el profesor confirma, enviamos el formulario de Django
-                document.getElementById(formId).submit();
-            }
-        });
-    }
-</script>
+    <!-- Scripts Data tables-->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/2.2.2/js/dataTables.min.js"></script>
 
-<script>
-    $(document).ready(function () {
-        $('#tablaMisiones').DataTable({
-            language: {
-                "decimal": "",
-                "emptyTable": "No hay datos disponibles en la tabla",
-                "info": "Mostrando _START_ a _END_ de _TOTAL_ entregas",
-                "infoEmpty": "Mostrando 0 a 0 de 0 entregas",
-                "infoFiltered": "(filtrado de _MAX_ entregas totales)",
-                "infoPostFix": "",
-                "thousands": ",",
-                "lengthMenu": "Mostrar _MENU_ entregas por página",
-                "loadingRecords": "Cargando...",
-                "processing": "Procesando...",
-                "search": "Buscar alumno o misión:",
-                "zeroRecords": "No se encontraron resultados coincidentes",
-                "paginate": {
-                    "first": "Primero",
-                    "last": "Último",
-                    "next": "Siguiente",
-                    "previous": "Anterior"
-                },
-                "aria": {
-                    "sortAscending": ": activar para ordenar la columna ascendente",
-                    "sortDescending": ": activar para ordenar la columna descendente"
+    <script>
+        function confirmarRechazo(formId, nombreAlumno) {
+            Swal.fire({
+                title: '¿Rechazar Misión?',
+                text: `¿Seguro que deseas rechazar el trabajo de ${nombreAlumno}? El jugador deberá enviarlo nuevamente.`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, rechazar',
+                cancelButtonText: 'Cancelar',
+                buttonsStyling: false,
+                customClass: {
+                    popup: 'premium-popup',
+                    title: 'premium-title',
+                    htmlContainer: 'premium-text',
+                    /* Aquí usamos la clase original más la variante roja y un margen (me-3) */
+                    confirmButton: 'premium-btn premium-btn-danger me-3',
+                    cancelButton: 'premium-btn premium-btn-cancel',
+                    backdrop: 'premium-backdrop'
                 }
-            },
-            "pageLength": 25,
-            "order": [],
-            "columnDefs": [
-                {"orderable": false, "targets": [2, 3, 4]}
-            ]
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Si el profesor confirma, enviamos el formulario de Django
+                    document.getElementById(formId).submit();
+                }
+            });
+        }
+    </script>
+
+    <script>
+        $(document).ready(function () {
+            $('#tablaMisiones').DataTable({
+                language: {
+                    "decimal": "",
+                    "emptyTable": "No hay datos disponibles en la tabla",
+                    "info": "Mostrando _START_ a _END_ de _TOTAL_ entregas",
+                    "infoEmpty": "Mostrando 0 a 0 de 0 entregas",
+                    "infoFiltered": "(filtrado de _MAX_ entregas totales)",
+                    "infoPostFix": "",
+                    "thousands": ",",
+                    "lengthMenu": "Mostrar _MENU_ entregas por página",
+                    "loadingRecords": "Cargando...",
+                    "processing": "Procesando...",
+                    "search": "Buscar alumno o misión:",
+                    "zeroRecords": "No se encontraron resultados coincidentes",
+                    "aria": {
+                        "sortAscending": ": activar para ordenar la columna ascendente",
+                        "sortDescending": ": activar para ordenar la columna descendente"
+                    }
+                },
+                "pageLength": 25,
+                "order": [],
+                "columnDefs": [
+                    {"orderable": false, "targets": [2, 3, 4]}
+                ]
+            });
         });
-    });
-</script>
+    </script>
 
 
-{% include 'includes/alertas.html' %}
+    {% include 'includes/alertas.html' %}
 
-</body>
-</html>
+    </body>
+    </html>
+{% endblock %}

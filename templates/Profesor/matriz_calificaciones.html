@@ -1,198 +1,168 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Matriz de Calificaciones | Next-Level </title>
-    
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" rel="stylesheet">
-    
-    <style>
-        :root {
-            --bg-color: #f4f6f9;
-            --surface-color: #ffffff;
-            --primary-game: #6366f1;
-            --secondary-game: #ec4899;
-            --accent-gold: #f59e0b;
-            --success-game: #10b981;
-            --danger-game: #ef4444;
-            --text-main: #1e293b;
-            --text-muted: #64748b;
-        }
+{% extends 'Profesor/baseProfesor.html' %}
+{% block content %}
 
-        body {
-            font-family: 'Outfit', sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            background-image: radial-gradient(#cbd5e1 1.5px, transparent 1.5px);
-            background-size: 30px 30px;
-        }
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" href="https://cdn.datatables.net/2.2.2/css/dataTables.dataTables.min.css">
 
-        .hud-navbar {
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(12px);
-            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-        }
+        <title>Matriz de Calificaciones | Next-Level </title>
 
-        .brand-text {
-            background: linear-gradient(135deg, var(--primary-game), var(--secondary-game));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            font-weight: 800;
-            letter-spacing: -0.5px;
-        }
 
-        .level-badge {
-            background: rgba(99, 102, 241, 0.1);
-            color: var(--primary-game);
-            border: 1px solid rgba(99, 102, 241, 0.2);
-            border-radius: 8px;
-            padding: 4px 10px;
-            font-weight: 600;
-            font-size: 0.85rem;
-        }
+        <style>
+          
 
-        .quest-panel {
-            background: var(--surface-color);
-            border-radius: 24px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
-            border: 1px solid rgba(0, 0, 0, 0.03);
-            overflow: hidden;
-        }
+            body {
+                font-family: 'Outfit', sans-serif;
+                background-color: var(--bg-color);
+                color: var(--text-main);
+                background-image: radial-gradient(#cbd5e1 1.5px, transparent 1.5px);
+                background-size: 30px 30px;
+            }
 
-        .quest-header {
-            background: rgba(255, 255, 255, 0.9);
-            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-            padding: 20px 24px;
-        }
+            .level-badge {
+                background: rgba(99, 102, 241, 0.1);
+                color: var(--primary-game);
+                border: 1px solid rgba(99, 102, 241, 0.2);
+                border-radius: 8px;
+                padding: 4px 10px;
+                font-weight: 600;
+                font-size: 0.85rem;
+            }
 
-        .btn-game-outline {
-            border-radius: 10px;
-            font-weight: 600;
-            transition: all 0.2s;
-            border: 1px solid rgba(99, 102, 241, 0.3);
-            color: var(--primary-game);
-            background: transparent;
-            text-decoration: none;
-        }
+            .quest-panel {
+                background: var(--surface-color);
+                border-radius: 24px;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+                border: 1px solid rgba(0, 0, 0, 0.03);
+                overflow: hidden;
+            }
 
-        .btn-game-outline:hover {
-            background: rgba(99, 102, 241, 0.1);
-            transform: translateY(-2px);
-            color: var(--primary-game);
-        }
+            .quest-header {
+                background: rgba(255, 255, 255, 0.9);
+                border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+                padding: 20px 24px;
+            }
 
-        .table-matrix {
-            color: var(--text-main);
-            margin-bottom: 0 !important;
-        }
 
-        .table-matrix > :not(caption) > * > * {
-            padding: 1rem;
-            border-bottom-color: rgba(0, 0, 0, 0.03);
-            vertical-align: middle;
-            text-align: center;
-        }
+            .table-matrix {
+                color: var(--text-main);
+                margin-bottom: 0 !important;
+            }
 
-        .table-light-game th {
-            background-color: #f8fafc !important;
-            color: var(--text-muted) !important;
-            font-weight: 600;
-            white-space: nowrap;
-        }
+            .table-matrix > :not(caption) > * > * {
+                padding: 1rem;
+                border-bottom: 1px solid rgba(0, 0, 0, 0.2) ;
+                vertical-align: middle;
+                text-align: center;
+            }
 
-        .table-matrix .student-name {
-            text-align: left;
-            font-weight: 600;
-            position: sticky;
-            left: 0;
-            background: var(--surface-color) !important;
-            z-index: 10;
-            box-shadow: 2px 0 5px rgba(0,0,0,0.02);
-        }
+            .table-light-game th {
+                background-color: #f8fafc !important;
+                color: var(--text-muted) !important;
+                font-weight: 600;
+                white-space: nowrap;
+            }
 
-        .table-light-game .student-name {
-            background-color: #f8fafc !important;
-            z-index: 11;
-        }
+            .table-matrix .student-name {
+                text-align: left;
+                font-weight: 600;
+                position: sticky;
+                left: 0;
+                background: #f3f3f3 !important;
+                z-index: 10;
+                box-shadow: 2px 0 5px rgba(0, 0, 0, 0.02);
+            }
 
-        .badge-status {
-            font-size: 0.8rem;
-            padding: 4px 10px;
-            border-radius: 6px;
-            font-weight: 600;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-        }
+            .table-light-game .student-name {
+                background-color: #f8fafc !important;
+                z-index: 11;
+            }
+
+            .badge-status {
+                font-size: 0.8rem;
+                padding: 4px 10px;
+                border-radius: 6px;
+                font-weight: 600;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .badge-aprobado {
+                background: rgba(16, 185, 129, 0.1);
+                color: var(--success-game);
+                border: 1px solid rgba(16, 185, 129, 0.2);
+            }
+
+            .badge-pendiente {
+                background: rgba(245, 158, 11, 0.1);
+                color: var(--accent-gold);
+                border: 1px solid rgba(245, 158, 11, 0.2);
+            }
+
+            .badge-rechazado {
+                background: rgba(239, 68, 68, 0.1);
+                color: var(--danger-game);
+                border: 1px solid rgba(239, 68, 68, 0.2);
+            }
+
+            .badge-vacio {
+                background: rgba(100, 116, 139, 0.1);
+                color: var(--text-muted);
+                border: 1px solid rgba(100, 116, 139, 0.2);
+            }
+
+            div.dataTables_wrapper div.dataTables_filter input {
+                border-radius: 10px;
+                border: 1px solid rgba(0, 0, 0, 0.1);
+                padding: 0.4rem 0.8rem;
+            }
+
+            div.dataTables_wrapper div.dataTables_length select {
+                border-radius: 8px;
+            }
+        </style>
+    </head>
+    <body>
+
+
+    <div class="container mt-4 mb-5">
+        <div class="quest-panel">
         
-        .badge-aprobado { background: rgba(16, 185, 129, 0.1); color: var(--success-game); border: 1px solid rgba(16, 185, 129, 0.2); }
-        .badge-pendiente { background: rgba(245, 158, 11, 0.1); color: var(--accent-gold); border: 1px solid rgba(245, 158, 11, 0.2); }
-        .badge-rechazado { background: rgba(239, 68, 68, 0.1); color: var(--danger-game); border: 1px solid rgba(239, 68, 68, 0.2); }
-        .badge-vacio { background: rgba(100, 116, 139, 0.1); color: var(--text-muted); border: 1px solid rgba(100, 116, 139, 0.2); }
-
-        div.dataTables_wrapper div.dataTables_filter input {
-            border-radius: 10px;
-            border: 1px solid rgba(0,0,0,0.1);
-            padding: 0.4rem 0.8rem;
-        }
         
-        div.dataTables_wrapper div.dataTables_length select {
-            border-radius: 8px;
-        }
-    </style>
-</head>
-<body>
-
-<nav class="navbar hud-navbar mb-4 py-3">
-    <div class="container d-flex justify-content-between align-items-center">
-        <span class="navbar-brand mb-0 h1 d-flex align-items-center">
-            <i class="bi bi-grid-3x3-gap-fill text-primary fs-3 me-2"></i> 
-            <span class="brand-text d-none d-sm-inline">Calificaciones</span>
-            <span class="level-badge ms-3">{{ clase.nombre }}  {{ clase.grado }} {{ clase.grupo }}</span>
-        </span>
-        <a href="javascript:history.back()" class="btn btn-game-outline btn-sm px-3">
-            <i class="bi bi-arrow-left me-1"></i> Base de Operaciones
-        </a>
-    </div>
-</nav>
-
-<div class="container mt-4 mb-5">
-    <div class="quest-panel">
-        <div class="quest-header d-flex align-items-center">
-            <div class="bg-light rounded-circle p-2 text-primary me-3 d-flex align-items-center justify-content-center"
-                 style="width: 45px; height: 45px;">
-                <i class="bi bi-bar-chart-fill fs-4"></i>
+            <div class="quest-header d-flex align-items-center">
+                <div class="bg-light rounded-circle p-2 text-secondary me-3 d-flex align-items-center justify-content-center"
+                     style="width: 45px; height: 45px;">
+                    <i class="bi bi-bar-chart-fill fs-4"></i>
+                </div>
+                <div>
+                    <div class="d-flex align-items-center gap-2">
+                        <h4 class="mb-0 fw-bold text-dark">Calificaciones Globales</h4>
+                        <span class="level-badge">{{ clase.nombre }} {{ clase.grado }} {{ clase.grupo }}</span>
+                    </div>
+                    <p class="text-muted small mb-0 mt-1">Visión general del progreso de los alumnos</p>
+                </div>
             </div>
-            <div>
-                <h4 class="mb-0 fw-bold text-dark">Calificaciones Globales</h4>
-                <p class="text-muted small mb-0 mt-1">Visión general del progreso de los alumnos</p>
-            </div>
-        </div>
+        
 
-        <div class="card-body p-4">
-            <div class="table-responsive">
-                <table id="matrizCalificaciones" class="table table-hover table-matrix w-100 border-0">
-                    <thead class="table-light-game">
+            <div class="card-body p-4">
+                <div class="table-responsive">
+                    <table id="matrizCalificaciones" class="table table-hover table-matrix w-100 border-0">
+                        <thead class="table-light-game">
                         <tr>
                             <th class="student-name border-0 rounded-start">Alumno</th>
                             {% for mision in misiones_columnas %}
                                 <th class="border-0" style="min-width: 90px;">
                                     {{ mision.nombre }}
-                                 <span class="d-block small text-muted mb-1">{{ mision.nivel.nombre }}</span>
+                                    <span class="d-block small text-muted mb-1" style="font-size: 0.7rem; ">{{ mision.nivel.nombre }}</span>
                                 </th>
                             {% endfor %}
                         </tr>
-                    </thead>
-                    <tbody>
+                        </thead>
+                        <tbody>
                         {% for fila in matriz %}
                             <tr>
                                 <td class="student-name">
@@ -203,7 +173,9 @@
                                 {% for celda in fila.calificaciones %}
                                     <td>
                                         {% if celda.progreso %}
-                                            <div class="fw-bold mb-1 text-dark">{{ celda.progreso.calificacion_escala_10 }} / 10</div>
+                                            <div class="fw-bold mb-1 text-dark">{{ celda.progreso.calificacion_escala_10 }}
+                                                / 10
+                                            </div>
                                             {% if celda.progreso.estado == 'aprobado' %}
                                                 <span class="badge-status badge-aprobado">Aprobado</span>
                                             {% elif celda.progreso.estado == 'pendiente' %}
@@ -218,50 +190,44 @@
                                 {% endfor %}
                             </tr>
                         {% endfor %}
-                    </tbody>
-                </table>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
-<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+    <!-- Scripts Data tables-->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/2.2.2/js/dataTables.min.js"></script>
 
-<script>
-    $(document).ready(function () {
-        $('#matrizCalificaciones').DataTable({
-            language: {
-                "decimal": "",
-                "emptyTable": "No hay datos disponibles en la matriz",
-                "info": "Mostrando _START_ a _END_ de _TOTAL_ alumnos",
-                "infoEmpty": "Mostrando 0 a 0 de 0 alumnos",
-                "infoFiltered": "(filtrado de _MAX_ alumnos totales)",
-                "infoPostFix": "",
-                "thousands": ",",
-                "lengthMenu": "Mostrar _MENU_ alumnos",
-                "loadingRecords": "Cargando...",
-                "processing": "Procesando...",
-                "search": "Buscar alumno:",
-                "zeroRecords": "No se encontraron resultados coincidentes",
-                "paginate": {
-                    "first": "Primero",
-                    "last": "Último",
-                    "next": "Siguiente",
-                    "previous": "Anterior"
-                }
-            },
-            "pageLength": 25,
-            "scrollX": true, 
-            "autoWidth": false,
-            "order": [], 
-            "columnDefs": [
-                { "orderable": false, "targets": "_all" } 
-            ]
+    <script>
+        $(document).ready(function () {
+            $('#matrizCalificaciones').DataTable({
+                language: {
+                    "decimal": "",
+                    "emptyTable": "No hay datos disponibles en la matriz",
+                    "info": "Mostrando _START_ a _END_ de _TOTAL_ alumnos",
+                    "infoEmpty": "Mostrando 0 a 0 de 0 alumnos",
+                    "infoFiltered": "(filtrado de _MAX_ alumnos totales)",
+                    "infoPostFix": "",
+                    "thousands": ",",
+                    "lengthMenu": "Mostrar _MENU_ alumnos",
+                    "loadingRecords": "Cargando...",
+                    "processing": "Procesando...",
+                    "search": "Buscar alumno:",
+                    "zeroRecords": "No se encontraron resultados coincidentes",
+                },
+                "pageLength": 25,
+                "scrollX": true,
+                "autoWidth": false,
+                "order": [],
+                "columnDefs": [
+                    {"orderable": false, "targets": "_all"}
+                ]
+            });
         });
-    });
-</script>
-</body>
-</html>
+    </script>
+    </body>
+    </html>
+{% endblock %}

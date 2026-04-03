@@ -1,0 +1,173 @@
+{% extends 'Profesor/baseProfesor.html' %}
+
+{% block extra_css %}
+    <style>
+      
+        /* --- PANEL DEL FORMULARIO --- */
+        .form-panel {
+            background: var(--surface-color, #ffffff);
+            border-radius: 24px;
+            padding: 32px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+            border: 1px solid rgba(0, 0, 0, 0.03);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .form-icon-box {
+            width: 56px;
+            height: 56px;
+            flex-shrink: 0;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            /* Usamos el color de "Artículo Tienda" del panel principal */
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--accent-gold);
+            font-size: 1.8rem;
+        }
+
+        .custom-label {
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            display: block;
+            font-size: 0.95rem;
+        }
+
+        .btn-submit-game {
+            background-color: var(--accent-gold);
+            color: white;
+            border: 2px solid var(--accent-gold);
+            border-radius: 14px;
+            padding: 14px 28px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            transition: all 0.2s ease-in-out;
+            width: 100%;
+        }
+
+        .btn-submit-game:hover {
+            background-color: white;
+            color: var(--accent-gold);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
+        }
+
+        /* Estilo para la tarjeta de validación */
+        .validation-card {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+  
+/* Estilo para checkbox custom */
+input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    background-color: transparent;
+    border: 2px solid var(--accent-gold);
+    border-radius: 4px;
+    cursor: pointer;
+    display: inline-grid;
+    place-content: center;
+}
+
+input[type="checkbox"]:checked {
+    background-color: var(--accent-gold);
+}
+
+input[type="checkbox"]:checked::before {
+    content: "";
+    width: 12px;
+    height: 12px;
+    clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+    background-color: white;
+}
+
+
+
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="container mb-5 mt-4">
+
+        <div class="row justify-content-center">
+            <div class="col-lg-10 col-xl-9">
+
+                <div class="form-panel">
+                    <div class="d-flex align-items-center gap-4 mb-4 pb-4 border-bottom border-light">
+                        <div class="form-icon-box">
+                            <i class="bi bi-bag-plus-fill"></i>
+                        </div>
+                        <div>
+                            <h3 class="fw-bold text-dark mb-1">Añadir Recompensa a la Tienda</h3>
+                            <p class="text-muted small mb-0">Crea nuevas recompensas para que los alumnos intercambien sus monedas.</p>
+                        </div>
+                    </div>
+
+                    <form method="POST" enctype="multipart/form-data">
+                        {% csrf_token %}
+
+                        <div class="row g-4">
+                            <div class="col-md-8">
+                                <div class="form-group">
+                                    <label class="custom-label"><i class="bi bi-tag-fill text-secondary me-1"></i> Nombre del Artículo:</label>
+                                    {{ form.nombre }}
+                                </div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label class="custom-label"><i class="bi bi-coin text-secondary me-1"></i> Costo (Monedas):</label>
+                                    {{ form.costo_monedas }}
+                                </div>
+                            </div>
+
+                            <div class="col-12">
+                                <div class="form-group">
+                                    <label class="custom-label"><i class="bi bi-card-text text-secondary me-1"></i> Descripción de la Recompensa:</label>
+                                    {{ form.descripcion }}
+                                </div>
+                            </div>
+
+                            <div class="col-md-7">
+                                <div class="form-group">
+                                    <label class="custom-label"><i class="bi bi-image text-secondary me-1"></i> Imagen Ilustrativa:</label>
+                                    {{ form.imagen }}
+                                </div>
+                            </div>
+
+                            <div class="col-md-5">
+                                <label class="custom-label mb-2"><i class="bi bi-shield-check text-secondary me-1"></i> Configuración de Entrega:</label>
+                                <div class="validation-card">
+                                    <div class="form-check form-switch d-flex align-items-center mb-0 p-0">
+                                        {{ form.requiere_validacion }}
+                                    </div>
+                                    <div class="ms-2">
+                                        <h6 class="mb-0 text-dark fw-bold" style="font-size: 0.9rem;">Requiere validación del profesor</h6>
+                                        <small class="text-muted" style="font-size: 0.75rem;">Para recompensas físicas o permisos.</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-5 pt-2">
+                            <button type="submit" class="btn-submit-game d-flex justify-content-center align-items-center gap-2">
+                                <i class="bi bi-cart-plus-fill"></i> Registrar en Tienda
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+            </div>
+        </div>
+    </div>
+{% endblock %}

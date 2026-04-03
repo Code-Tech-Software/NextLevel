@@ -1,0 +1,123 @@
+{% extends 'Profesor/baseProfesor.html' %}
+
+{% block extra_css %}
+    <style>
+       
+
+        /* --- PANEL DEL FORMULARIO --- */
+        .form-panel {
+            background: var(--surface-color, #ffffff);
+            border-radius: 24px;
+            padding: 32px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+            border: 1px solid rgba(0, 0, 0, 0.03);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .form-icon-box {
+            width: 56px;
+            height: 56px;
+            flex-shrink: 0;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            /* Usamos el color de "Nueva Clase" del panel principal */
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--primary-game, #6366f1);
+            font-size: 1.8rem;
+        }
+
+        .custom-label {
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            display: block;
+            font-size: 0.95rem;
+        }
+
+        .btn-submit-game {
+            background-color: var(--primary-game);
+            color: white;
+            border: 2px solid var(--primary-game);
+            border-radius: 14px;
+            padding: 14px 28px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            transition: all 0.2s ease-in-out;
+            width: 100%;
+        }
+
+        .btn-submit-game:hover {
+            background-color: white;
+            color: var(--primary-game);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+        }
+
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="container mb-5 mt-4">
+
+        <div class="row justify-content-center">
+            <div class="col-lg-10 col-xl-9">
+
+                <div class="form-panel">
+                    <div class="d-flex align-items-center gap-4 mb-4 pb-4 border-bottom border-light">
+                        <div class="form-icon-box">
+                            <i class="bi bi-journal-plus"></i>
+                        </div>
+                        <div>
+                            <h3 class="fw-bold text-dark mb-1">Crear Nueva Clase</h3>
+                            <p class="text-muted small mb-0">Define los parámetros del nuevo grupo para comenzar a asignar misiones.</p>
+                        </div>
+                    </div>
+
+                    <form method="POST">
+                        {% csrf_token %}
+
+                        <div class="row g-4">
+                            <div class="col-md-12">
+                                <div class="form-group">
+                                    <label class="custom-label"><i class="bi bi-bookmark-star-fill text-secondary me-1"></i> Nombre de la Clase:</label>
+                                    {{ form.nombre }}
+                                </div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label class="custom-label"><i class="bi bi-bar-chart-fill text-secondary me-1"></i> Grado:</label>
+                                    {{ form.grado }}
+                                </div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label class="custom-label"><i class="bi bi-people-fill text-secondary me-1"></i> Grupo:</label>
+                                    {{ form.grupo }}
+                                </div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label class="custom-label"><i class="bi bi-calendar-event-fill text-secondary me-1"></i> Año:</label>
+                                    {{ form.anio }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-5 pt-2">
+                            <button type="submit" class="btn-submit-game d-flex justify-content-center align-items-center gap-2">
+                                <i class="bi bi-check-circle-fill"></i> Crear Clase
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+            </div>
+        </div>
+    </div>
+{% endblock %}

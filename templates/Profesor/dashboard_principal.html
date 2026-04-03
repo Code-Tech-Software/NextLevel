@@ -1,54 +1,9 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Centro de Mando Next-Level</title>
+{% extends 'Profesor/baseProfesor.html' %}
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-
+{% block extra_css %}
     <style>
-        :root {
-            --bg-color: #f4f6f9;
-            --surface-color: #ffffff;
-            --primary-game: #6366f1; /* Índigo vibrante */
-            --secondary-game: #ec4899; /* Rosa neón apagado */
-            --accent-gold: #f59e0b; /* Dorado para tienda/recompensas */
-            --success-game: #10b981; /* Verde esmeralda */
-            --epic-purple: #8b5cf6; /* Morado épico */
-            --text-main: #1e293b;
-            --text-muted: #64748b;
-        }
+        /* Variables adicionales necesarias solo para esta vista */
 
-        body {
-            font-family: 'Outfit', sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            background-image: radial-gradient(#cbd5e1 1.5px, transparent 1.5px);
-            background-size: 30px 30px;
-        }
-
-        /* --- HUD NAVBAR (Barra de Navegación) --- */
-        .hud-navbar {
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(12px);
-            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-        }
-
-        .brand-text {
-            background: linear-gradient(135deg, var(--primary-game), var(--secondary-game));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            font-weight: 800;
-            letter-spacing: -0.5px;
-        }
 
         /* --- PANEL DE ACCIONES RÁPIDAS (Forja) --- */
         .admin-actions-panel {
@@ -72,7 +27,7 @@
             font-weight: 600;
             text-decoration: none;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            flex: 1 1 auto; /* Para que se adapten bien en móviles y desktop */
+            flex: 1 1 auto;
             min-width: 180px;
         }
 
@@ -87,32 +42,96 @@
             transition: all 0.3s ease;
         }
 
-        /* Variaciones de color para cada botón de acción */
-        /* 1. Clase */
-        .btn-class .action-icon { background: rgba(99, 102, 241, 0.1); color: var(--primary-game); }
-        .btn-class:hover { border-color: var(--primary-game); background: #fff; transform: translateY(-4px); box-shadow: 0 10px 20px rgba(99, 102, 241, 0.15); color: var(--primary-game); }
-        .btn-class:hover .action-icon { background: var(--primary-game); color: white; }
+        /* Botones de acción */
+        .btn-class .action-icon {
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--primary-game);
+        }
 
-        /* 2. Alumno */
-        .btn-student .action-icon { background: rgba(236, 72, 153, 0.1); color: var(--secondary-game); }
-        .btn-student:hover { border-color: var(--secondary-game); background: #fff; transform: translateY(-4px); box-shadow: 0 10px 20px rgba(236, 72, 153, 0.15); color: var(--secondary-game); }
-        .btn-student:hover .action-icon { background: var(--secondary-game); color: white; }
+        .btn-class:hover {
+            border-color: var(--primary-game);
+            background: #fff;
+            transform: translateY(-4px);
+            box-shadow: 0 10px 20px rgba(99, 102, 241, 0.15);
+            color: var(--primary-game);
+        }
 
-        /* 3. Misión */
-        .btn-mission .action-icon { background: rgba(16, 185, 129, 0.1); color: var(--success-game); }
-        .btn-mission:hover { border-color: var(--success-game); background: #fff; transform: translateY(-4px); box-shadow: 0 10px 20px rgba(16, 185, 129, 0.15); color: var(--success-game); }
-        .btn-mission:hover .action-icon { background: var(--success-game); color: white; }
+        .btn-class:hover .action-icon {
+            background: var(--primary-game);
+            color: white;
+        }
 
-        /* 4. Nivel */
-        .btn-level .action-icon { background: rgba(139, 92, 246, 0.1); color: var(--epic-purple); }
-        .btn-level:hover { border-color: var(--epic-purple); background: #fff; transform: translateY(-4px); box-shadow: 0 10px 20px rgba(139, 92, 246, 0.15); color: var(--epic-purple); }
-        .btn-level:hover .action-icon { background: var(--epic-purple); color: white; }
+        .btn-student .action-icon {
+            background: rgba(236, 72, 153, 0.1);
+            color: var(--secondary-game);
+        }
 
-        /* 5. Artículo Tienda */
-        .btn-store .action-icon { background: rgba(245, 158, 11, 0.1); color: var(--accent-gold); }
-        .btn-store:hover { border-color: var(--accent-gold); background: #fff; transform: translateY(-4px); box-shadow: 0 10px 20px rgba(245, 158, 11, 0.15); color: var(--accent-gold); }
-        .btn-store:hover .action-icon { background: var(--accent-gold); color: white; }
+        .btn-student:hover {
+            border-color: var(--secondary-game);
+            background: #fff;
+            transform: translateY(-4px);
+            box-shadow: 0 10px 20px rgba(236, 72, 153, 0.15);
+            color: var(--secondary-game);
+        }
 
+        .btn-student:hover .action-icon {
+            background: var(--secondary-game);
+            color: white;
+        }
+
+        .btn-mission .action-icon {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success-game);
+        }
+
+        .btn-mission:hover {
+            border-color: var(--success-game);
+            background: #fff;
+            transform: translateY(-4px);
+            box-shadow: 0 10px 20px rgba(16, 185, 129, 0.15);
+            color: var(--success-game);
+        }
+
+        .btn-mission:hover .action-icon {
+            background: var(--success-game);
+            color: white;
+        }
+
+        .btn-level .action-icon {
+            background: rgba(139, 92, 246, 0.1);
+            color: var(--epic-purple);
+        }
+
+        .btn-level:hover {
+            border-color: var(--epic-purple);
+            background: #fff;
+            transform: translateY(-4px);
+            box-shadow: 0 10px 20px rgba(139, 92, 246, 0.15);
+            color: var(--epic-purple);
+        }
+
+        .btn-level:hover .action-icon {
+            background: var(--epic-purple);
+            color: white;
+        }
+
+        .btn-store .action-icon {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--accent-gold);
+        }
+
+        .btn-store:hover {
+            border-color: var(--accent-gold);
+            background: #fff;
+            transform: translateY(-4px);
+            box-shadow: 0 10px 20px rgba(245, 158, 11, 0.15);
+            color: var(--accent-gold);
+        }
+
+        .btn-store:hover .action-icon {
+            background: var(--accent-gold);
+            color: white;
+        }
 
         /* --- TARJETAS DE CLASE (Niveles) --- */
         .class-card {
@@ -220,222 +239,161 @@
             box-shadow: 0 4px 10px rgba(245, 158, 11, 0.3);
         }
 
-        .status-alert { color: #ef4444; font-weight: 600; }
-        .status-ok { color: #10b981; font-weight: 600; }
-        
-        
-        
-        
-        
-        /* --- ESTILOS NUEVOS PARA CERRAR SESIÓN --- */
-        .dropdown-toggle::after {
-            display: none; /* Oculta la flechita por defecto del dropdown */
-        }
-        .profile-avatar {
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-        .dropdown-toggle:hover .profile-avatar {
-            transform: scale(1.05);
-            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
-        }
-        .btn-logout {
-            color: #ef4444; /* Rojo para indicar acción de salida */
-            font-weight: 600;
-            transition: all 0.2s ease;
-        }
-        .btn-logout:hover {
-            background-color: rgba(239, 68, 68, 0.1); /* Fondo rojo suave */
+        .status-alert {
             color: #ef4444;
+            font-weight: 600;
         }
-        /* ----------------------------------------- */
-        
-        
-        
-        
-        
-        
+
+        .status-ok {
+            color: #10b981;
+            font-weight: 600;
+        }
     </style>
-</head>
-<body>
+{% endblock %}
 
-<nav class="navbar hud-navbar mb-4 py-3">
-    <div class="container">
-        <span class="navbar-brand mb-0 h1 d-flex align-items-center">
-            <i class="bi bi-controller text-primary fs-3 me-2"></i> 
-            <span class="brand-text">Next-Level by Mr. David</span>
-        </span>
-        
-      <div class="d-flex align-items-center">
-            <div class="level-badge border-0 bg-dark text-white me-3 d-none d-md-block">
-                <i class="bi bi-person-fill-gear me-1"></i> Admin Panel
+{% block content %}
+    <div class="container mb-5">
+
+        <div class="admin-actions-panel">
+            <div class="d-flex align-items-center mb-3">
+                <h5 class="fw-bold mb-0 text-dark">
+                    <i class="bi bi-gear text-secondary me-2"></i>Forja de Creación
+                </h5>
+                <span class="badge bg-light text-muted border ms-3">Acciones Rápidas</span>
             </div>
-            
-            <div class="dropdown">
-                <a href="#" class="d-block text-decoration-none dropdown-toggle" id="dropdownUser1" data-bs-toggle="dropdown" aria-expanded="false">
-                    <img src="https://api.dicebear.com/7.x/bottts/svg?seed=Admin" alt="Admin" width="40" height="40"
-                         class="rounded-circle bg-light border border-2 border-secondary profile-avatar">
+
+            <div class="d-flex flex-wrap gap-3">
+                <a href="{% url 'alta_clase' %}" class="action-btn btn-class">
+                    <div class="action-icon"><i class="bi bi-journal-plus"></i></div>
+                    <span>Nueva Clase</span>
                 </a>
-                <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 mt-2 p-2" aria-labelledby="dropdownUser1">
-                    <li>
-                        <form method="post" action="{% url 'logout' %}">
-                            {% csrf_token %}
-                            <button type="submit" class="dropdown-item btn-logout rounded">
-                                <i class="bi bi-box-arrow-right me-2"></i>Cerrar Sesión
-                            </button>
-                        </form>
-                    </li>
-                </ul>
-            </div>
-            </div>
-        
-        
-    </div>
-</nav>
 
-<div class="container mb-5">
-    
-    <div class="admin-actions-panel">
-        <div class="d-flex align-items-center mb-3">
-            <h5 class="fw-bold mb-0 text-dark">
-                <i class="bi bi-gear text-secondary me-2"></i>Forja de Creación
-            </h5>
-            <span class="badge bg-light text-muted border ms-3">Acciones Rápidas</span>
-        </div>
-        
-        <div class="d-flex flex-wrap gap-3">
-            <a href="#" class="action-btn btn-class">
-                <div class="action-icon"><i class="bi bi-journal-plus"></i></div>
-                <span>Nueva Clase</span>
-            </a>
-            
-            <a href="#" class="action-btn btn-student">
-                <div class="action-icon"><i class="bi bi-person-plus-fill"></i></div>
-                <span>Alta Alumno</span>
-            </a>
-            
-            <a href="#" class="action-btn btn-mission">
-                <div class="action-icon"><i class="bi bi-flag-fill"></i></div>
-                <span>Crear Misión</span>
-            </a>
-            
-            <a href="#" class="action-btn btn-level">
-                <div class="action-icon"><i class="bi bi-bar-chart-steps"></i></div>
-                <span>Nuevo Nivel</span>
-            </a>
-            
-            <a href="#" class="action-btn btn-store">
-                <div class="action-icon"><i class="bi bi-bag-plus-fill"></i></div>
-                <span>Artículo Tienda</span>
-            </a>
-        </div>
-    </div>
+                <a href="{% url 'alta_alumno' %}" class="action-btn btn-student">
+                    <div class="action-icon"><i class="bi bi-person-plus-fill"></i></div>
+                    <span>Alta Alumno</span>
+                </a>
 
-    <div class="row g-5">
-        <div class="col-lg-8">
-            <div class="d-flex justify-content-between align-items-end mb-4">
-                <div>
-                    <h3 class="fw-bold mb-0 text-dark"><i class="bi bi-layers-half text-secondary me-2"></i>Selección de clases</h3>
-                    <p class="text-muted small mb-0 mt-1">Elige una clase para administrar las misiones</p>
+                <a href="{% url 'alta_mision' %}" class="action-btn btn-mission">
+                    <div class="action-icon"><i class="bi bi-flag-fill"></i></div>
+                    <span>Crear Misión</span>
+                </a>
+
+                <a href="{% url 'alta_nivel' %}" class="action-btn btn-level">
+                    <div class="action-icon"><i class="bi bi-bar-chart-steps"></i></div>
+                    <span>Nuevo Nivel</span>
+                </a>
+
+                <a href="{% url 'alta_articulo' %}" class="action-btn btn-store">
+                    <div class="action-icon"><i class="bi bi-bag-plus-fill"></i></div>
+                    <span>Artículo Tienda</span>
+                </a>
+            </div>
+        </div>
+
+        <div class="row g-5">
+            <div class="col-lg-8">
+                <div class="d-flex justify-content-between align-items-end mb-4">
+                    <div>
+                        <h3 class="fw-bold mb-0 text-dark"><i class="bi bi-layers-half text-secondary me-2"></i>Selección
+                            de clases</h3>
+                        <p class="text-muted small mb-0 mt-1">Elige una clase para administrar las misiones</p>
+                    </div>
                 </div>
-            </div>
 
-            <div class="row g-4">
-                {% for clase in clases %}
-                    <div class="col-md-6">
-                        <div class="card class-card h-100 p-2"
-                             onclick="location.href='{% url 'panel_profesor' clase.id %}'">
-                            <div class="card-body">
-                                <div class="d-flex justify-content-between align-items-start mb-3">
-                                    <div>
-                                        <div class="level-badge mb-2 d-inline-block">{{ clase.nombre }}</div>
-                                        <h5 class="card-title fw-bold text-dark mb-0">{{ clase.grado }} {{ clase.grupo }}</h5>
+                <div class="row g-4">
+                    {% for clase in clases %}
+                        <div class="col-md-6">
+                            <div class="card class-card h-100 p-2"
+                                 onclick="location.href='{% url 'panel_profesor' clase.id %}'">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-3">
+                                        <div>
+                                            <div class="level-badge mb-2 d-inline-block">{{ clase.nombre }}</div>
+                                            <h5 class="card-title fw-bold text-dark mb-0">{{ clase.grado }} {{ clase.grupo }}</h5>
+                                        </div>
+                                        <div class="game-icon-box">
+                                            <i class="bi bi-rocket-takeoff-fill"></i>
+                                        </div>
                                     </div>
-                                    <div class="game-icon-box">
-                                        <i class="bi bi-rocket-takeoff-fill"></i>
-                                    </div>
-                                </div>
 
-                                <div class="mt-4 pt-3 border-top border-light">
-                                    <div class="d-flex justify-content-between align-items-center small mb-3">
+                                    <div class="mt-4 pt-3 border-top border-light">
+                                        <div class="d-flex justify-content-between align-items-center small mb-3">
                                         <span class="text-muted fw-semibold">
                                             <i class="bi bi-people-fill me-1"></i> {{ clase.total_alumnos }} Alumnos
                                         </span>
 
-                                        {% if clase.misiones_pendientes > 0 %}
-                                            <span class="status-alert">
+                                            {% if clase.misiones_pendientes > 0 %}
+                                                <span class="status-alert">
                                                 <i class="bi bi-exclamation-triangle-fill me-1"></i> {{ clase.misiones_pendientes }} Por revisar
                                             </span>
-                                        {% else %}
-                                            <span class="status-ok">
+                                            {% else %}
+                                                <span class="status-ok">
                                                 <i class="bi bi-shield-check me-1"></i> Todo al día
                                             </span>
-                                        {% endif %}
+                                            {% endif %}
+                                        </div>
+
+                                        <button class="btn btn-sm w-100"
+                                                style="background-color: rgba(99, 102, 241, 0.1); color: var(--primary-game); font-weight: 600;"
+                                                onclick="event.stopPropagation(); location.href='{% url 'matriz_calificaciones' clase.id %}'">
+                                            <i class="bi bi-grid-3x3 me-2"></i> Ver Calificaciones
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% empty %}
+                        <div class="col-12 text-center py-5">
+                            <div class="d-inline-block bg-light rounded-circle p-4 mb-3">
+                                <i class="bi bi-folder-x fs-1 text-muted"></i>
+                            </div>
+                            <h5 class="fw-bold text-dark">Inventario de clases vacío</h5>
+                            <p class="text-muted">No se han registrado niveles todavía.</p>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="quest-panel">
+                    <div class="quest-header">
+                        <i class="bi bi-shop text-warning fs-3"></i>
+                        Recompensas Pendientes
+                    </div>
+
+                    <div class="quest-list">
+                        {% if entregas_tienda %}
+                            {% for compra in entregas_tienda %}
+                                <div class="quest-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong class="d-block text-dark fs-6">{{ compra.articulo.nombre }}</strong>
+                                        <small class="text-muted d-flex align-items-center mt-1">
+                                            <i class="bi bi-person-fill text-secondary me-1"></i>
+                                            {{ compra.alumno.nombre }} {{ compra.alumno.apellido }}
+                                        </small>
                                     </div>
 
-                                    <button class="btn btn-sm w-100"
-                                            style="background-color: rgba(99, 102, 241, 0.1); color: var(--primary-game); font-weight: 600;"
-                                            onclick="event.stopPropagation(); location.href='{% url 'matriz_calificaciones' clase.id %}'">
-                                        <i class="bi bi-grid-3x3 me-2"></i> Ver Calificaciones
-                                    </button>
+                                    <form action="{% url 'entregar_articulo_tienda' compra.id %}" method="POST"
+                                          class="m-0">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-loot px-3 py-2"
+                                                title="Entregar recompensa">
+                                            <i class="bi bi-gift-fill me-1"></i> Dar
+                                        </button>
+                                    </form>
                                 </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="text-center py-5">
+                                <i class="bi bi-box-seam fs-1 d-block mb-3 text-muted opacity-50"></i>
+                                <strong class="d-block text-dark">Recompensas entregados</strong>
+                                <small class="text-muted">No hay recompensas pendientes.</small>
                             </div>
-                        </div>
+                        {% endif %}
                     </div>
-                {% empty %}
-                    <div class="col-12 text-center py-5">
-                        <div class="d-inline-block bg-light rounded-circle p-4 mb-3">
-                            <i class="bi bi-folder-x fs-1 text-muted"></i>
-                        </div>
-                        <h5 class="fw-bold text-dark">Inventario de clases vacío</h5>
-                        <p class="text-muted">No se han registrado niveles todavía.</p>
-                    </div>
-                {% endfor %}
-            </div>
-        </div>
-
-        <div class="col-lg-4">
-            <div class="quest-panel">
-                <div class="quest-header">
-                    <i class="bi bi-shop text-warning fs-3"></i>
-                    Recompensas Pendientes
-                </div>
-
-                <div class="quest-list">
-                    {% if entregas_tienda %}
-                        {% for compra in entregas_tienda %}
-                            <div class="quest-item d-flex justify-content-between align-items-center">
-                                <div>
-                                    <strong class="d-block text-dark fs-6">{{ compra.articulo.nombre }}</strong>
-                                    <small class="text-muted d-flex align-items-center mt-1">
-                                        <i class="bi bi-person-fill text-secondary me-1"></i>
-                                        {{ compra.alumno.nombre }} {{ compra.alumno.apellido }}
-                                    </small>
-                                </div>
-
-                                <form action="{% url 'entregar_articulo_tienda' compra.id %}" method="POST" class="m-0">
-                                    {% csrf_token %}
-                                    <button type="submit" class="btn btn-sm btn-loot px-3 py-2"
-                                            title="Entregar recompensa">
-                                        <i class="bi bi-gift-fill me-1"></i> Dar
-                                    </button>
-                                </form>
-                            </div>
-                        {% endfor %}
-                    {% else %}
-                        <div class="text-center py-5">
-                            <i class="bi bi-box-seam fs-1 d-block mb-3 text-muted opacity-50"></i>
-                            <strong class="d-block text-dark">Recompensas entregados</strong>
-                            <small class="text-muted">No hay recompensas pendientes.</small>
-                        </div>
-                    {% endif %}
                 </div>
             </div>
-        </div>
 
+        </div>
     </div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-{% include 'includes/alertas.html' %}
-</body>
-</html>
+{% endblock %}

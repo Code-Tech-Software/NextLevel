@@ -25,5 +25,11 @@ urlpatterns = [
     path('clase/<int:clase_id>/progreso/', views.mi_progreso, name='mi_progreso'),
 
     path('login/', auth_views.LoginView.as_view(), name='login'),
-path('logout/', auth_views.LogoutView.as_view(), name='logout'),
+    path('logout/', auth_views.LogoutView.as_view(), name='logout'),
+
+    path('forja/alumno/nuevo/', views.alta_alumno, name='alta_alumno'),
+    path('forja/clase/nueva/', views.alta_clase, name='alta_clase'),
+    path('forja/tienda/nuevo/', views.alta_articulo, name='alta_articulo'),
+    path('forja/mision/nueva/', views.alta_mision, name='alta_mision'),
+    path('forja/nivel/nuevo/', views.alta_nivel, name='alta_nivel'),
 ]

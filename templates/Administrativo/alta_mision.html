@@ -1,0 +1,303 @@
+{% extends 'Profesor/baseProfesor.html' %}
+
+{% block extra_css %}
+    <style>
+
+        .form-panel {
+            background: var(--surface-color, #ffffff);
+            border-radius: 24px;
+            padding: 32px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+            border: 1px solid rgba(0, 0, 0, 0.03);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .form-icon-box {
+            width: 56px;
+            height: 56px;
+            flex-shrink: 0;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success-game);
+            font-size: 1.8rem;
+        }
+
+        .custom-label {
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            display: block;
+            font-size: 0.95rem;
+        }
+
+        .btn-submit-game {
+            background-color: var(--success-game);
+            color: white;
+            border: 2px solid var(--success-game);
+            border-radius: 14px;
+            padding: 14px 28px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            transition: all 0.2s ease-in-out;
+            width: 100%;
+        }
+
+        .btn-submit-game:hover {
+            background-color: white;
+            color: var(--success-game);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+        }
+
+        /* Estilos dinámicos para el cuestionario */
+        .dinamic-section {
+            display: none;
+        }
+
+        .question-card {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-left: 4px solid var(--success-game);
+        }
+
+        .option-row {
+            background: white;
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 10px;
+            border: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-add-item {
+            color: var(--success-game);
+            background: rgba(16, 185, 129, 0.1);
+            border: none;
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        .btn-add-item:hover {
+            background: rgba(16, 185, 129, 0.2);
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="container mb-5 mt-4">
+        <div class="row justify-content-center">
+            <div class="col-lg-10 col-xl-9">
+                <div class="form-panel">
+                    <div class="d-flex align-items-center gap-4 mb-4 pb-4 border-bottom border-light">
+                        <div class="form-icon-box">
+                            <i class="bi bi-flag-fill"></i>
+                        </div>
+                        <div>
+                            <h3 class="fw-bold text-dark mb-1">Diseñar Nueva Misión</h3>
+                            <p class="text-muted small mb-0">Configura los desafíos y las recompensas para tus
+                                estudiantes.</p>
+                        </div>
+                    </div>
+
+                    <form method="POST" enctype="multipart/form-data" id="misionForm">
+                        {% csrf_token %}
+                        <input type="hidden" name="preguntas_json" id="preguntas_json" value="[]">
+
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <label class="custom-label"><i class="bi bi-journal-bookmark text-secondary me-1"></i>
+                                    Clase Destino:</label>
+                                {{ form.clase }}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="custom-label"><i class="bi bi-bar-chart-steps text-secondary me-1"></i>
+                                    Nivel:</label>
+                                {{ form.nivel }}
+                            </div>
+
+                            <div class="col-12">
+                                <label class="custom-label"><i class="bi bi-fonts text-secondary me-1"></i> Nombre de la
+                                    Misión:</label>
+                                {{ form.nombre }}
+                            </div>
+
+                            <div class="col-12">
+                                <label class="custom-label"><i class="bi bi-card-text text-secondary me-1"></i>
+                                    Descripción de la tarea:</label>
+                                {{ form.descripcion }}
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="custom-label"><i class="bi bi-controller text-secondary me-1"></i> Tipo de
+                                    Misión:</label>
+                                {{ form.tipo }}
+                            </div>
+
+                            <div class="col-md-8">
+                                <label class="custom-label"><i class="bi bi-image text-secondary me-1"></i> Portada de
+                                    la Misión:</label>
+                                {{ form.imagen }}
+                            </div>
+
+                            <div class="col-12 dinamic-section" id="sec_codigo">
+                                <label class="custom-label"><i class="bi bi-code-slash text-success me-1"></i> Código
+                                    Arduino Base:</label>
+                                {{ form.codigo }}
+                            </div>
+
+                            <div class="col-12 dinamic-section" id="sec_link">
+                                <label class="custom-label"><i class="bi bi-link-45deg text-success me-1"></i> Enlace
+                                    Externo:</label>
+                                {{ form.link }}
+                            </div>
+
+                            <div class="col-12 dinamic-section" id="sec_cuestionario">
+                                <label class="custom-label mb-3"><i class="bi bi-ui-checks text-success me-1"></i>
+                                    Constructor de Cuestionario:</label>
+
+                                <div id="contenedor_preguntas">
+                                </div>
+
+                                <button type="button" class="btn-add-item mt-3" onclick="agregarPregunta()">
+                                    <i class="bi bi-plus-circle-fill me-1"></i> Añadir Nueva Pregunta
+                                </button>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="custom-label"><i
+                                        class="bi bi-lightning-charge-fill text-warning me-1"></i> Recompensa
+                                    XP:</label>
+                                {{ form.xp_recompensa }}
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="custom-label"><i class="bi bi-coin text-warning me-1"></i> Recompensa
+                                    Monedas:</label>
+                                {{ form.monedas_recompensa }}
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="custom-label"><i class="bi bi-sort-numeric-down text-success me-1"></i>
+                                    Orden de aparición:</label>
+                                {{ form.orden }}
+                            </div>
+                        </div>
+
+                        <div class="mt-5 pt-2">
+                            <button type="submit"
+                                    class="btn-submit-game d-flex justify-content-center align-items-center gap-2">
+                                <i class="bi bi-rocket-takeoff-fill"></i> Crear Misión
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const selectorTipo = document.getElementById('selector_tipo_mision');
+            const secCodigo = document.getElementById('sec_codigo');
+            const secLink = document.getElementById('sec_link');
+            const secCuestionario = document.getElementById('sec_cuestionario');
+            const formulario = document.getElementById('misionForm');
+
+            function actualizarVistas() {
+                secCodigo.style.display = 'none';
+                secLink.style.display = 'none';
+                secCuestionario.style.display = 'none';
+
+                if (selectorTipo.value === 'arduino') secCodigo.style.display = 'block';
+                if (selectorTipo.value === 'link') secLink.style.display = 'block';
+                if (selectorTipo.value === 'cuestionario') secCuestionario.style.display = 'block';
+            }
+
+            selectorTipo.addEventListener('change', actualizarVistas);
+            actualizarVistas();
+
+            formulario.addEventListener('submit', function (e) {
+                if (selectorTipo.value === 'cuestionario') {
+                    const preguntasArray = [];
+                    const tarjetasPregunta = document.querySelectorAll('.question-card');
+
+                    tarjetasPregunta.forEach((tarjeta) => {
+                        const textoPregunta = tarjeta.querySelector('.input-pregunta').value;
+                        const opcionesNodos = tarjeta.querySelectorAll('.option-row');
+                        const opcionesArray = [];
+
+                        opcionesNodos.forEach((opcion) => {
+                            opcionesArray.push({
+                                texto: opcion.querySelector('.input-opcion').value,
+                                es_correcta: opcion.querySelector('.check-correcta').checked
+                            });
+                        });
+
+                        preguntasArray.push({
+                            texto: textoPregunta,
+                            puntos: 10,
+                            opciones: opcionesArray
+                        });
+                    });
+
+                    document.getElementById('preguntas_json').value = JSON.stringify(preguntasArray);
+                }
+            });
+        });
+
+        let preguntaContador = 0;
+
+        function agregarPregunta() {
+            preguntaContador++;
+            const contenedor = document.getElementById('contenedor_preguntas');
+            const idPregunta = 'preg_' + preguntaContador;
+
+            const htmlPregunta = `
+                <div class="question-card" id="${idPregunta}">
+                    <div class="d-flex justify-content-between mb-2">
+                        <strong class="text-dark">Pregunta ${preguntaContador}</strong>
+                        <button type="button" class="btn btn-sm btn-outline-danger border-0" onclick="document.getElementById('${idPregunta}').remove()">
+                            <i class="bi bi-trash-fill"></i>
+                        </button>
+                    </div>
+                    <input type="text" class="form-control input-pregunta mb-3" placeholder="Escribe el planteamiento de la pregunta aquí..." required>
+                    
+                    <div class="opciones-contenedor"></div>
+                    
+                    <button type="button" class="btn btn-sm btn-light mt-2" onclick="agregarOpcion('${idPregunta}')">
+                        <i class="bi bi-plus me-1"></i> Añadir Respuesta
+                    </button>
+                </div>
+            `;
+            contenedor.insertAdjacentHTML('beforeend', htmlPregunta);
+            agregarOpcion(idPregunta);
+            agregarOpcion(idPregunta);
+        }
+
+        function agregarOpcion(idPregunta) {
+            const contenedorOpciones = document.querySelector(`#${idPregunta} .opciones-contenedor`);
+            const nameRadio = 'radio_' + idPregunta;
+
+            const htmlOpcion = `
+                <div class="option-row">
+                    <input type="radio" name="${nameRadio}" class="form-check-input check-correcta mt-0" style="cursor: pointer;" title="Marcar como respuesta correcta">
+                    <input type="text" class="form-control form-control-sm border-0 input-opcion" placeholder="Texto de la opción..." required>
+                    <button type="button" class="btn btn-sm text-danger" onclick="this.parentElement.remove()">
+                        <i class="bi bi-x-circle"></i>
+                    </button>
+                </div>
+            `;
+            contenedorOpciones.insertAdjacentHTML('beforeend', htmlOpcion);
+        }
+    </script>
+{% endblock %}
