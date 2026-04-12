@@ -141,15 +141,18 @@ class RespuestaAlumno(models.Model):
 # TIENDA Y RECOMPENSAS
 # ========================
 class ArticuloTienda(models.Model):
+    TIPO_CHOICES = [
+        ('avatar', 'Avatar para el perfil'),
+        ('permiso', 'Permiso / Privilegio en clase'),
+        ('fisico', 'Recompensa Física'),
+        ('otro', 'Otro Digital'),
+    ]
     nombre = models.CharField(max_length=100)
     descripcion = models.TextField()
     costo_monedas = models.IntegerField()
     imagen = models.ImageField(upload_to="tienda/", blank=True, null=True)
-
-    # Si es algo físico o un permiso (ej. "Elegir la música de hoy"), el profe debe validarlo.
-    # Si es solo digital (ej. "Avatar de Robot"), no requiere validación.
+    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, default='fisico')
     requiere_validacion = models.BooleanField(default=True)
-
     def __str__(self):
         return f"{self.nombre} - {self.costo_monedas} monedas"
 

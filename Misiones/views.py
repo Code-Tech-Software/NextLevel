@@ -5,7 +5,7 @@ from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db import transaction
-from .models import Clase, Alumno, ArticuloTienda, CompraAlumno, Pregunta, OpcionRespuesta
+from .models import Clase, Alumno, ArticuloTienda, CompraAlumno, Pregunta, OpcionRespuesta, Nivel
 from .forms import AlumnoForm, ClaseForm, ArticuloTiendaForm, MisionForm, NivelForm
 
 
@@ -297,6 +297,12 @@ def comprar_articulo(request, clase_id, articulo_id):
         with transaction.atomic():
             # Descontamos monedas
             alumno.monedas -= articulo.costo_monedas
+
+            # NUEVA LÓGICA: Si es un avatar y tiene imagen, se lo equipamos
+            if articulo.tipo == 'avatar' and articulo.imagen:
+                # Al asignar una ImageField a otra, Django vincula la misma ruta
+                alumno.avatar = articulo.imagen
+
             alumno.save()
 
             # Registramos la compra
@@ -311,7 +317,6 @@ def comprar_articulo(request, clase_id, articulo_id):
         messages.error(request, "¡Oh no! No tienes suficientes monedas para este artículo.")
 
     return redirect('tienda_alumno', clase_id=clase_id)
-
 
 @login_required()
 def dashboard_profesor(request):
@@ -502,6 +507,16 @@ def alta_mision(request):
 
     return render(request, 'Administrativo/alta_mision.html', {'form': form})
 
+
+def cargar_niveles(request):
+    clase_id = request.GET.get('clase_id')
+
+    if clase_id:
+        niveles = Nivel.objects.filter(clase_id=clase_id).order_by('orden')
+        # Retornamos solo el id y el nombre para llenar el <select>
+        return JsonResponse(list(niveles.values('id', 'nombre')), safe=False)
+
+    return JsonResponse([], safe=False)
 
 def alta_nivel(request):
     if request.method == 'POST':

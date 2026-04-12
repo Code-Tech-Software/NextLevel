@@ -13,10 +13,7 @@
             background-image: radial-gradient(#cbd5e1 1.5px, transparent 1.5px);
             background-size: 30px 30px;
         }
-
-        /* --- Barra de Navegación --- */
-
-
+        
         /* --- Encabezado de la Tienda --- */
         .shop-header {
             background: linear-gradient(135deg, var(--shop-accent), #6d28d9);
@@ -87,7 +84,7 @@
             font-size: 1.1rem;
             color: #334155;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-            border: 2px solid #fde68a;
+            border: 2px solid #efa744;
         }
 
         /* --- Botones de Compra --- */
@@ -217,6 +214,34 @@
         }
         
         
+        
+        /* --- Etiqueta de Tipo de Artículo --- */
+        .type-badge {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            padding: 4px 12px;
+            border-radius: 50px;
+            font-weight: 800;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        /* Colores dinámicos según el tipo */
+        .type-avatar { background-color: #e0e7ff; color: #4338ca; border: 2px solid #c7d2fe; }
+        .type-permiso { background-color: #fce7f3; color: #be185d; border: 2px solid #fbcfe8; }
+        .type-fisico { background-color: #ffedd5; color: #c2410c; border: 2px solid #fed7aa; }
+        .type-otro { background-color: #f3f4f6; color: #4b5563; border: 2px solid #e5e7eb; }
+        
+        
+        
+        
+        
     </style>
 
 {% endblock %}
@@ -236,10 +261,27 @@
             {% for articulo in articulos %}
                 <div class="col">
                     <div class="card h-100 shop-card {% if alumno.monedas < articulo.costo_monedas %}card-locked{% endif %} border-0">
-                        <div class="item-showcase">
+                       
+                    
+                    <div class="item-showcase">
+                            
+                            <div class="type-badge type-{{ articulo.tipo }}">
+                                {% if articulo.tipo == 'avatar' %}
+                                    <i class="bi bi-person-bounding-box"></i>
+                                {% elif articulo.tipo == 'permiso' %}
+                                    <i class="bi bi-star-fill"></i>
+                                {% elif articulo.tipo == 'fisico' %}
+                                    <i class="bi bi-box2-heart-fill"></i>
+                                {% else %}
+                                    <i class="bi bi-tag-fill"></i>
+                                {% endif %}
+                                {{ articulo.get_tipo_display }}
+                            </div>
+                            
                             <div class="price-tag">
                                 <i class="bi bi-coin" style="color: var(--gold-coin);"></i> {{ articulo.costo_monedas }}
                             </div>
+                            
                             {% if articulo.imagen %}
                                 <img src="{{ articulo.imagen.url }}" alt="{{ articulo.nombre }}">
                             {% else %}

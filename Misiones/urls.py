@@ -32,4 +32,6 @@ urlpatterns = [
     path('forja/tienda/nuevo/', views.alta_articulo, name='alta_articulo'),
     path('forja/mision/nueva/', views.alta_mision, name='alta_mision'),
     path('forja/nivel/nuevo/', views.alta_nivel, name='alta_nivel'),
+
+    path('ajax/cargar-niveles/', views.cargar_niveles, name='ajax_cargar_niveles'),
 ]

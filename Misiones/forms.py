@@ -36,9 +36,10 @@ class ClaseForm(forms.ModelForm):
 class ArticuloTiendaForm(forms.ModelForm):
     class Meta:
         model = ArticuloTienda
-        fields = ['nombre', 'descripcion', 'costo_monedas', 'imagen', 'requiere_validacion']
+        fields = ['nombre','tipo', 'descripcion', 'costo_monedas', 'imagen', 'requiere_validacion']
         widgets = {
             'nombre': forms.TextInput(attrs={'class': 'form-control form-control-lg'}),
+            'tipo': forms.Select(attrs={'class': 'form-select form-select-lg'}),
             'descripcion': forms.Textarea(attrs={'class': 'form-control form-control-lg', 'rows': 3}),
             'costo_monedas': forms.NumberInput(attrs={'class': 'form-control form-control-lg'}),
             'imagen': forms.FileInput(attrs={'class': 'form-control'}),
@@ -49,23 +50,31 @@ class ArticuloTiendaForm(forms.ModelForm):
 class MisionForm(forms.ModelForm):
     class Meta:
         model = Mision
-        fields = ['clase', 'nivel', 'nombre', 'descripcion', 'tipo', 'imagen', 'codigo', 'link', 'xp_recompensa',
-                  'monedas_recompensa', 'orden']
+        fields = ['clase', 'nivel', 'nombre', 'descripcion', 'tipo', 'imagen', 'codigo', 'link', 'xp_recompensa', 'monedas_recompensa', 'orden']
         widgets = {
             'clase': forms.Select(attrs={'class': 'form-select form-select-lg'}),
             'nivel': forms.Select(attrs={'class': 'form-select form-select-lg'}),
             'nombre': forms.TextInput(attrs={'class': 'form-control form-control-lg'}),
-            'descripcion': forms.Textarea(
-                attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Explica la misión a tus alumnos...'}),
+            'descripcion': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Explica la misión a tus alumnos...'}),
             'tipo': forms.Select(attrs={'class': 'form-select form-select-lg', 'id': 'selector_tipo_mision'}),
             'imagen': forms.FileInput(attrs={'class': 'form-control'}),
-            'codigo': forms.Textarea(
-                attrs={'class': 'form-control', 'rows': 4, 'placeholder': 'Pega aquí el código base de Arduino...'}),
+            'codigo': forms.Textarea(attrs={'class': 'form-control', 'rows': 4, 'placeholder': 'Pega aquí el código base de Arduino...'}),
             'link': forms.URLInput(attrs={'class': 'form-control form-control-lg', 'placeholder': 'https://...'}),
             'xp_recompensa': forms.NumberInput(attrs={'class': 'form-control form-control-lg'}),
             'monedas_recompensa': forms.NumberInput(attrs={'class': 'form-control form-control-lg'}),
             'orden': forms.NumberInput(attrs={'class': 'form-control form-control-lg'}),
         }
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['nivel'].queryset = Nivel.objects.none()
+        if 'clase' in self.data:
+            try:
+                clase_id = int(self.data.get('clase'))
+                self.fields['nivel'].queryset = Nivel.objects.filter(clase_id=clase_id).order_by('orden')
+            except (ValueError, TypeError):
+                pass
+        elif self.instance.pk and self.instance.clase:
+            self.fields['nivel'].queryset = self.instance.clase.niveles.order_by('orden')
 
 
 class NivelForm(forms.ModelForm):

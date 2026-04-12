@@ -226,6 +226,38 @@
             selectorTipo.addEventListener('change', actualizarVistas);
             actualizarVistas();
 
+
+            // --- NUEVO CÓDIGO PARA SELECTS DINÁMICOS ---
+            const claseSelect = document.getElementById('id_clase');
+            const nivelSelect = document.getElementById('id_nivel');
+
+            // Guardamos la URL de nuestra vista AJAX que definimos en urls.py
+            const urlCargarNiveles = "{% url 'ajax_cargar_niveles' %}";
+
+            claseSelect.addEventListener('change', function () {
+                const claseId = this.value;
+
+                // Limpiamos las opciones actuales del selector de Nivel
+                nivelSelect.innerHTML = '<option value="">---------</option>';
+
+                if (claseId) {
+                    // Hacemos la petición AJAX a la URL
+                    fetch(`${urlCargarNiveles}?clase_id=${claseId}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            // Rellenamos el selector con los datos obtenidos
+                            data.forEach(nivel => {
+                                const option = document.createElement('option');
+                                option.value = nivel.id;
+                                option.textContent = nivel.nombre; // O puedes mostrar `nivel.orden` también si lo incluyes en la vista
+                                nivelSelect.appendChild(option);
+                            });
+                        })
+                        .catch(error => console.error('Error cargando los niveles:', error));
+                }
+            });
+
+
             formulario.addEventListener('submit', function (e) {
                 if (selectorTipo.value === 'cuestionario') {
                     const preguntasArray = [];
