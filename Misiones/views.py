@@ -529,3 +529,59 @@ def alta_nivel(request):
         form = NivelForm()
 
     return render(request, 'Administrativo/alta_nivel.html', {'form': form})
+
+
+ # Dar monedas
+from django.shortcuts import render, get_object_or_404
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
+from .models import Alumno, Clase
+
+
+def gestionar_monedas(request):
+    """Renderiza la vista principal con opciones de filtrado."""
+    clases = Clase.objects.all().order_by('grado', 'grupo')
+    clase_id = request.GET.get('clase')
+
+    # Por defecto, traemos todos los alumnos activos
+    alumnos = Alumno.objects.filter(activo=True).order_by('apellido', 'nombre')
+
+    # Si se selecciona una clase en el filtro, aplicamos el queryset
+    if clase_id:
+        alumnos = alumnos.filter(clases__id=clase_id)
+
+    context = {
+        'clases': clases,
+        'alumnos': alumnos.distinct(),
+        'clase_seleccionada': int(clase_id) if clase_id and clase_id.isdigit() else None
+    }
+    return render(request, 'Monedas/gestionar_monedas.html', context)
+
+
+@require_POST
+def api_actualizar_monedas(request):
+    """Recibe peticiones AJAX para sumar o restar monedas."""
+    try:
+        alumno_id = request.POST.get('alumno_id')
+        cantidad = int(request.POST.get('cantidad', 0))
+        accion = request.POST.get('accion')  # 'sumar' o 'restar'
+
+        alumno = get_object_or_404(Alumno, id=alumno_id)
+
+        if accion == 'sumar':
+            alumno.monedas += cantidad
+        elif accion == 'restar':
+            alumno.monedas -= cantidad
+            # Extra: Prevenir que las monedas queden en negativo
+            if alumno.monedas < 0:
+                alumno.monedas = 0
+
+        alumno.save()
+
+        return JsonResponse({
+            'status': 'success',
+            'nuevas_monedas': alumno.monedas,
+            'mensaje': f'Monedas actualizadas para {alumno.nombre}'
+        })
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'mensaje': str(e)}, status=400)

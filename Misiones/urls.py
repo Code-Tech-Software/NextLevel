@@ -34,4 +34,10 @@ urlpatterns = [
     path('forja/nivel/nuevo/', views.alta_nivel, name='alta_nivel'),
 
     path('ajax/cargar-niveles/', views.cargar_niveles, name='ajax_cargar_niveles'),
+
+    # Ruta para la interfaz principal
+    path('economia-alumnos/', views.gestionar_monedas, name='gestionar_monedas'),
+
+    # Endpoint (API) para actualizar las monedas vía AJAX
+    path('api/actualizar-monedas/', views.api_actualizar_monedas, name='api_actualizar_monedas'),
 ]

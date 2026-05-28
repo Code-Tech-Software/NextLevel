@@ -4,7 +4,6 @@
     <style>
         /* Variables adicionales necesarias solo para esta vista */
 
-
         /* --- PANEL DE ACCIONES RÁPIDAS (Forja) --- */
         .admin-actions-panel {
             background: var(--surface-color);
@@ -130,6 +129,25 @@
 
         .btn-store:hover .action-icon {
             background: var(--accent-gold);
+            color: white;
+        }
+        
+        /* NUEVO: Botón de Economía/Monedas */
+        .btn-economy .action-icon {
+            background: rgba(234, 179, 8, 0.1); /* Amarillo cálido / Oro */
+            color: #eab308; 
+        }
+
+        .btn-economy:hover {
+            border-color: #eab308;
+            background: #fff;
+            transform: translateY(-4px);
+            box-shadow: 0 10px 20px rgba(234, 179, 8, 0.15);
+            color: #eab308;
+        }
+
+        .btn-economy:hover .action-icon {
+            background: #eab308;
             color: white;
         }
 
@@ -286,6 +304,12 @@
                 <a href="{% url 'alta_articulo' %}" class="action-btn btn-store">
                     <div class="action-icon"><i class="bi bi-bag-plus-fill"></i></div>
                     <span>Artículo Tienda</span>
+                </a>
+                
+                <!-- NUEVO BOTÓN: Economía / Monedas -->
+                <a href="{% url 'gestionar_monedas' %}" class="action-btn btn-economy">
+                    <div class="action-icon"><i class="bi bi-coin"></i></div>
+                    <span>Economía del Aula</span>
                 </a>
             </div>
         </div>

@@ -1,0 +1,338 @@
+{% extends 'Profesor/baseProfesor.html' %}
+
+{% block extra_css %}
+<style>
+    /* Estilos basados en el diseño de Forja / Acciones rápidas */
+    .management-panel {
+        background: var(--surface-color, #ffffff);
+        border-radius: 24px;
+        padding: 24px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+        border: 1px solid rgba(0, 0, 0, 0.03);
+    }
+
+    .table-custom {
+        border-collapse: separate;
+        border-spacing: 0 8px;
+    }
+
+    .table-custom thead th {
+        border-bottom: none;
+        color: #6c757d;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.85rem;
+        letter-spacing: 0.5px;
+    }
+
+    .table-custom tbody tr {
+        background: #f8f9fa;
+        transition: all 0.2s ease;
+        border-radius: 12px;
+    }
+
+    .table-custom tbody tr td {
+        border-top: 1px solid transparent;
+        border-bottom: 1px solid transparent;
+        padding: 16px 12px;
+        vertical-align: middle;
+    }
+
+    .table-custom tbody tr td:first-child {
+        border-left: 1px solid transparent;
+        border-top-left-radius: 12px;
+        border-bottom-left-radius: 12px;
+    }
+
+    .table-custom tbody tr td:last-child {
+        border-right: 1px solid transparent;
+        border-top-right-radius: 12px;
+        border-bottom-right-radius: 12px;
+    }
+
+    .table-custom tbody tr:hover {
+        background: #ffffff;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.1);
+        transform: translateY(-2px);
+    }
+
+    /* Botones estilo juego para monedas */
+    .btn-coin-add {
+        background: rgba(16, 185, 129, 0.1);
+        color: var(--success-game, #10b981);
+        border: 1px solid transparent;
+        font-weight: bold;
+        transition: all 0.2s;
+    }
+    .btn-coin-add:hover {
+        background: var(--success-game, #10b981);
+        color: white;
+        transform: translateY(-2px);
+    }
+
+    .btn-coin-sub {
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+        border: 1px solid transparent;
+        font-weight: bold;
+        transition: all 0.2s;
+    }
+    .btn-coin-sub:hover {
+        background: #ef4444;
+        color: white;
+        transform: translateY(-2px);
+    }
+
+    /* Buscador y Filtros */
+    .filter-container {
+        background: rgba(99, 102, 241, 0.05);
+        border-radius: 16px;
+        padding: 16px;
+    }
+    
+    .search-input {
+        border-radius: 12px;
+        border: 1px solid rgba(0,0,0,0.1);
+        padding-left: 40px;
+    }
+    
+    .search-icon {
+        position: absolute;
+        left: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #6c757d;
+    }
+
+    .coin-display {
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: var(--accent-gold, #f59e0b);
+        background: rgba(245, 158, 11, 0.1);
+        padding: 4px 12px;
+        border-radius: 12px;
+        display: inline-block;
+    }
+</style>
+<!-- CDN de SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4 mb-5">
+    
+    <div class="d-flex align-items-center mb-4">
+        <h3 class="fw-bold mb-0 text-dark">
+            <i class="bi bi-coin text-warning me-2"></i>Gestión de Monedas
+        </h3>
+        <span class="badge bg-light text-muted border ms-3">Economía del Aula</span>
+    </div>
+
+    <div class="management-panel">
+        <!-- Barra de Herramientas: Filtro y Buscador -->
+        <div class="filter-container mb-4 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+            
+            <!-- Filtro por Clase -->
+            <form method="GET" class="d-flex align-items-center m-0">
+                <i class="bi bi-funnel-fill text-primary me-2"></i>
+                <label for="clase" class="me-2 fw-bold text-dark mb-0">Filtrar:</label>
+                <select name="clase" id="clase" class="form-select border-0 shadow-sm rounded-3 w-auto" onchange="this.form.submit()">
+                    <option value="">Todas las clases</option>
+                    {% for clase in clases %}
+                        <option value="{{ clase.id }}" {% if clase.id == clase_seleccionada %}selected{% endif %}>
+                            {{ clase.grado }} {{ clase.grupo }} - {{ clase.nombre }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </form>
+
+            <!-- Buscador de Alumnos -->
+            <div class="position-relative" style="max-width: 300px; width: 100%;">
+                <i class="bi bi-search search-icon"></i>
+                <input type="text" id="buscador-alumnos" class="form-control search-input" placeholder="Buscar por nombre o apellido...">
+            </div>
+        </div>
+
+        <!-- Tabla de Alumnos -->
+        <div class="table-responsive">
+            <table class="table table-custom w-100" id="tabla-alumnos">
+                <thead>
+                    <tr>
+                        <th>Alumno</th>
+                        <th>Clases</th>
+                        <th class="text-center">Monedas</th>
+                        <th class="text-center">Acciones Rápidas</th>
+                        <th>Ajuste Manual</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for alumno in alumnos %}
+                    <tr class="alumno-row">
+                        <td>
+                            <div class="d-flex align-items-center">
+                                {% if alumno.avatar %}
+                                    <img src="{{ alumno.avatar.url }}" alt="Avatar" width="40" height="40" class="rounded-circle me-3 shadow-sm">
+                                {% else %}
+                                    <div class="rounded-circle me-3 bg-primary text-white d-flex align-items-center justify-content-center shadow-sm" style="width: 40px; height: 40px; font-weight: bold;">
+                                        {{ alumno.nombre|first }}
+                                    </div>
+                                {% endif %}
+                                <div>
+                                    <strong class="d-block text-dark nombre-alumno">{{ alumno.nombre }} {{ alumno.apellido }}</strong>
+                                    <small class="text-muted">PIN: {{ alumno.pin }}</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            {% for clase in alumno.clases.all %}
+                                <span class="badge bg-light text-primary border border-primary-subtle me-1">
+                                    {{ clase.grado }}{{ clase.grupo }}
+                                </span>
+                            {% endfor %}
+                        </td>
+                        <td class="text-center">
+                            <div class="coin-display">
+                                <span id="monedas-{{ alumno.id }}">{{ alumno.monedas }}</span> 🪙
+                            </div>
+                        </td>
+                        
+                        <td class="text-center">
+                            <div class="d-flex justify-content-center gap-2">
+                                <button class="btn btn-sm btn-coin-add rounded-pill px-3" onclick="actualizarMonedas({{ alumno.id }}, 5, 'sumar')">+5</button>
+                                <button class="btn btn-sm btn-coin-add rounded-pill px-3" onclick="actualizarMonedas({{ alumno.id }}, 10, 'sumar')">+10</button>
+                                <button class="btn btn-sm btn-coin-sub rounded-pill px-3" onclick="actualizarMonedas({{ alumno.id }}, 5, 'restar')">-5</button>
+                            </div>
+                        </td>
+                        
+                        <td>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-white border-end-0 rounded-start-3"><i class="bi bi-piggy-bank text-muted"></i></span>
+                                <input type="number" id="input-{{ alumno.id }}" class="form-control border-start-0" placeholder="0" min="1" style="max-width: 70px;">
+                                <button class="btn btn-success" onclick="procesarManual({{ alumno.id }}, 'sumar')" title="Añadir"><i class="bi bi-plus-lg"></i></button>
+                                <button class="btn btn-danger rounded-end-3" onclick="procesarManual({{ alumno.id }}, 'restar')" title="Quitar"><i class="bi bi-dash-lg"></i></button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center py-5">
+                            <i class="bi bi-people fs-1 text-muted d-block mb-3 opacity-50"></i>
+                            <h5 class="fw-bold text-dark">No se encontraron alumnos</h5>
+                            <p class="text-muted">Intenta seleccionar otra clase o verifica tus registros.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% csrf_token %}
+
+<script>
+    // 1. Buscador en tiempo real
+    document.getElementById('buscador-alumnos').addEventListener('input', function() {
+        const searchText = this.value.toLowerCase();
+        const rows = document.querySelectorAll('.alumno-row');
+
+        rows.forEach(row => {
+            const nombreCompleto = row.querySelector('.nombre-alumno').textContent.toLowerCase();
+            if (nombreCompleto.includes(searchText)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+
+    // 2. Configuración de SweetAlert2 tipo "Toast" para notificaciones no invasivas
+    const Toast = Swal.mixin({
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 2500,
+        timerProgressBar: true,
+        didOpen: (toast) => {
+            toast.addEventListener('mouseenter', Swal.stopTimer)
+            toast.addEventListener('mouseleave', Swal.resumeTimer)
+        }
+    });
+
+    // Token CSRF
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+    function procesarManual(alumnoId, accion) {
+        const input = document.getElementById(`input-${alumnoId}`);
+        const cantidad = parseInt(input.value);
+        
+        if (isNaN(cantidad) || cantidad <= 0) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Cantidad inválida',
+                text: 'Por favor ingresa un número mayor a 0.',
+                confirmButtonColor: '#6366f1' // Color primary-game
+            });
+            return;
+        }
+        
+        actualizarMonedas(alumnoId, cantidad, accion);
+        input.value = ''; // Limpiar el input
+    }
+
+    function actualizarMonedas(alumnoId, cantidad, accion) {
+        const formData = new FormData();
+        formData.append('alumno_id', alumnoId);
+        formData.append('cantidad', cantidad);
+        formData.append('accion', accion);
+
+        fetch("{% url 'api_actualizar_monedas' %}", {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // Actualizar interfaz
+                const contador = document.getElementById(`monedas-${alumnoId}`);
+                contador.innerText = data.nuevas_monedas;
+                
+                // Animación css temporal en la caja de monedas
+                const displayBox = contador.parentElement;
+                displayBox.style.transform = 'scale(1.2)';
+                displayBox.style.transition = 'transform 0.2s';
+                
+                setTimeout(() => { 
+                    displayBox.style.transform = 'scale(1)'; 
+                }, 200);
+
+                // Mostrar alerta de éxito
+                Toast.fire({
+                    icon: 'success',
+                    title: accion === 'sumar' ? `+${cantidad} monedas añadidas` : `-${cantidad} monedas retiradas`
+                });
+
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: data.mensaje,
+                    confirmButtonColor: '#ef4444'
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Fallo de conexión',
+                text: 'Hubo un problema al comunicarse con el servidor.',
+                confirmButtonColor: '#ef4444'
+            });
+        });
+    }
+</script>
+{% endblock %}
