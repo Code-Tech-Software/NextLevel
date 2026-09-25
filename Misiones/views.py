@@ -401,6 +401,82 @@ def matriz_calificaciones(request, clase_id):
     return render(request, 'Profesor/matriz_calificaciones.html', context)
 
 
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Alignment
+from openpyxl.utils import get_column_letter
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404
+from django.contrib.auth.decorators import login_required
+
+
+# Asegúrate de importar tus modelos: Clase, Mision, ProgresoMision
+@login_required()
+def exportar_matriz_excel(request, clase_id):
+    clase = get_object_or_404(Clase, id=clase_id)
+
+    # 1. Obtener los mismos datos que en tu vista original
+    alumnos = clase.alumnos.filter(activo=True).order_by('apellido', 'nombre')
+    misiones = Mision.objects.filter(clase=clase).select_related('nivel').order_by('nivel__orden', 'orden')
+    progresos = ProgresoMision.objects.filter(alumno__in=alumnos, mision__in=misiones)
+
+    diccionario_progresos = {(p.alumno_id, p.mision_id): p for p in progresos}
+
+    # 2. Crear el libro de trabajo (Workbook) y la hoja de Excel
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = f"Matriz {clase.grado} {clase.grupo}"
+
+    # 3. Definir estilos para el Excel (opcional pero le da toque profesional)
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill(start_color="4F46E5", end_color="4F46E5", fill_type="solid")  # Color similar a tu UI
+    center_alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    left_alignment = Alignment(horizontal="left", vertical="center")
+
+    # 4. Escribir la fila de Encabezados
+    headers = ['Alumno'] + [f"{m.nombre}\n({m.nivel.nombre})" for m in misiones]
+    ws.append(headers)
+
+    # Aplicar estilos a los encabezados y ajustar ancho de columnas
+    for col_num, cell in enumerate(ws[1], 1):
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = center_alignment
+
+        # Ajustar el ancho: la columna de alumnos más ancha que las de misiones
+        col_letter = get_column_letter(col_num)
+        ws.column_dimensions[col_letter].width = 35 if col_num == 1 else 18
+
+    # 5. Escribir los datos de los alumnos y sus calificaciones (¡YA FUERA DEL BUCLE ANTERIOR!)
+    for alumno in alumnos:
+        fila = [f"{alumno.apellido}, {alumno.nombre}"]
+
+        for mision in misiones:
+            progreso = diccionario_progresos.get((alumno.id, mision.id))
+            if progreso:
+                # Extraemos solo el valor numérico de la calificación
+                valor_celda = progreso.calificacion_escala_10
+            else:
+                # Puedes dejar "Sin entrega" o cambiarlo por None / "" si prefieres la celda vacía
+                valor_celda = "Sin entrega"
+
+            fila.append(valor_celda)
+
+        ws.append(fila)
+
+    # Aplicar alineación a las filas de datos
+    for row in ws.iter_rows(min_row=2, max_col=len(headers), max_row=len(alumnos) + 1):
+        row[0].alignment = left_alignment  # Alumno a la izquierda
+        for cell in row[1:]:
+            cell.alignment = center_alignment  # Calificaciones centradas
+
+    # 6. Preparar y devolver la respuesta HTTP con el archivo
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    nombre_archivo = f"Matriz_Calificaciones_{clase.nombre}_{clase.grado}_{clase.grupo}.xlsx".replace(" ", "_")
+    response['Content-Disposition'] = f'attachment; filename="{nombre_archivo}"'
+
+    wb.save(response)
+    return response
+
 def mi_progreso(request, clase_id):
     # 1. Obtener el alumno actual (Ajusta esto según cómo manejes tu login)
     alumno_id = request.session.get('alumno_id')

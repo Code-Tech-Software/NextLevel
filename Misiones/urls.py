@@ -40,4 +40,5 @@ urlpatterns = [
 
     # Endpoint (API) para actualizar las monedas vía AJAX
     path('api/actualizar-monedas/', views.api_actualizar_monedas, name='api_actualizar_monedas'),
+    path('clase/<int:clase_id>/matriz/exportar-excel/', views.exportar_matriz_excel, name='exportar_matriz_excel'),
 ]

@@ -2,141 +2,741 @@
 
 {% block extra_css %}
 <style>
-    /* Estilos basados en el diseño de Forja / Acciones rápidas */
+    :root {
+        --coin-primary: var(--primary-game, #6366f1);
+        --coin-primary-soft: rgba(99, 102, 241, 0.09);
+        --coin-success: var(--success-game, #10b981);
+        --coin-danger: #ef4444;
+        --coin-warning: var(--accent-gold, #f59e0b);
+        --coin-text: #172033;
+        --coin-muted: #6b7280;
+        --coin-border: #e9ecf2;
+        --coin-surface: var(--surface-color, #ffffff);
+        --coin-soft: #f7f8fb;
+        --coin-radius-lg: 24px;
+        --coin-radius-md: 16px;
+        --coin-shadow: 0 12px 35px rgba(15, 23, 42, 0.06);
+    }
+
+    .coins-page {
+        max-width: 1440px;
+    }
+
+    /* Encabezado */
+    .coins-page-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 22px;
+    }
+
+    .coins-title-wrap {
+        display: flex;
+        align-items: center;
+        gap: 13px;
+        min-width: 0;
+    }
+
+    .coins-title-icon {
+        width: 48px;
+        height: 48px;
+        flex: 0 0 48px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 15px;
+        color: #b77900;
+        background: linear-gradient(135deg, rgba(245, 158, 11, .18), rgba(251, 191, 36, .08));
+        border: 1px solid rgba(245, 158, 11, .22);
+        font-size: 1.35rem;
+    }
+
+    .coins-page-title {
+        margin: 0;
+        color: var(--coin-text);
+        font-size: clamp(1.35rem, 2.4vw, 1.85rem);
+        font-weight: 800;
+        letter-spacing: -0.03em;
+    }
+
+    .coins-page-subtitle {
+        margin: 3px 0 0;
+        color: var(--coin-muted);
+        font-size: .92rem;
+    }
+
+    .student-counter {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        white-space: nowrap;
+        padding: 8px 12px;
+        border-radius: 999px;
+        color: var(--coin-primary);
+        background: var(--coin-primary-soft);
+        border: 1px solid rgba(99, 102, 241, .12);
+        font-size: .86rem;
+        font-weight: 700;
+    }
+
+    /* Panel principal */
     .management-panel {
-        background: var(--surface-color, #ffffff);
-        border-radius: 24px;
+        background: var(--coin-surface);
+        border-radius: var(--coin-radius-lg);
         padding: 24px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
-        border: 1px solid rgba(0, 0, 0, 0.03);
+        border: 1px solid var(--coin-border);
+        box-shadow: var(--coin-shadow);
+    }
+
+    /* Buscador y filtros */
+    .filter-container {
+        display: grid;
+        grid-template-columns: minmax(260px, auto) minmax(260px, 360px);
+        align-items: end;
+        justify-content: space-between;
+        gap: 18px;
+        padding: 18px;
+        margin-bottom: 18px;
+        border-radius: 18px;
+        background: linear-gradient(135deg, rgba(99, 102, 241, .07), rgba(99, 102, 241, .025));
+        border: 1px solid rgba(99, 102, 241, .09);
+    }
+
+    .filter-field,
+    .search-field {
+        min-width: 0;
+    }
+
+    .field-label {
+        display: block;
+        margin-bottom: 7px;
+        color: #4b5563;
+        font-size: .78rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: .045em;
+    }
+
+    .class-select,
+    .search-input {
+        min-height: 44px;
+        border: 1px solid #dde2ea;
+        border-radius: 12px;
+        background-color: #fff;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, .035);
+        color: var(--coin-text);
+    }
+
+    .class-select:focus,
+    .search-input:focus,
+    .manual-input:focus {
+        border-color: rgba(99, 102, 241, .55);
+        box-shadow: 0 0 0 .2rem rgba(99, 102, 241, .12);
+    }
+
+    .class-select {
+        min-width: min(100%, 310px);
+    }
+
+    .search-control {
+        position: relative;
+    }
+
+    .search-input {
+        padding-left: 42px;
+        padding-right: 42px;
+    }
+
+    .search-icon {
+        position: absolute;
+        z-index: 2;
+        left: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #8b93a3;
+        pointer-events: none;
+    }
+
+    .search-clear {
+        position: absolute;
+        z-index: 2;
+        top: 50%;
+        right: 9px;
+        width: 30px;
+        height: 30px;
+        transform: translateY(-50%);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        border: 0;
+        border-radius: 50%;
+        background: transparent;
+        color: #8b93a3;
+    }
+
+    .search-clear:hover,
+    .search-clear:focus-visible {
+        color: var(--coin-text);
+        background: #f1f3f7;
+    }
+
+    .search-clear.is-visible {
+        display: inline-flex;
+    }
+
+    /* Tabla escritorio */
+    .student-table-wrap {
+        overflow-x: auto;
+        border-radius: 16px;
     }
 
     .table-custom {
+        min-width: 930px;
+        margin-bottom: 0;
         border-collapse: separate;
-        border-spacing: 0 8px;
+        border-spacing: 0 9px;
     }
 
     .table-custom thead th {
-        border-bottom: none;
-        color: #6c757d;
-        font-weight: 600;
+        padding: 0 13px 8px;
+        border: 0;
+        color: #818898;
+        font-size: .74rem;
+        font-weight: 800;
         text-transform: uppercase;
-        font-size: 0.85rem;
-        letter-spacing: 0.5px;
+        letter-spacing: .055em;
+        white-space: nowrap;
     }
 
-    .table-custom tbody tr {
-        background: #f8f9fa;
-        transition: all 0.2s ease;
-        border-radius: 12px;
+    .table-custom tbody tr.alumno-row {
+        position: relative;
+        background: var(--coin-soft);
+        transition: transform .18s ease, box-shadow .18s ease, background-color .18s ease;
     }
 
-    .table-custom tbody tr td {
+    .table-custom tbody tr.alumno-row > td {
+        padding: 15px 13px;
         border-top: 1px solid transparent;
         border-bottom: 1px solid transparent;
-        padding: 16px 12px;
         vertical-align: middle;
     }
 
-    .table-custom tbody tr td:first-child {
+    .table-custom tbody tr.alumno-row > td:first-child {
         border-left: 1px solid transparent;
-        border-top-left-radius: 12px;
-        border-bottom-left-radius: 12px;
+        border-radius: 14px 0 0 14px;
     }
 
-    .table-custom tbody tr td:last-child {
+    .table-custom tbody tr.alumno-row > td:last-child {
         border-right: 1px solid transparent;
-        border-top-right-radius: 12px;
-        border-bottom-right-radius: 12px;
+        border-radius: 0 14px 14px 0;
     }
 
-    .table-custom tbody tr:hover {
-        background: #ffffff;
-        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.1);
-        transform: translateY(-2px);
+    @media (hover: hover) {
+        .table-custom tbody tr.alumno-row:hover {
+            z-index: 1;
+            background: #fff;
+            box-shadow: 0 8px 22px rgba(99, 102, 241, .09);
+            transform: translateY(-1px);
+        }
     }
 
-    /* Botones estilo juego para monedas */
-    .btn-coin-add {
-        background: rgba(16, 185, 129, 0.1);
-        color: var(--success-game, #10b981);
-        border: 1px solid transparent;
-        font-weight: bold;
-        transition: all 0.2s;
-    }
-    .btn-coin-add:hover {
-        background: var(--success-game, #10b981);
-        color: white;
-        transform: translateY(-2px);
+    .student-profile {
+        display: flex;
+        align-items: center;
+        min-width: 210px;
     }
 
-    .btn-coin-sub {
-        background: rgba(239, 68, 68, 0.1);
-        color: #ef4444;
-        border: 1px solid transparent;
-        font-weight: bold;
-        transition: all 0.2s;
-    }
-    .btn-coin-sub:hover {
-        background: #ef4444;
-        color: white;
-        transform: translateY(-2px);
+    .student-avatar,
+    .student-avatar-fallback {
+        width: 44px;
+        height: 44px;
+        flex: 0 0 44px;
+        border-radius: 14px;
+        object-fit: cover;
+        box-shadow: 0 4px 12px rgba(15, 23, 42, .09);
     }
 
-    /* Buscador y Filtros */
-    .filter-container {
-        background: rgba(99, 102, 241, 0.05);
-        border-radius: 16px;
-        padding: 16px;
+    .student-avatar-fallback {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        background: linear-gradient(135deg, var(--coin-primary), #818cf8);
+        font-weight: 800;
+        text-transform: uppercase;
     }
-    
-    .search-input {
-        border-radius: 12px;
-        border: 1px solid rgba(0,0,0,0.1);
-        padding-left: 40px;
+
+    .student-name {
+        display: block;
+        color: var(--coin-text);
+        font-weight: 750;
+        line-height: 1.25;
     }
-    
-    .search-icon {
-        position: absolute;
-        left: 14px;
-        top: 50%;
-        transform: translateY(-50%);
-        color: #6c757d;
+
+    .student-pin {
+        display: inline-block;
+        margin-top: 3px;
+        color: var(--coin-muted);
+        font-size: .78rem;
+    }
+
+    .classes-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        min-width: 120px;
+    }
+
+    .class-badge {
+        display: inline-flex;
+        align-items: center;
+        min-height: 27px;
+        padding: 4px 9px;
+        border-radius: 999px;
+        color: #5558d9;
+        background: #fff;
+        border: 1px solid rgba(99, 102, 241, .18);
+        font-size: .76rem;
+        font-weight: 750;
     }
 
     .coin-display {
-        font-size: 1.25rem;
-        font-weight: 800;
-        color: var(--accent-gold, #f59e0b);
-        background: rgba(245, 158, 11, 0.1);
-        padding: 4px 12px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        min-width: 86px;
+        justify-content: center;
+        padding: 7px 12px;
         border-radius: 12px;
-        display: inline-block;
+        color: #b77900;
+        background: linear-gradient(135deg, rgba(245, 158, 11, .14), rgba(251, 191, 36, .08));
+        border: 1px solid rgba(245, 158, 11, .14);
+        font-size: 1.08rem;
+        font-weight: 850;
+        font-variant-numeric: tabular-nums;
+        transform-origin: center;
+    }
+
+    .coin-display.is-updating {
+        animation: coinPulse .28s ease;
+    }
+
+    @keyframes coinPulse {
+        50% { transform: scale(1.12); }
+    }
+
+    .quick-actions {
+        display: flex;
+        justify-content: center;
+        gap: 7px;
+        min-width: 195px;
+    }
+
+    .btn-coin {
+        min-width: 54px;
+        min-height: 38px;
+        border: 1px solid transparent;
+        border-radius: 11px;
+        font-weight: 800;
+        transition: transform .16s ease, background-color .16s ease, color .16s ease, box-shadow .16s ease;
+    }
+
+    .btn-coin-add {
+        color: #07875d;
+        background: rgba(16, 185, 129, .1);
+    }
+
+    .btn-coin-sub {
+        color: #d83b3b;
+        background: rgba(239, 68, 68, .09);
+    }
+
+    @media (hover: hover) {
+        .btn-coin-add:hover {
+            color: #fff;
+            background: var(--coin-success);
+            box-shadow: 0 6px 14px rgba(16, 185, 129, .2);
+            transform: translateY(-1px);
+        }
+
+        .btn-coin-sub:hover {
+            color: #fff;
+            background: var(--coin-danger);
+            box-shadow: 0 6px 14px rgba(239, 68, 68, .18);
+            transform: translateY(-1px);
+        }
+    }
+
+    .btn-coin:focus-visible,
+    .manual-action:focus-visible {
+        outline: 3px solid rgba(99, 102, 241, .18);
+        outline-offset: 2px;
+    }
+
+    .btn-coin:disabled,
+    .manual-action:disabled {
+        opacity: .58;
+        cursor: wait;
+        transform: none;
+    }
+
+    .manual-control {
+        display: grid;
+        grid-template-columns: 34px minmax(58px, 82px) 40px 40px;
+        align-items: stretch;
+        min-width: 176px;
+    }
+
+    .manual-icon,
+    .manual-input,
+    .manual-action {
+        min-height: 38px;
+        border-color: #dde2ea;
+    }
+
+    .manual-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid #dde2ea;
+        border-right: 0;
+        border-radius: 10px 0 0 10px;
+        background: #fff;
+        color: #8b93a3;
+    }
+
+    .manual-input {
+        width: 100%;
+        padding: 6px 8px;
+        border: 1px solid #dde2ea;
+        border-radius: 0;
+        text-align: center;
+        outline: 0;
+    }
+
+    .manual-action {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 0;
+        color: #fff;
+    }
+
+    .manual-action.add {
+        background: var(--coin-success);
+    }
+
+    .manual-action.sub {
+        border-radius: 0 10px 10px 0;
+        background: var(--coin-danger);
+    }
+
+    .empty-state,
+    .search-empty-state {
+        padding: 48px 20px;
+        text-align: center;
+        color: var(--coin-muted);
+    }
+
+    .empty-state-icon {
+        width: 58px;
+        height: 58px;
+        margin: 0 auto 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 18px;
+        background: #f1f3f7;
+        color: #9aa1ae;
+        font-size: 1.5rem;
+    }
+
+    .search-empty-state {
+        display: none;
+        margin-top: 8px;
+        border: 1px dashed #d9dee7;
+        border-radius: 16px;
+        background: #fafbfc;
+    }
+
+    .search-empty-state.is-visible {
+        display: block;
+    }
+
+    /* Tablet */
+    @media (max-width: 991.98px) {
+        .management-panel {
+            padding: 20px;
+        }
+
+        .filter-container {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+
+    /* Móvil: cada <tr> se transforma en tarjeta */
+    @media (max-width: 767.98px) {
+        .coins-page {
+            padding-left: 12px;
+            padding-right: 12px;
+            margin-top: 18px !important;
+        }
+
+        .coins-page-header {
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+
+        .coins-title-icon {
+            width: 42px;
+            height: 42px;
+            flex-basis: 42px;
+            border-radius: 13px;
+        }
+
+        .coins-page-subtitle {
+            font-size: .82rem;
+        }
+
+        .student-counter {
+            padding: 6px 9px;
+            font-size: .76rem;
+        }
+
+        .management-panel {
+            padding: 0;
+            border: 0;
+            background: transparent;
+            box-shadow: none;
+        }
+
+        .filter-container {
+            grid-template-columns: 1fr;
+            gap: 13px;
+            padding: 14px;
+            margin-bottom: 14px;
+            border-radius: 16px;
+            background: #fff;
+            border: 1px solid var(--coin-border);
+            box-shadow: 0 8px 22px rgba(15, 23, 42, .045);
+        }
+
+        .class-select {
+            width: 100%;
+            min-width: 0;
+        }
+
+        .student-table-wrap {
+            overflow: visible;
+            border-radius: 0;
+        }
+
+        .table-custom,
+        .table-custom tbody {
+            display: block;
+            width: 100%;
+            min-width: 0;
+        }
+
+        .table-custom {
+            border-spacing: 0;
+        }
+
+        .table-custom thead {
+            display: none;
+        }
+
+        .table-custom tbody tr.alumno-row {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr);
+            gap: 0;
+            width: 100%;
+            margin-bottom: 12px;
+            padding: 16px;
+            border: 1px solid var(--coin-border);
+            border-radius: 18px;
+            background: #fff;
+            box-shadow: 0 8px 24px rgba(15, 23, 42, .05);
+        }
+
+        .table-custom tbody tr.alumno-row > td,
+        .table-custom tbody tr.alumno-row > td:first-child,
+        .table-custom tbody tr.alumno-row > td:last-child {
+            display: block;
+            width: 100%;
+            padding: 12px 0;
+            border: 0;
+            border-radius: 0;
+        }
+
+        .table-custom tbody tr.alumno-row > td + td {
+            border-top: 1px solid #f0f2f6;
+        }
+
+        .student-cell {
+            padding-top: 0 !important;
+        }
+
+        .student-profile {
+            min-width: 0;
+        }
+
+        .student-avatar,
+        .student-avatar-fallback {
+            width: 48px;
+            height: 48px;
+            flex-basis: 48px;
+            border-radius: 15px;
+        }
+
+        .student-name {
+            font-size: 1rem;
+        }
+
+        .classes-cell,
+        .coin-cell {
+            display: flex !important;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .classes-cell::before,
+        .coin-cell::before,
+        .actions-cell::before,
+        .manual-cell::before {
+            display: block;
+            margin-bottom: 8px;
+            color: #8b93a3;
+            font-size: .69rem;
+            font-weight: 850;
+            text-transform: uppercase;
+            letter-spacing: .055em;
+        }
+
+        .classes-cell::before { content: "Clases"; margin-bottom: 0; }
+        .coin-cell::before { content: "Monedas"; margin-bottom: 0; }
+        .actions-cell::before { content: "Acciones rápidas"; }
+        .manual-cell::before { content: "Ajuste manual"; }
+
+        .classes-list {
+            justify-content: flex-end;
+            min-width: 0;
+        }
+
+        .coin-display {
+            min-width: 92px;
+            padding: 8px 13px;
+        }
+
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            width: 100%;
+            min-width: 0;
+            gap: 8px;
+        }
+
+        .btn-coin {
+            width: 100%;
+            min-height: 44px;
+            border-radius: 12px;
+            font-size: .92rem;
+        }
+
+        .manual-control {
+            grid-template-columns: 38px minmax(0, 1fr) 46px 46px;
+            width: 100%;
+            min-width: 0;
+        }
+
+        .manual-icon,
+        .manual-input,
+        .manual-action {
+            min-height: 44px;
+        }
+
+        .empty-row {
+            display: block !important;
+        }
+
+        .empty-row td {
+            display: block !important;
+            border: 1px solid var(--coin-border) !important;
+            border-radius: 18px !important;
+            background: #fff;
+        }
+
+        .empty-state,
+        .search-empty-state {
+            padding: 34px 18px;
+        }
+    }
+
+    @media (max-width: 419.98px) {
+        .coins-page-header {
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .student-counter {
+            margin-left: 55px;
+        }
+
+        .table-custom tbody tr.alumno-row {
+            padding: 14px;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .table-custom tbody tr.alumno-row,
+        .btn-coin,
+        .coin-display {
+            transition: none;
+            animation: none !important;
+        }
     }
 </style>
+
 <!-- CDN de SweetAlert2 -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 {% endblock %}
 
 {% block content %}
-<div class="container mt-4 mb-5">
-    
-    <div class="d-flex align-items-center mb-4">
-        <h3 class="fw-bold mb-0 text-dark">
-            <i class="bi bi-coin text-warning me-2"></i>Gestión de Monedas
-        </h3>
-        <span class="badge bg-light text-muted border ms-3">Economía del Aula</span>
-    </div>
+<div class="container coins-page mt-4 mb-5">
+    <header class="coins-page-header">
+        <div class="coins-title-wrap">
+            <div class="coins-title-icon" aria-hidden="true">
+                <i class="bi bi-coin"></i>
+            </div>
+            <div>
+                <h1 class="coins-page-title">Gestión de Monedas</h1>
+                <p class="coins-page-subtitle">Administra la economía del aula de forma rápida.</p>
+            </div>
+        </div>
 
-    <div class="management-panel">
-        <!-- Barra de Herramientas: Filtro y Buscador -->
-        <div class="filter-container mb-4 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
-            
-            <!-- Filtro por Clase -->
-            <form method="GET" class="d-flex align-items-center m-0">
-                <i class="bi bi-funnel-fill text-primary me-2"></i>
-                <label for="clase" class="me-2 fw-bold text-dark mb-0">Filtrar:</label>
-                <select name="clase" id="clase" class="form-select border-0 shadow-sm rounded-3 w-auto" onchange="this.form.submit()">
+        <div class="student-counter" aria-live="polite">
+            <i class="bi bi-people-fill" aria-hidden="true"></i>
+            <span id="visible-count">{{ alumnos|length }}</span>
+            <span id="visible-count-label">alumnos</span>
+        </div>
+    </header>
+
+    <section class="management-panel" aria-label="Gestión de monedas de alumnos">
+        <div class="filter-container">
+            <!-- Filtro por clase -->
+            <form method="GET" class="filter-field m-0">
+                <label for="clase" class="field-label">
+                    <i class="bi bi-funnel-fill me-1" aria-hidden="true"></i> Clase
+                </label>
+                <select
+                    name="clase"
+                    id="clase"
+                    class="form-select class-select"
+                    onchange="this.form.submit()"
+                    aria-label="Filtrar alumnos por clase"
+                >
                     <option value="">Todas las clases</option>
                     {% for clase in clases %}
                         <option value="{{ clase.id }}" {% if clase.id == clase_seleccionada %}selected{% endif %}>
@@ -146,193 +746,359 @@
                 </select>
             </form>
 
-            <!-- Buscador de Alumnos -->
-            <div class="position-relative" style="max-width: 300px; width: 100%;">
-                <i class="bi bi-search search-icon"></i>
-                <input type="text" id="buscador-alumnos" class="form-control search-input" placeholder="Buscar por nombre o apellido...">
+            <!-- Buscador -->
+            <div class="search-field">
+                <label for="buscador-alumnos" class="field-label">
+                    <i class="bi bi-search me-1" aria-hidden="true"></i> Buscar alumno
+                </label>
+                <div class="search-control">
+                    <i class="bi bi-search search-icon" aria-hidden="true"></i>
+                    <input
+                        type="search"
+                        id="buscador-alumnos"
+                        class="form-control search-input"
+                        placeholder="Nombre, apellido o PIN..."
+                        autocomplete="off"
+                    >
+                    <button
+                        type="button"
+                        id="limpiar-busqueda"
+                        class="search-clear"
+                        aria-label="Limpiar búsqueda"
+                        title="Limpiar búsqueda"
+                    >
+                        <i class="bi bi-x-lg" aria-hidden="true"></i>
+                    </button>
+                </div>
             </div>
         </div>
 
-        <!-- Tabla de Alumnos -->
-        <div class="table-responsive">
+        <div class="student-table-wrap">
             <table class="table table-custom w-100" id="tabla-alumnos">
                 <thead>
                     <tr>
                         <th>Alumno</th>
                         <th>Clases</th>
                         <th class="text-center">Monedas</th>
-                        <th class="text-center">Acciones Rápidas</th>
-                        <th>Ajuste Manual</th>
+                        <th class="text-center">Acciones rápidas</th>
+                        <th>Ajuste manual</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for alumno in alumnos %}
                     <tr class="alumno-row">
-                        <td>
-                            <div class="d-flex align-items-center">
+                        <td class="student-cell">
+                            <div class="student-profile">
                                 {% if alumno.avatar %}
-                                    <img src="{{ alumno.avatar.url }}" alt="Avatar" width="40" height="40" class="rounded-circle me-3 shadow-sm">
+                                    <img
+                                        src="{{ alumno.avatar.url }}"
+                                        alt="Avatar de {{ alumno.nombre }} {{ alumno.apellido }}"
+                                        class="student-avatar me-3"
+                                        loading="lazy"
+                                    >
                                 {% else %}
-                                    <div class="rounded-circle me-3 bg-primary text-white d-flex align-items-center justify-content-center shadow-sm" style="width: 40px; height: 40px; font-weight: bold;">
+                                    <div class="student-avatar-fallback me-3" aria-hidden="true">
                                         {{ alumno.nombre|first }}
                                     </div>
                                 {% endif %}
-                                <div>
-                                    <strong class="d-block text-dark nombre-alumno">{{ alumno.nombre }} {{ alumno.apellido }}</strong>
-                                    <small class="text-muted">PIN: {{ alumno.pin }}</small>
+                                <div class="min-w-0">
+                                    <strong class="student-name nombre-alumno">
+                                        {{ alumno.nombre }} {{ alumno.apellido }}
+                                    </strong>
+                                    <small class="student-pin">PIN: {{ alumno.pin }}</small>
                                 </div>
                             </div>
                         </td>
-                        <td>
-                            {% for clase in alumno.clases.all %}
-                                <span class="badge bg-light text-primary border border-primary-subtle me-1">
-                                    {{ clase.grado }}{{ clase.grupo }}
+
+                        <td class="classes-cell">
+                            <div class="classes-list">
+                                {% for clase in alumno.clases.all %}
+                                    <span class="class-badge">{{ clase.grado }}{{ clase.grupo }}</span>
+                                {% empty %}
+                                    <span class="text-muted small">Sin clase</span>
+                                {% endfor %}
+                            </div>
+                        </td>
+
+                        <td class="coin-cell text-center">
+                            <div class="coin-display" id="coin-box-{{ alumno.id }}">
+                                <span id="monedas-{{ alumno.id }}" aria-live="polite">{{ alumno.monedas }}</span>
+                                <span aria-hidden="true">🪙</span>
+                            </div>
+                        </td>
+
+                        <td class="actions-cell text-center">
+                            <div class="quick-actions">
+                                <button
+                                    type="button"
+                                    class="btn btn-sm btn-coin btn-coin-add"
+                                    onclick="actualizarMonedas({{ alumno.id }}, 5, 'sumar', this)"
+                                    aria-label="Añadir 5 monedas a {{ alumno.nombre }}"
+                                >+5</button>
+                                <button
+                                    type="button"
+                                    class="btn btn-sm btn-coin btn-coin-add"
+                                    onclick="actualizarMonedas({{ alumno.id }}, 10, 'sumar', this)"
+                                    aria-label="Añadir 10 monedas a {{ alumno.nombre }}"
+                                >+10</button>
+                                <button
+                                    type="button"
+                                    class="btn btn-sm btn-coin btn-coin-sub"
+                                    onclick="actualizarMonedas({{ alumno.id }}, 5, 'restar', this)"
+                                    aria-label="Quitar 5 monedas a {{ alumno.nombre }}"
+                                >-5</button>
+                            </div>
+                        </td>
+
+                        <td class="manual-cell">
+                            <div class="manual-control">
+                                <span class="manual-icon" aria-hidden="true">
+                                    <i class="bi bi-piggy-bank"></i>
                                 </span>
-                            {% endfor %}
-                        </td>
-                        <td class="text-center">
-                            <div class="coin-display">
-                                <span id="monedas-{{ alumno.id }}">{{ alumno.monedas }}</span> 🪙
-                            </div>
-                        </td>
-                        
-                        <td class="text-center">
-                            <div class="d-flex justify-content-center gap-2">
-                                <button class="btn btn-sm btn-coin-add rounded-pill px-3" onclick="actualizarMonedas({{ alumno.id }}, 5, 'sumar')">+5</button>
-                                <button class="btn btn-sm btn-coin-add rounded-pill px-3" onclick="actualizarMonedas({{ alumno.id }}, 10, 'sumar')">+10</button>
-                                <button class="btn btn-sm btn-coin-sub rounded-pill px-3" onclick="actualizarMonedas({{ alumno.id }}, 5, 'restar')">-5</button>
-                            </div>
-                        </td>
-                        
-                        <td>
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text bg-white border-end-0 rounded-start-3"><i class="bi bi-piggy-bank text-muted"></i></span>
-                                <input type="number" id="input-{{ alumno.id }}" class="form-control border-start-0" placeholder="0" min="1" style="max-width: 70px;">
-                                <button class="btn btn-success" onclick="procesarManual({{ alumno.id }}, 'sumar')" title="Añadir"><i class="bi bi-plus-lg"></i></button>
-                                <button class="btn btn-danger rounded-end-3" onclick="procesarManual({{ alumno.id }}, 'restar')" title="Quitar"><i class="bi bi-dash-lg"></i></button>
+                                <input
+                                    type="number"
+                                    id="input-{{ alumno.id }}"
+                                    class="manual-input"
+                                    placeholder="0"
+                                    min="1"
+                                    inputmode="numeric"
+                                    aria-label="Cantidad de monedas para {{ alumno.nombre }}"
+                                    onkeydown="procesarEnter(event, {{ alumno.id }})"
+                                >
+                                <button
+                                    type="button"
+                                    class="manual-action add"
+                                    onclick="procesarManual({{ alumno.id }}, 'sumar', this)"
+                                    aria-label="Añadir cantidad indicada a {{ alumno.nombre }}"
+                                    title="Añadir"
+                                >
+                                    <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                                </button>
+                                <button
+                                    type="button"
+                                    class="manual-action sub"
+                                    onclick="procesarManual({{ alumno.id }}, 'restar', this)"
+                                    aria-label="Quitar cantidad indicada a {{ alumno.nombre }}"
+                                    title="Quitar"
+                                >
+                                    <i class="bi bi-dash-lg" aria-hidden="true"></i>
+                                </button>
                             </div>
                         </td>
                     </tr>
                     {% empty %}
-                    <tr>
-                        <td colspan="5" class="text-center py-5">
-                            <i class="bi bi-people fs-1 text-muted d-block mb-3 opacity-50"></i>
-                            <h5 class="fw-bold text-dark">No se encontraron alumnos</h5>
-                            <p class="text-muted">Intenta seleccionar otra clase o verifica tus registros.</p>
+                    <tr class="empty-row">
+                        <td colspan="5">
+                            <div class="empty-state">
+                                <div class="empty-state-icon" aria-hidden="true">
+                                    <i class="bi bi-people"></i>
+                                </div>
+                                <h5 class="fw-bold text-dark mb-1">No se encontraron alumnos</h5>
+                                <p class="mb-0">Selecciona otra clase o verifica tus registros.</p>
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-    </div>
+
+        <div id="search-no-results" class="search-empty-state" role="status">
+            <div class="empty-state-icon" aria-hidden="true">
+                <i class="bi bi-search"></i>
+            </div>
+            <h5 class="fw-bold text-dark mb-1">Sin coincidencias</h5>
+            <p class="mb-0">Prueba con otro nombre, apellido o PIN.</p>
+        </div>
+    </section>
 </div>
 
 {% csrf_token %}
 
 <script>
-    // 1. Buscador en tiempo real
-    document.getElementById('buscador-alumnos').addEventListener('input', function() {
-        const searchText = this.value.toLowerCase();
-        const rows = document.querySelectorAll('.alumno-row');
+    (() => {
+        const searchInput = document.getElementById('buscador-alumnos');
+        const clearSearchButton = document.getElementById('limpiar-busqueda');
+        const rows = Array.from(document.querySelectorAll('.alumno-row'));
+        const searchEmptyState = document.getElementById('search-no-results');
+        const visibleCount = document.getElementById('visible-count');
+        const visibleCountLabel = document.getElementById('visible-count-label');
 
-        rows.forEach(row => {
-            const nombreCompleto = row.querySelector('.nombre-alumno').textContent.toLowerCase();
-            if (nombreCompleto.includes(searchText)) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
+        function normalizarTexto(texto) {
+            return (texto || '')
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .trim();
+        }
+
+        function actualizarContador(cantidad) {
+            if (!visibleCount || !visibleCountLabel) return;
+            visibleCount.textContent = cantidad;
+            visibleCountLabel.textContent = cantidad === 1 ? 'alumno' : 'alumnos';
+        }
+
+        function filtrarAlumnos() {
+            if (!searchInput) return;
+
+            const termino = normalizarTexto(searchInput.value);
+            let visibles = 0;
+
+            rows.forEach(row => {
+                const nombre = row.querySelector('.nombre-alumno')?.textContent || '';
+                const pin = row.querySelector('.student-pin')?.textContent || '';
+                const clases = Array.from(row.querySelectorAll('.class-badge'))
+                    .map(badge => badge.textContent)
+                    .join(' ');
+                const contenido = normalizarTexto(`${nombre} ${pin} ${clases}`);
+                const coincide = contenido.includes(termino);
+
+                row.style.display = coincide ? '' : 'none';
+                if (coincide) visibles += 1;
+            });
+
+            actualizarContador(visibles);
+
+            if (clearSearchButton) {
+                clearSearchButton.classList.toggle('is-visible', termino.length > 0);
             }
-        });
-    });
 
-    // 2. Configuración de SweetAlert2 tipo "Toast" para notificaciones no invasivas
+            if (searchEmptyState) {
+                searchEmptyState.classList.toggle(
+                    'is-visible',
+                    rows.length > 0 && visibles === 0
+                );
+            }
+        }
+
+        searchInput?.addEventListener('input', filtrarAlumnos);
+
+        clearSearchButton?.addEventListener('click', () => {
+            searchInput.value = '';
+            filtrarAlumnos();
+            searchInput.focus();
+        });
+
+        actualizarContador(rows.length);
+    })();
+
     const Toast = Swal.mixin({
         toast: true,
         position: 'top-end',
         showConfirmButton: false,
-        timer: 2500,
+        timer: 2400,
         timerProgressBar: true,
         didOpen: (toast) => {
-            toast.addEventListener('mouseenter', Swal.stopTimer)
-            toast.addEventListener('mouseleave', Swal.resumeTimer)
+            toast.addEventListener('mouseenter', Swal.stopTimer);
+            toast.addEventListener('mouseleave', Swal.resumeTimer);
         }
     });
 
-    // Token CSRF
-    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
 
-    function procesarManual(alumnoId, accion) {
+    async function procesarManual(alumnoId, accion, boton = null) {
         const input = document.getElementById(`input-${alumnoId}`);
-        const cantidad = parseInt(input.value);
-        
-        if (isNaN(cantidad) || cantidad <= 0) {
-            Swal.fire({
+        const cantidad = Number.parseInt(input?.value, 10);
+
+        if (!input || Number.isNaN(cantidad) || cantidad <= 0) {
+            await Swal.fire({
                 icon: 'warning',
                 title: 'Cantidad inválida',
-                text: 'Por favor ingresa un número mayor a 0.',
-                confirmButtonColor: '#6366f1' // Color primary-game
+                text: 'Ingresa un número mayor a 0.',
+                confirmButtonColor: '#6366f1'
             });
+            input?.focus();
             return;
         }
-        
-        actualizarMonedas(alumnoId, cantidad, accion);
-        input.value = ''; // Limpiar el input
+
+        const actualizado = await actualizarMonedas(alumnoId, cantidad, accion, boton);
+
+        if (actualizado) {
+            input.value = '';
+            input.focus();
+        }
     }
 
-    function actualizarMonedas(alumnoId, cantidad, accion) {
+    function procesarEnter(event, alumnoId) {
+        if (event.key !== 'Enter') return;
+
+        event.preventDefault();
+        procesarManual(alumnoId, 'sumar');
+    }
+
+    async function actualizarMonedas(alumnoId, cantidad, accion, boton = null) {
         const formData = new FormData();
         formData.append('alumno_id', alumnoId);
         formData.append('cantidad', cantidad);
         formData.append('accion', accion);
 
-        fetch("{% url 'api_actualizar_monedas' %}", {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': csrfToken
-            },
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                // Actualizar interfaz
-                const contador = document.getElementById(`monedas-${alumnoId}`);
-                contador.innerText = data.nuevas_monedas;
-                
-                // Animación css temporal en la caja de monedas
-                const displayBox = contador.parentElement;
-                displayBox.style.transform = 'scale(1.2)';
-                displayBox.style.transition = 'transform 0.2s';
-                
-                setTimeout(() => { 
-                    displayBox.style.transform = 'scale(1)'; 
-                }, 200);
+        const textoOriginal = boton?.innerHTML;
 
-                // Mostrar alerta de éxito
-                Toast.fire({
-                    icon: 'success',
-                    title: accion === 'sumar' ? `+${cantidad} monedas añadidas` : `-${cantidad} monedas retiradas`
-                });
-
-            } else {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: data.mensaje,
-                    confirmButtonColor: '#ef4444'
-                });
+        try {
+            if (boton) {
+                boton.disabled = true;
+                boton.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>';
             }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            Swal.fire({
+
+            const response = await fetch("{% url 'api_actualizar_monedas' %}", {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData
+            });
+
+            let data;
+
+            try {
+                data = await response.json();
+            } catch (_) {
+                throw new Error('El servidor devolvió una respuesta no válida.');
+            }
+
+            if (!response.ok || data.status !== 'success') {
+                throw new Error(data.mensaje || 'No se pudo actualizar el saldo.');
+            }
+
+            const contador = document.getElementById(`monedas-${alumnoId}`);
+            const displayBox = document.getElementById(`coin-box-${alumnoId}`);
+
+            if (contador) {
+                contador.textContent = data.nuevas_monedas;
+            }
+
+            if (displayBox) {
+                displayBox.classList.remove('is-updating');
+                void displayBox.offsetWidth;
+                displayBox.classList.add('is-updating');
+            }
+
+            Toast.fire({
+                icon: 'success',
+                title: accion === 'sumar'
+                    ? `+${cantidad} monedas añadidas`
+                    : `-${cantidad} monedas retiradas`
+            });
+
+            return true;
+        } catch (error) {
+            console.error('Error al actualizar monedas:', error);
+
+            await Swal.fire({
                 icon: 'error',
-                title: 'Fallo de conexión',
-                text: 'Hubo un problema al comunicarse con el servidor.',
+                title: 'No se pudo actualizar',
+                text: error.message || 'Hubo un problema al comunicarse con el servidor.',
                 confirmButtonColor: '#ef4444'
             });
-        });
+
+            return false;
+        } finally {
+            if (boton) {
+                boton.disabled = false;
+                boton.innerHTML = textoOriginal;
+            }
+        }
     }
 </script>
 {% endblock %}
