@@ -1,0 +1,58 @@
+{% extends 'Profesor/baseProfesor.html' %}
+{% load nextlevel %}
+{% block title %}Clases y mundos{% endblock %}
+{% block titulo_pagina %}Clases y mundos{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1>Clases y mundos</h1>
+        <p>Cada clase tiene sus propios mundos, niveles y misiones.</p>
+    </div>
+    <div class="acciones"><a data-modal href="{% url 'alta_clase' %}" class="p-btn primario"><i class="bi bi-plus-lg"></i> Nueva clase</a></div>
+</div>
+
+<div class="row g-3">
+    {% for clase in clases %}
+        <div class="col-md-6 col-xl-4">
+            <div class="p-card clase-card" style="--c: {{ clase.color|color_clase:0 }}">
+                <div class="d-flex gap-3 align-items-start">
+                    <span class="icono">{{ clase.icono|default:'🚀' }}</span>
+                    <div class="min-w-0 flex-grow-1">
+                        <a href="{% url 'clase_detalle' clase.id %}" class="titulo d-block text-truncate">{{ clase.nombre }}</a>
+                        <div class="text-muted-p" style="font-size:.8rem">{{ clase.grado }} {{ clase.grupo }} · {{ clase.anio }}</div>
+                    </div>
+                    <div class="dropdown">
+                        <button class="p-btn xs icono fantasma" data-bs-toggle="dropdown" aria-label="Opciones"><i class="bi bi-three-dots"></i></button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a data-modal class="dropdown-item" href="{% url 'editar_clase' clase.id %}"><i class="bi bi-pencil"></i> Editar</a></li>
+                            <li><a class="dropdown-item" href="{% url 'proyector' clase.id %}" target="_blank"><i class="bi bi-display"></i> Modo proyector</a></li>
+                            <li><a class="dropdown-item" href="{% url 'credenciales' %}?clase={{ clase.id }}"><i class="bi bi-printer"></i> Credenciales</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <form method="post" action="{% url 'eliminar' 'clase' clase.id %}" data-confirmar="Se borrarán sus mundos, niveles, misiones y calificaciones. Los alumnos se conservan." data-titulo="¿Eliminar {{ clase.nombre }}?" data-boton="Eliminar" data-peligro>
+                                    {% csrf_token %}<button type="submit" class="dropdown-item text-danger"><i class="bi bi-trash"></i> Eliminar</button>
+                                </form>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                {% if clase.descripcion %}<div class="text-2" style="font-size:.85rem">{{ clase.descripcion|truncatechars:110 }}</div>{% endif %}
+                <div class="meta">
+                    <span><i class="bi bi-people"></i> {{ clase.total_alumnos }}</span>
+                    <span><i class="bi bi-globe-americas"></i> {{ clase.total_mundos }} mundos</span>
+                    <span><i class="bi bi-flag"></i> {{ clase.total_misiones }} misiones</span>
+                    {% if clase.activa %}<span class="p-badge verde"><span class="punto"></span> Visible</span>{% else %}<span class="p-badge">Oculta</span>{% endif %}
+                </div>
+                <div class="acciones-c">
+                    <a href="{% url 'clase_detalle' clase.id %}" class="p-btn sm primario">Abrir</a>
+                    <a href="{% url 'matriz_calificaciones' clase.id %}" class="p-btn sm">Calificaciones</a>
+                    <a href="{% url 'alumnos_lista' %}?clase={{ clase.id }}" class="p-btn sm">Alumnos</a>
+                </div>
+            </div>
+        </div>
+    {% empty %}
+        <div class="col-12"><div class="p-card vacio-p"><i class="bi bi-easel2"></i><h3>Aún no hay clases</h3><a data-modal href="{% url 'alta_clase' %}" class="p-btn primario mt-2">Crear la primera</a></div></div>
+    {% endfor %}
+</div>
+{% endblock %}

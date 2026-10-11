@@ -1,204 +1,169 @@
 {% extends 'Alumnos/base.html' %}
-
-{% block title %}Mi Progreso - {{ clase.nombre }}{% endblock %}
-
-{% block extra_css %}
-<style>
-    
-
-    .progreso-container {
-        max-width: 1000px;
-        margin: 0 auto;
-        padding-bottom: 5rem;
-    }
-
-    /* --- Tarjeta Principal --- */
-    .quest-card {
-        background: white;
-        border-radius: 24px;
-        border: 2px solid #e2e8f0;
-        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.05);
-        overflow: hidden;
-    }
-    
-    /* --- Tabla Gamificada --- */
-    .table-progreso {
-        border-collapse: separate;
-        border-spacing: 0 12px;
-    }
-    
-    .table-progreso thead th {
-        border: none;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        font-size: 0.9rem;
-        font-weight: 900;
-        color: #64748b;
-        padding-bottom: 10px;
-    }
-
-    .table-progreso tbody tr {
-        background: #f8fafc;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.02);
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-
-  
-    .table-progreso td {
-        border: 2px solid #e2e8f0;
-        border-style: solid none;
-        padding: 16px;
-        vertical-align: middle;
-    }
-
-    .table-progreso td:first-child {
-        border-left-style: solid;
-        border-top-left-radius: 16px;
-        border-bottom-left-radius: 16px;
-    }
-
-    .table-progreso td:last-child {
-        border-right-style: solid;
-        border-top-right-radius: 16px;
-        border-bottom-right-radius: 16px;
-    }
-
-    /* --- Badges de Estado --- */
-    .badge-estado {
-        font-size: 0.85rem;
-        padding: 8px 16px;
-        border-radius: 12px;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-    .aprobado-badge { background-color: rgba(16, 185, 129, 0.15); color: var(--approved-dark); }
-    .rechazado-badge { background-color: rgba(239, 68, 68, 0.15); color: #991b1b; }
-    .pendiente-badge { background-color: rgba(245, 158, 11, 0.15); color: var(--pending-dark); }
-
-    /* --- Botones Gamificados 3D --- */
-    .btn-game {
-        font-weight: 900;
-        font-size: 1.1rem;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        border-radius: 20px;
-        padding: 16px 32px;
-        border: none;
-        transition: all 0.1s;
-    }
-
-    .btn-back {
-        background: #cbd5e1;
-        color: #334155;
-        box-shadow: 0 8px 0 #94a3b8, 0 15px 20px rgba(148, 163, 184, 0.3);
-    }
-
-    .btn-back:hover {
-        color: #1e293b;
-        transform: translateY(2px);
-        box-shadow: 0 6px 0 #94a3b8, 0 10px 15px rgba(148, 163, 184, 0.3);
-    }
-
-    .btn-back:active {
-        transform: translateY(8px);
-        box-shadow: 0 0px 0 #94a3b8;
-    }
-</style>
-{% endblock %}
+{% load nextlevel %}
+{% block title %}Mi perfil · {{ alumno.nombre }}{% endblock %}
 
 {% block content %}
-<div class="container mt-4 progreso-container">
-    <div class="quest-card p-4 p-md-5">
-        
-        <div class="text-center mb-5">
-            <h1 class="text-dark mb-4" style="font-weight: 900; font-size: 2rem;">
-                 Mi Progreso
-            </h1>
-            
-    
+{% with rango=alumno.rango %}
+<div class="contenedor">
+    <section class="perfil-cabecera">
+        <div class="avatar-wrap">
+            <img src="{{ alumno|avatar_url }}" alt="" class="avatar anillo-{{ rango.color }}">
+            <span class="nivel-badge">{{ alumno.nivel }}</span>
+        </div>
+        <h1>{{ alumno.nombre }} {{ alumno.apellido }}</h1>
+        <span class="chip azul" style="font-size:.9rem">{{ rango.emoji }} {{ rango.nombre }} · Nivel {{ alumno.nivel }}</span>
+        {% if mi_equipo %}<span class="chip" style="font-size:.9rem;background:{{ mi_equipo.color|color_clase:0 }};color:#fff">{{ mi_equipo.emoji }} {{ mi_equipo.nombre }}</span>{% endif %}
+        <div class="mx-auto mt-3" style="max-width:420px">
+            <div class="d-flex justify-content-between fw-black texto-suave mb-1" style="font-size:.82rem">
+                <span>{{ alumno.xp_total }} XP totales</span><span>{{ alumno.xp_faltante }} XP para nivel {{ alumno.nivel|add:1 }}</span>
+            </div>
+            <div class="barra oro"><span style="width:0" data-ancho="{{ alumno.progreso_nivel }}"></span></div>
+        </div>
+    </section>
+
+    <div class="stats-grid">
+        <div class="stat-tile"><span class="ico">🏁</span><div><div class="v">{{ stats.misiones }}</div><div class="l">Misiones</div></div></div>
+        <div class="stat-tile"><span class="ico">⭐</span><div><div class="v">{{ stats.estrellas }}</div><div class="l">Estrellas</div></div></div>
+        <div class="stat-tile"><span class="ico">🔥</span><div><div class="v">{{ alumno.racha_maxima }}</div><div class="l">Mejor racha</div></div></div>
+        <div class="stat-tile"><span class="ico">🏅</span><div><div class="v">{{ logros_obtenidos }}<small style="font-size:.9rem;color:var(--texto-suave)">/{{ logros|length }}</small></div><div class="l">Logros</div></div></div>
+        <div class="stat-tile"><span class="ico">💰</span><div><div class="v">{{ stats.monedas }}</div><div class="l">Monedas ganadas</div></div></div>
+        <div class="stat-tile"><span class="ico">🌍</span><div><div class="v">{{ stats.mundos }}</div><div class="l">Mundos completos</div></div></div>
+        <div class="stat-tile"><span class="ico">💯</span><div><div class="v">{{ stats.perfectos }}</div><div class="l">Dieces</div></div></div>
+        <div class="stat-tile"><span class="ico">👾</span><div><div class="v">{{ stats.jefes }}</div><div class="l">Jefes vencidos</div></div></div>
+    </div>
+
+    <section class="g-card mt-4">
+        <div class="g-card-titulo"><span>🪜</span> Camino de rangos</div>
+        <div class="escalera-rangos">
+            {% for r in rangos %}
+                <div class="rango-paso {% if r.nombre == rango.nombre %}actual{% elif alumno.nivel >= r.nivel %}logrado{% else %}futuro{% endif %}">
+                    <div class="e">{{ r.emoji }}</div>
+                    <div class="n">{{ r.nombre }}</div>
+                    <div class="l">Nivel {{ r.nivel }}</div>
+                </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <div class="text-center mt-4">
+        <div class="tabs-juego" role="tablist">
+            <button type="button" class="active" data-bs-toggle="tab" data-bs-target="#tab-logros" role="tab">🏅 Logros</button>
+            <button type="button" data-bs-toggle="tab" data-bs-target="#tab-calif" role="tab">📊 Calificaciones</button>
+            <button type="button" data-bs-toggle="tab" data-bs-target="#tab-historial" role="tab">📜 Historial</button>
+            <button type="button" data-bs-toggle="tab" data-bs-target="#tab-avatar" role="tab">🤖 Avatar</button>
+        </div>
+    </div>
+
+    <div class="tab-content mt-3">
+        <div class="tab-pane fade show active" id="tab-logros" role="tabpanel">
+            <div class="vitrina-logros" id="logros">
+                {% for item in logros %}
+                    <div class="medalla {{ item.logro.rareza }} {% if not item.obtenido %}bloqueada{% endif %}" title="{{ item.logro.descripcion }}">
+                        <div class="disco">{% if item.obtenido or item.logro.condicion != 'manual' %}{{ item.logro.icono }}{% else %}❔{% endif %}</div>
+                        <div class="n">{{ item.logro.nombre }}</div>
+                        <div class="d">{{ item.logro.descripcion }}</div>
+                        <div class="rareza">{{ item.logro.get_rareza_display }}</div>
+                        {% if item.obtenido %}
+                            <div class="chip verde mt-2" style="font-size:.7rem">✓ {{ item.obtenido.fecha|date:"d M Y" }}</div>
+                        {% elif item.logro.condicion != 'manual' %}
+                            <div class="barra delgada morado"><span style="width:0" data-ancho="{{ item.pct }}"></span></div>
+                            <div class="d mt-1">{{ item.valor }} / {{ item.logro.valor }}</div>
+                        {% else %}
+                            <div class="d mt-1">🎁 Lo otorga tu profe</div>
+                        {% endif %}
+                    </div>
+                {% empty %}
+                    <div class="vacio-juego">Aún no hay logros configurados.</div>
+                {% endfor %}
+            </div>
         </div>
 
-        <div class="table-responsive">
-            <table class="table table-progreso align-middle text-center mb-0">
-                <thead>
-                    <tr>
-                        <th class="text-start ps-4">Misión</th>
-                        <th>Nivel</th>
-                        <th>Estado</th>
-                        <th>Calificación</th>
-                        <th>Botín Obtenido</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for progreso in progresos %}
-                    <tr>
-                        <td class="text-start ps-4">
-                            <span class="d-block fw-bold fs-5 text-dark">{{ progreso.mision.nombre }}</span>
-                            <span class="text-muted small fw-bold text-uppercase"><i class="bi bi-journal-text me-1"></i>{{ progreso.mision.get_tipo_display }}</span>
-                        </td>
-                        <td>
-                            <span class="badge bg-light text-secondary border fw-bold px-3 py-2 rounded-pill">
-                                {{ progreso.mision.nivel.nombre }}
-                            </span>
-                        </td>
-                        <td>
-                            {% if progreso.estado == 'aprobado' %}
-                                <span class="badge-estado aprobado-badge"><i class="bi bi-check-circle-fill"></i> Aprobado</span>
-                            {% elif progreso.estado == 'rechazado' %}
-                                <span class="badge-estado rechazado-badge"><i class="bi bi-x-circle-fill"></i> Rechazado</span>
-                            {% else %}
-                                <span class="badge-estado pendiente-badge"><i class="bi bi-hourglass-split"></i> Pendiente</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if progreso.estado == 'aprobado' %}
-                                <span class="fs-5 fw-black text-dark" style="font-weight: 700; ">{{ progreso.calificacion_escala_10|floatformat:1 }}</span>
-                                
-                                <span class="text-muted fw-bold">/ 10.0</span>
-                            {% else %}
-                                <span class="text-muted fs-4">-</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if progreso.estado == 'aprobado' %}
-                                <div class="d-flex justify-content-center gap-2">
-                                    <span class="badge bg-light text-dark border px-2 py-1 fw-bold fs-6">
-                                        <i class="bi bi-coin" style="color: var(--gold-coin);"></i> +{{ progreso.monedas_obtenidas }}
-                                    </span>
-                                    <span class="badge bg-light text-dark border px-2 py-1 fw-bold fs-6">
-                                        <i class="bi bi-lightning-charge-fill" style="color: var(--xp-blue);"></i> +{{ progreso.mision.xp_recompensa }}
-                                    </span>
-                                </div>
-                            {% else %}
-                                <span class="text-muted fs-4"><i class="bi bi-lock-fill opacity-50"></i></span>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="5" class="py-5 text-center text-muted border-0 bg-transparent shadow-none">
-                            <div class="p-5 rounded-4" style="background: #f8fafc; border: 2px dashed #cbd5e1;">
-                                <i class="bi bi-map fs-1 d-block mb-3 text-secondary"></i>
-                                <h4 class="fw-bold text-dark">Tu inventario está vacío</h4>
-                                <p class="fs-5 mb-0">Aún no has completado ninguna misión en esta clase.<br>¡Vuelve al mapa y comienza tu aventura!</p>
-                            </div>
-                        </td>
-                    </tr>
+        <div class="tab-pane fade" id="tab-calif" role="tabpanel">
+            <section class="g-card">
+                <div class="table-responsive">
+                    <table class="tabla-juego">
+                        <thead><tr><th>Misión</th><th>Estado</th><th class="text-center">Calificación</th><th class="text-center">Botín</th></tr></thead>
+                        <tbody>
+                        {% for p in progresos %}
+                            <tr>
+                                <td>
+                                    <div class="fw-black" style="color:var(--navy)">{{ p.mision.nombre }}</div>
+                                    <div class="texto-suave" style="font-size:.78rem">{% if p.mision.nivel.mundo %}{{ p.mision.nivel.mundo.nombre }} · {% endif %}{{ p.mision.nivel.nombre }}</div>
+                                </td>
+                                <td>
+                                    {% if p.estado == 'aprobado' %}<span class="chip verde">✓ Aprobada</span>
+                                    {% elif p.estado == 'rechazado' %}<span class="chip rojo">🔧 Corregir</span>
+                                    {% else %}<span class="chip oro">⏳ En revisión</span>{% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if p.estado == 'aprobado' %}
+                                        <div style="font-family:var(--fuente-titulo);font-size:1.2rem">{{ p.calificacion_escala_10|floatformat:1 }}</div>
+                                        <div style="font-size:.8rem">{% for e in p.estrellas|estrellas %}<span style="{% if not e %}filter:grayscale(1);opacity:.3{% endif %}">⭐</span>{% endfor %}</div>
+                                    {% else %}<span class="texto-suave">—</span>{% endif %}
+                                </td>
+                                <td class="text-center" style="white-space:nowrap">
+                                    {% if p.estado == 'aprobado' %}
+                                        <i class="bi bi-coin" style="color:var(--moneda)"></i> {{ p.monedas_obtenidas }}
+                                        · <i class="bi bi-lightning-charge-fill" style="color:var(--azul)"></i> {{ p.mision.xp_recompensa }}
+                                    {% else %}<i class="bi bi-lock-fill texto-suave"></i>{% endif %}
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr><td colspan="4" class="text-center py-4"><span style="font-size:2rem">🗺️</span><br>Aún no has entregado misiones en esta clase.</td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+
+        <div class="tab-pane fade" id="tab-historial" role="tabpanel">
+            <section class="g-card">
+                {% for m in movimientos %}
+                    <div class="mov">
+                        <span class="ico">
+                            {% if m.tipo == 'mision' %}🏁{% elif m.tipo == 'cofre' %}🎁{% elif m.tipo == 'diaria' %}📅{% elif m.tipo == 'logro' %}🏅{% elif m.tipo == 'nivel' %}⬆️{% elif m.tipo == 'compra' %}🛍️{% elif m.tipo == 'reembolso' %}↩️{% else %}✨{% endif %}
+                        </span>
+                        <div class="min-w-0">
+                            <div class="d">{{ m.descripcion }}</div>
+                            <div class="f">{{ m.fecha|date:"d M Y, H:i" }}</div>
+                        </div>
+                        <div class="val">
+                            {% if m.monedas %}<div class="{% if m.monedas > 0 %}pos{% else %}neg{% endif %}">{% if m.monedas > 0 %}+{% endif %}{{ m.monedas }} <i class="bi bi-coin"></i></div>{% endif %}
+                            {% if m.xp %}<div class="{% if m.xp > 0 %}pos{% else %}neg{% endif %}" style="font-size:.85rem">{% if m.xp > 0 %}+{% endif %}{{ m.xp }} XP</div>{% endif %}
+                        </div>
+                    </div>
+                {% empty %}
+                    <div class="vacio-juego"><span class="e">📜</span>Tu historial aparecerá aquí cuando ganes o gastes monedas.</div>
+                {% endfor %}
+            </section>
+        </div>
+
+        <div class="tab-pane fade" id="tab-avatar" role="tabpanel">
+            <section class="g-card">
+                <div class="g-card-titulo"><span>🎨</span> Elige tu avatar</div>
+                <div class="avatares-galeria">
+                    <form method="POST" action="{% url 'equipar_avatar' clase.id 0 %}" class="avatar-opcion {% if not alumno.avatar %}equipado{% endif %}">
+                        {% csrf_token %}
+                        <button type="submit" title="Robot clásico">
+                            <img src="https://api.dicebear.com/9.x/bottts/svg?seed=nextlevel-{{ alumno.pk }}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf,c7f9cc" alt="Robot clásico">
+                        </button>
+                        <div class="n">Robot clásico</div>
+                    </form>
+                    {% for compra in avatares %}
+                        <form method="POST" action="{% url 'equipar_avatar' clase.id compra.id %}" class="avatar-opcion {% if alumno.avatar.name == compra.articulo.imagen.name %}equipado{% endif %}">
+                            {% csrf_token %}
+                            <button type="submit" title="{{ compra.articulo.nombre }}"><img src="{{ compra.articulo.imagen.url }}" alt="{{ compra.articulo.nombre }}" loading="lazy"></button>
+                            <div class="n">{{ compra.articulo.nombre }}</div>
+                        </form>
                     {% endfor %}
-                </tbody>
-            </table>
+                </div>
+                <p class="texto-suave fw-bold mt-3 mb-0" style="font-size:.9rem">
+                    <i class="bi bi-info-circle"></i> Consigue más avatares en la <a href="{% url 'tienda_alumno' clase.id %}" class="fw-black">tienda</a>.
+                </p>
+            </section>
         </div>
-
-        <div class="text-center mt-5 pt-4 border-top">
-            <a href="javascript:history.back()" class="btn-game btn-back d-inline-block text-decoration-none">
-                <i class="bi bi-pin-map me-2"></i> Volver al Mapa
-            </a>
-        </div>
-
     </div>
 </div>
+{% endwith %}
 {% endblock %}

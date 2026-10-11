@@ -1,0 +1,75 @@
+{% extends base_plantilla|default:"Profesor/baseProfesor.html" %}
+{% load nextlevel %}
+{% block title %}Calificar · {{ mision.nombre }}{% endblock %}
+{% block migas %}
+    <a href="{% url 'clase_detalle' mision.clase_id %}">{{ mision.clase.nombre }}</a><i class="bi bi-chevron-right"></i>
+    <span class="actual">Calificar «{{ mision.nombre }}»</span>
+{% endblock %}
+
+{% block content %}
+<form method="post" action="{{ request.get_full_path }}" class="form-panel ancho" novalidate>
+    {% csrf_token %}
+    <div class="modal-header">
+        <span class="icono-form">{{ info.emoji }}</span>
+        <div class="min-w-0 flex-grow-1">
+            <h2 class="titulo-form text-truncate">Calificar «{{ mision.nombre }}»</h2>
+            <p class="sub-form">{{ mision.get_tipo_display }} · {% if mision.nivel.mundo %}{{ mision.nivel.mundo.nombre }} › {% endif %}{{ mision.nivel.nombre }} · {{ mision.xp_recompensa }} XP · hasta {{ mision.monedas_recompensa }} monedas</p>
+        </div>
+        <a href="{% url 'editar_mision' mision.id %}" class="p-btn sm d-none d-sm-inline-flex" data-modal="xl"><i class="bi bi-pencil"></i> Editar misión</a>
+        {% if modal %}<button type="button" class="btn-close ms-2" data-bs-dismiss="modal" aria-label="Cerrar"></button>{% endif %}
+    </div>
+
+    <div class="modal-body">
+        <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-3">
+            <p class="text-muted-p mb-0" style="font-size:.84rem">Escribe la calificación de 0 a 10 · deja vacío para no cambiar · al recalificar se ajustan las monedas solas.</p>
+            <button type="button" class="p-btn sm" data-llenar-vacios><i class="bi bi-magic"></i> Poner 10 a los vacíos</button>
+        </div>
+        <div class="p-card">
+            <div class="p-table-wrap">
+                <table class="p-table">
+                    <thead><tr><th>Alumno</th><th>Estado</th><th class="num">Actual</th><th style="width:150px">Nueva</th></tr></thead>
+                    <tbody>
+                    {% for a in alumnos %}
+                        <tr>
+                            <td>
+                                <div class="persona">
+                                    <img src="{{ a|avatar_url }}" alt="">
+                                    <span class="min-w-0"><span class="n d-block">{{ a.apellido }}, {{ a.nombre }}</span>{% if a.progreso.respuesta_texto %}<span class="s text-truncate d-block" style="max-width:300px" title="{{ a.progreso.respuesta_texto }}">“{{ a.progreso.respuesta_texto }}”</span>{% endif %}</span>
+                                </div>
+                            </td>
+                            <td>
+                                {% if not a.progreso %}<span class="p-badge">Sin entrega</span>
+                                {% elif a.progreso.estado == 'aprobado' %}<span class="p-badge verde">Aprobada</span>
+                                {% elif a.progreso.estado == 'pendiente' %}<span class="p-badge ambar">Por revisar</span>
+                                {% else %}<span class="p-badge rojo">Devuelta</span>{% endif %}
+                            </td>
+                            <td class="num">{% if a.progreso.estado == 'aprobado' %}{{ a.progreso.puntuacion|calif10 }}{% else %}<span class="text-muted-p">—</span>{% endif %}</td>
+                            <td>
+                                <input type="number" name="calif_{{ a.id }}" class="p-input tnum" style="height:34px" min="0" max="10" step="0.5"
+                                       placeholder="{% if a.progreso.estado == 'aprobado' %}{{ a.progreso.puntuacion|calif10 }}{% else %}0 – 10{% endif %}"
+                                       data-calif-aprobada="{% if a.progreso.estado == 'aprobado' %}1{% else %}0{% endif %}" aria-label="Calificación de {{ a.nombre }}">
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="4"><div class="vacio-p"><i class="bi bi-people"></i>Esta clase aún no tiene alumnos.</div></td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="campo mt-3 mb-0">
+            <label for="comentario-calif">Comentario para los alumnos calificados <span class="text-muted-p fw-normal">(opcional)</span></label>
+            <input type="text" name="comentario" id="comentario-calif" class="p-input" placeholder="Ej. ¡Excelente exposición en equipo!">
+        </div>
+    </div>
+
+    <div class="modal-footer">
+        {% if modal %}
+            <button type="button" class="p-btn fantasma" data-bs-dismiss="modal">Cancelar</button>
+        {% else %}
+            <a href="{% url 'clase_detalle' mision.clase_id %}" class="p-btn fantasma">Cancelar</a>
+        {% endif %}
+        <button type="submit" class="p-btn primario"><i class="bi bi-check2"></i> Guardar calificaciones</button>
+    </div>
+</form>
+{% endblock %}

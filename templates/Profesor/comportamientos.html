@@ -1,0 +1,44 @@
+{% extends 'Profesor/baseProfesor.html' %}
+{% block title %}Botones del modo clase{% endblock %}
+{% block migas %}<a href="{% url 'modo_clase_inicio' %}">Modo clase</a><i class="bi bi-chevron-right"></i><span class="actual">Botones</span>{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1>Botones del modo clase</h1>
+        <p>Los comportamientos que reconoces con un toque. Los positivos dan monedas y XP; los de "para mejorar" solo restan monedas.</p>
+    </div>
+    <div class="acciones">
+        <a href="{% url 'modo_clase_inicio' %}" class="p-btn"><i class="bi bi-phone"></i> Ir al modo clase</a>
+        <a data-modal href="{% url 'alta_comportamiento' %}" class="p-btn primario"><i class="bi bi-plus-lg"></i> Nuevo botón</a>
+    </div>
+</div>
+
+<section class="p-card">
+    <div class="p-table-wrap">
+        <table class="p-table">
+            <thead><tr><th>Botón</th><th>Tipo</th><th class="num">Monedas</th><th class="num">XP</th><th class="num">Veces usado</th><th>Visible</th><th></th></tr></thead>
+            <tbody>
+            {% for c in comportamientos %}
+                <tr class="{% if not c.activo %}fila-inactiva{% endif %}">
+                    <td><div class="d-flex align-items-center gap-2"><span style="font-size:1.5rem">{{ c.icono }}</span><span class="fw-semibold">{{ c.nombre }}</span></div></td>
+                    <td>{% if c.positivo %}<span class="p-badge verde">Positivo</span>{% else %}<span class="p-badge rojo">Para mejorar</span>{% endif %}</td>
+                    <td class="num {% if c.positivo %}pos{% else %}neg{% endif %}">{% if c.positivo %}+{% endif %}{{ c.monedas }}</td>
+                    <td class="num">{% if c.xp %}+{{ c.xp }}{% else %}<span class="text-muted-p">—</span>{% endif %}</td>
+                    <td class="num">{{ c.usos }}</td>
+                    <td><input type="checkbox" class="nl-switch" {% if c.activo %}checked{% endif %} data-alternar-url="{% url 'alternar_activo' 'comportamiento' c.id %}" aria-label="Visible en el modo clase"></td>
+                    <td>
+                        <div class="acciones-fila">
+                            <a data-modal href="{% url 'editar_comportamiento' c.id %}" class="p-btn xs icono fantasma" title="Editar"><i class="bi bi-pencil"></i></a>
+                            <form method="post" action="{% url 'eliminar' 'comportamiento' c.id %}" data-confirmar="El historial ya registrado se conserva." data-titulo="¿Eliminar «{{ c.nombre }}»?" data-boton="Eliminar" data-peligro>{% csrf_token %}<button class="p-btn xs icono fantasma" title="Eliminar"><i class="bi bi-trash"></i></button></form>
+                        </div>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="7"><div class="vacio-p"><i class="bi bi-hand-index-thumb"></i>No hay botones todavía.</div></td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

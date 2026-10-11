@@ -1,0 +1,220 @@
+{% extends 'Profesor/baseProfesor.html' %}
+{% load nextlevel %}
+{% block title %}Modo clase · {{ clase.nombre }}{% endblock %}
+{% block migas %}<span class="actual">Modo clase</span>{% endblock %}
+
+{% block content %}
+<div class="modo-clase" id="modo-clase"
+     data-clase="{{ clase.id }}"
+     data-url-conducta="{% url 'api_conducta' %}"
+     data-url-deshacer="{% url 'api_deshacer_conducta' %}"
+     data-url-equipo="{% url 'api_puntos_equipo' %}"
+     data-url-meta="{% url 'api_meta_manual' %}">
+
+    <div class="mc-barra">
+        <div class="dropdown">
+            <button class="mc-clase" data-bs-toggle="dropdown" aria-label="Cambiar de clase">
+                <span class="e">{{ clase.icono|default:'🚀' }}</span>
+                <span class="min-w-0"><span class="n d-block text-truncate">{{ clase.nombre }}</span><span class="s">{{ clase.grado }} {{ clase.grupo }} · {{ alumnos|length }} alumnos</span></span>
+                <i class="bi bi-chevron-down"></i>
+            </button>
+            <ul class="dropdown-menu">
+                {% for c in clases %}<li><a class="dropdown-item {% if c.id == clase.id %}active{% endif %}" href="{% url 'modo_clase' c.id %}">{{ c.icono }} {{ c.nombre }} · {{ c.grado }}{{ c.grupo }}</a></li>{% endfor %}
+            </ul>
+        </div>
+
+        {% if equipos %}
+            <div class="mc-segmento" role="tablist" aria-label="Vista">
+                <button type="button" class="activo" data-vista="alumnos"><i class="bi bi-person"></i> <span>Alumnos</span></button>
+                <button type="button" data-vista="equipos"><i class="bi bi-shield"></i> <span>Equipos</span></button>
+            </div>
+        {% endif %}
+
+        <div class="mc-acciones">
+            <button type="button" class="mc-accion" data-accion="azar" title="Elegir un alumno al azar"><i class="bi bi-dice-5"></i><span>Al azar</span></button>
+            <button type="button" class="mc-accion" data-accion="seleccionar" title="Seleccionar varios alumnos"><i class="bi bi-check2-square"></i><span>Varios</span></button>
+            <button type="button" class="mc-accion" data-accion="todos" title="Premiar a toda la clase"><i class="bi bi-people-fill"></i><span>Toda la clase</span></button>
+            <div class="dropdown">
+                <button type="button" class="mc-accion" data-bs-toggle="dropdown" title="Más opciones" aria-label="Más opciones"><i class="bi bi-three-dots"></i></button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><button class="dropdown-item" type="button" data-accion="enfoque"><i class="bi bi-arrows-fullscreen"></i> Modo enfoque</button></li>
+                    <li><button class="dropdown-item" type="button" data-accion="sonido"><i class="bi bi-volume-up"></i> <span data-texto-sonido>Silenciar sonidos</span></button></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="{% url 'comportamientos_lista' %}"><i class="bi bi-sliders"></i> Editar botones</a></li>
+                    <li><a class="dropdown-item" href="{% url 'equipos_clase' clase.id %}"><i class="bi bi-shield"></i> Administrar equipos</a></li>
+                    <li><a class="dropdown-item" href="{% url 'metas_lista' %}"><i class="bi bi-bullseye"></i> Metas del grupo</a></li>
+                    <li><a class="dropdown-item" href="{% url 'proyector' clase.id %}" target="_blank"><i class="bi bi-display"></i> Abrir proyector</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    {% if metas %}
+        <div class="mc-metas">
+            {% for m in metas %}
+                <div class="mc-meta {% if m.completada_en %}lograda{% endif %}" data-meta="{{ m.id }}" data-objetivo="{{ m.objetivo }}">
+                    <span class="e">{{ m.icono }}</span>
+                    <div class="min-w-0 flex-grow-1">
+                        <div class="d-flex justify-content-between gap-2">
+                            <span class="t text-truncate">{{ m.titulo }}</span>
+                            <span class="v tnum"><span data-meta-valor>{{ m.valor }}</span>/{{ m.objetivo }}</span>
+                        </div>
+                        <div class="progreso mt-1"><span data-meta-barra style="width: {{ m.pct }}%"></span></div>
+                    </div>
+                    {% if m.tipo == 'manual' and not m.completada_en %}
+                        <button type="button" class="p-btn xs icono" data-meta-delta="-1" aria-label="Restar uno"><i class="bi bi-dash"></i></button>
+                        <button type="button" class="p-btn xs icono exito" data-meta-delta="1" aria-label="Sumar uno"><i class="bi bi-plus"></i></button>
+                    {% elif m.completada_en %}
+                        <span class="p-badge verde">¡Lograda!</span>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    {% if equipos %}
+        <div class="chips-filtro mc-filtro-equipos" data-panel="alumnos">
+            <button type="button" class="chip-f activo" data-filtro-equipo="">Todos</button>
+            {% for e in equipos %}<button type="button" class="chip-f" data-filtro-equipo="{{ e.id }}">{{ e.emoji }} {{ e.nombre }}</button>{% endfor %}
+            <button type="button" class="chip-f" data-filtro-equipo="sin">Sin equipo</button>
+        </div>
+    {% endif %}
+
+    <section class="mc-grid" data-panel="alumnos">
+        {% for a in alumnos %}
+            <button type="button" class="mc-alumno" data-id="{{ a.id }}" data-nombre="{{ a.nombre }}" data-avatar="{{ a|avatar_url }}"
+                    data-equipo="{{ a.equipo.id|default:'sin' }}"
+                    style="--anillo: {% if a.equipo %}{{ a.equipo.color|color_clase:0 }}{% else %}var(--border-strong){% endif %}">
+                <span class="check"><i class="bi bi-check-lg"></i></span>
+                <span class="avatar-mc"><img src="{{ a|avatar_url }}" alt="" loading="lazy"></span>
+                <span class="n">{{ a.nombre }}</span>
+                <span class="datos">
+                    <span class="monedas"><i class="bi bi-coin"></i> <span data-monedas>{{ a.monedas }}</span></span>
+                    <span class="hoy {% if not a.hoy_pos and not a.hoy_neg %}d-none{% endif %}" title="Hoy">
+                        <span class="pos" data-hoy-pos>{% if a.hoy_pos %}+{{ a.hoy_pos }}{% endif %}</span><span class="neg" data-hoy-neg>{% if a.hoy_neg %} −{{ a.hoy_neg }}{% endif %}</span>
+                    </span>
+                </span>
+                {% if a.equipo %}<span class="escudo" title="{{ a.equipo.nombre }}">{{ a.equipo.emoji }}</span>{% endif %}
+            </button>
+        {% empty %}
+            <div class="p-card vacio-p" style="grid-column:1/-1"><i class="bi bi-people"></i><h3>Esta clase no tiene alumnos</h3><a data-modal href="{% url 'alta_masiva' %}?clase={{ clase.id }}" class="p-btn primario mt-2">Registrar alumnos</a></div>
+        {% endfor %}
+    </section>
+
+    {% if equipos %}
+        <section class="mc-equipos d-none" data-panel="equipos">
+            {% for e in equipos %}
+                <button type="button" class="mc-equipo" data-equipo-id="{{ e.id }}" data-nombre="{{ e.emoji }} {{ e.nombre }}"
+                        data-miembros="{% for m in e.lista_miembros %}{{ m.id }}{% if not forloop.last %},{% endif %}{% endfor %}"
+                        style="--c: {{ e.color|color_clase:0 }}; --c2: {{ e.color|color_clase:1 }}">
+                    <span class="pos">#{{ e.posicion }}</span>
+                    <span class="e">{{ e.emoji }}</span>
+                    <span class="n">{{ e.nombre }}</span>
+                    <span class="pts"><span data-equipo-total>{{ e.total }}</span> pts</span>
+                    <span class="miembros">
+                        {% for m in e.lista_miembros|slice:":8" %}<img src="{{ m|avatar_url }}" alt="{{ m.nombre }}" title="{{ m.nombre }}">{% endfor %}
+                        {% if e.lista_miembros|length > 8 %}<span class="mas">+{{ e.lista_miembros|length|restar:8 }}</span>{% endif %}
+                    </span>
+                </button>
+            {% endfor %}
+        </section>
+    {% endif %}
+
+    {% if recientes %}
+        <details class="mc-recientes">
+            <summary><i class="bi bi-clock-history"></i> Hoy en esta clase ({{ recientes|length }})</summary>
+            {% for r in recientes %}
+                <div class="feed-item">
+                    <span class="ico">{{ r.icono }}</span>
+                    <div class="min-w-0"><div class="t"><b>{{ r.alumno.nombre }}</b> · {{ r.nombre }}</div><div class="f">{{ r.fecha|time:"H:i" }}</div></div>
+                    <span class="v {% if r.positivo %}pos{% else %}neg{% endif %}">{% if r.positivo %}+{% endif %}{{ r.monedas }}</span>
+                </div>
+            {% endfor %}
+        </details>
+    {% endif %}
+</div>
+
+<!-- Barra de selección múltiple -->
+<div class="mc-seleccion" id="mc-seleccion" aria-live="polite">
+    <span><b data-total-seleccion>0</b> seleccionados</span>
+    <button type="button" class="p-btn sm fantasma" data-accion="todos-seleccion">Todos</button>
+    <button type="button" class="p-btn sm fantasma" data-accion="cancelar-seleccion">Cancelar</button>
+    <button type="button" class="p-btn sm primario" data-accion="premiar-seleccion" disabled><i class="bi bi-stars"></i> Premiar</button>
+</div>
+
+<!-- Hoja inferior con los botones de comportamiento -->
+<div class="offcanvas offcanvas-bottom mc-hoja" tabindex="-1" id="mc-hoja" aria-labelledby="mc-hoja-titulo">
+    <div class="offcanvas-header">
+        <div class="mc-objetivo">
+            <span class="avatares" data-hoja-avatares></span>
+            <div class="min-w-0"><div class="t text-truncate" id="mc-hoja-titulo" data-hoja-titulo>Alumno</div><div class="s" data-hoja-sub></div></div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
+    </div>
+    <div class="offcanvas-body">
+        <div class="mc-puntos-equipo d-none" data-solo-equipo>
+            <div class="mc-subtitulo">Puntos para el equipo</div>
+            <div class="mc-puntos-botones">
+                <button type="button" class="mc-punto pos" data-puntos="1">+1</button>
+                <button type="button" class="mc-punto pos" data-puntos="3">+3</button>
+                <button type="button" class="mc-punto pos" data-puntos="5">+5</button>
+                <button type="button" class="mc-punto pos" data-puntos="10">+10</button>
+                <button type="button" class="mc-punto neg" data-puntos="-1">−1</button>
+                <button type="button" class="mc-punto neg" data-puntos="-5">−5</button>
+            </div>
+            <div class="mc-subtitulo mt-3">O premia a cada integrante</div>
+        </div>
+
+        <div class="tabs-p mb-3" role="tablist">
+            <button type="button" class="activo" data-tab-conducta="pos">👍 Positivos</button>
+            {% if negativos %}<button type="button" data-tab-conducta="neg">💬 Para mejorar</button>{% endif %}
+        </div>
+        <div class="mc-conductas" data-lista-conducta="pos">
+            {% for c in positivos %}
+                <button type="button" class="mc-conducta pos" data-comportamiento="{{ c.id }}">
+                    <span class="e">{{ c.icono }}</span>
+                    <span class="n">{{ c.nombre }}</span>
+                    <span class="v">+{{ c.monedas }} <i class="bi bi-coin"></i>{% if c.xp %} · +{{ c.xp }} XP{% endif %}</span>
+                </button>
+            {% empty %}
+                <div class="text-muted-p">No hay botones positivos. <a href="{% url 'alta_comportamiento' %}" data-modal>Crea uno</a>.</div>
+            {% endfor %}
+        </div>
+        <div class="mc-conductas d-none" data-lista-conducta="neg">
+            {% for c in negativos %}
+                <button type="button" class="mc-conducta neg" data-comportamiento="{{ c.id }}">
+                    <span class="e">{{ c.icono }}</span>
+                    <span class="n">{{ c.nombre }}</span>
+                    <span class="v">{{ c.monedas }} <i class="bi bi-coin"></i></span>
+                </button>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Aviso con Deshacer -->
+<div class="mc-aviso" id="mc-aviso" role="status">
+    <span data-aviso-texto></span>
+    <button type="button" class="p-btn sm" data-accion="deshacer"><i class="bi bi-arrow-counterclockwise"></i> Deshacer</button>
+</div>
+
+<!-- Alumno al azar -->
+<div class="mc-azar" id="mc-azar" hidden>
+    <div class="tarjeta">
+        <div class="kicker">🎲 ¡Le toca a…!</div>
+        <img data-azar-avatar alt="">
+        <div class="n" data-azar-nombre></div>
+        <div class="d-flex gap-2 justify-content-center flex-wrap mt-3">
+            <button type="button" class="p-btn primario" data-accion="azar-premiar"><i class="bi bi-stars"></i> Premiar</button>
+            <button type="button" class="p-btn" data-accion="azar"><i class="bi bi-dice-5"></i> Otro</button>
+            <button type="button" class="p-btn fantasma" data-accion="azar-cerrar">Cerrar</button>
+        </div>
+        <div class="text-muted-p mt-2" style="font-size:.78rem" data-azar-restantes></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+{% load static %}<script src="{% static 'js/modo_clase.js' %}"></script>
+{% endblock %}

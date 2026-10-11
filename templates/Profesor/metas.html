@@ -1,0 +1,55 @@
+{% extends 'Profesor/baseProfesor.html' %}
+{% block title %}Metas del grupo{% endblock %}
+{% block titulo_pagina %}Metas del grupo{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1>Metas del grupo</h1>
+        <p>Opcional. Un reto para toda la clase con una barra visible en el mapa de los alumnos. Al cumplirse, todos celebran.</p>
+    </div>
+    <div class="acciones"><a data-modal href="{% url 'alta_meta' %}" class="p-btn primario"><i class="bi bi-plus-lg"></i> Nueva meta</a></div>
+</div>
+
+<div class="row g-3">
+    {% for m in metas %}
+        <div class="col-md-6 col-xl-4">
+            <div class="p-card meta-card {% if not m.activa %}opacity-50{% endif %}">
+                <div class="cabeza">
+                    <span class="icono">{{ m.icono }}</span>
+                    <div class="min-w-0 flex-grow-1">
+                        <div class="fw-semibold">{{ m.titulo }}</div>
+                        <div class="text-muted-p" style="font-size:.78rem">{{ m.clase.icono }} {{ m.clase.nombre }} · {{ m.get_tipo_display }}</div>
+                    </div>
+                    {% if m.completada_en %}<span class="p-badge verde">¡Lograda!</span>{% elif not m.activa %}<span class="p-badge">Oculta</span>{% else %}<span class="p-badge azul">En curso</span>{% endif %}
+                </div>
+                <div>
+                    <div class="d-flex justify-content-between mb-1" style="font-size:.82rem"><span class="text-muted-p">Avance</span><span class="tnum fw-semibold">{{ m.valor }} / {{ m.objetivo }}</span></div>
+                    <div class="progreso"><span style="width: {{ m.pct }}%"></span></div>
+                </div>
+                <div class="text-2" style="font-size:.84rem">
+                    {% if m.recompensa %}<div>🎁 {{ m.recompensa }}</div>{% endif %}
+                    {% if m.monedas_recompensa %}<div><i class="bi bi-coin text-warning"></i> {{ m.monedas_recompensa }} monedas para cada alumno</div>{% endif %}
+                    {% if m.dias_restantes is not None and not m.completada_en %}<div class="text-muted-p"><i class="bi bi-calendar"></i> {% if m.dias_restantes >= 0 %}Quedan {{ m.dias_restantes }} días{% else %}Venció hace {{ m.dias_restantes|stringformat:"d"|slice:"1:" }} días{% endif %}</div>{% endif %}
+                    {% if m.completada_en %}<div class="text-muted-p">Cumplida el {{ m.completada_en|date:"d M Y" }}</div>{% endif %}
+                </div>
+                <div class="d-flex gap-1 flex-wrap mt-auto">
+                    <a data-modal href="{% url 'editar_meta' m.id %}" class="p-btn xs"><i class="bi bi-pencil"></i> Editar</a>
+                    <form method="post" action="{% url 'reiniciar_meta' m.id %}" data-confirmar="El conteo volverá a empezar desde hoy." data-titulo="¿Reiniciar la meta?" data-boton="Reiniciar">{% csrf_token %}<button class="p-btn xs"><i class="bi bi-arrow-repeat"></i> Reiniciar</button></form>
+                    <form method="post" action="{% url 'alternar_activo' 'meta' m.id %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}"><button class="p-btn xs fantasma">{% if m.activa %}<i class="bi bi-eye-slash"></i> Ocultar{% else %}<i class="bi bi-eye"></i> Mostrar{% endif %}</button></form>
+                    <form method="post" action="{% url 'eliminar' 'meta' m.id %}" data-confirmar="Se eliminará la meta." data-titulo="¿Eliminar «{{ m.titulo }}»?" data-boton="Eliminar" data-peligro>{% csrf_token %}<button class="p-btn xs fantasma" title="Eliminar"><i class="bi bi-trash"></i></button></form>
+                </div>
+            </div>
+        </div>
+    {% empty %}
+        <div class="col-12">
+            <div class="p-card vacio-p" style="padding:3rem 1rem">
+                <i class="bi bi-bullseye"></i>
+                <h3>No hay metas del grupo</h3>
+                <p>Ejemplo: "Entre todos completen 50 misiones esta semana = viernes de película 🍿".</p>
+                <a data-modal href="{% url 'alta_meta' %}" class="p-btn primario"><i class="bi bi-plus-lg"></i> Crear la primera meta</a>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+{% endblock %}

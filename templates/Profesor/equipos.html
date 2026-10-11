@@ -1,0 +1,138 @@
+{% extends 'Profesor/baseProfesor.html' %}
+{% load nextlevel %}
+{% block title %}Equipos · {{ clase.nombre }}{% endblock %}
+{% block migas %}<a href="{% url 'clase_detalle' clase.id %}">{{ clase.nombre }}</a><i class="bi bi-chevron-right"></i><span class="actual">Equipos</span>{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1>Equipos y casas</h1>
+        <p>Opcional. Cada equipo suma la XP que ganan sus integrantes más los puntos que tú le des en el modo clase.</p>
+    </div>
+    <div class="acciones">
+        <div class="dropdown">
+            <button class="p-btn" data-bs-toggle="dropdown"><i class="bi bi-arrow-left-right"></i> {{ clase.icono }} {{ clase.nombre }}</button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                {% for c in clases %}<li><a class="dropdown-item {% if c.id == clase.id %}active{% endif %}" href="{% url 'equipos_clase' c.id %}">{{ c.icono }} {{ c.nombre }} · {{ c.grado }}{{ c.grupo }}</a></li>{% endfor %}
+            </ul>
+        </div>
+        {% if equipos %}<a href="{% url 'modo_clase' clase.id %}" class="p-btn"><i class="bi bi-phone"></i> Modo clase</a>{% endif %}
+        <a data-modal href="{% url 'alta_equipo' %}?clase={{ clase.id }}" class="p-btn primario"><i class="bi bi-plus-lg"></i> Nuevo equipo</a>
+    </div>
+</div>
+
+{% if not equipos %}
+    <div class="p-card vacio-p" style="padding:3rem 1rem">
+        <i class="bi bi-shield"></i>
+        <h3>{{ clase.nombre }} aún no tiene equipos</h3>
+        <p>Empieza en un clic con 4 casas clásicas (🦁 🐉 🦅 🐺) y reparte a los alumnos al azar, o crea tus propios equipos.</p>
+        <div class="d-flex gap-2 justify-content-center flex-wrap">
+            <form method="post" action="{% url 'crear_casas' clase.id %}">{% csrf_token %}<button class="p-btn primario"><i class="bi bi-magic"></i> Crear 4 casas y repartir</button></form>
+            <a data-modal href="{% url 'alta_equipo' %}?clase={{ clase.id }}" class="p-btn">Crear un equipo a mano</a>
+        </div>
+    </div>
+{% else %}
+    <div class="row g-3 mb-3">
+        {% for e in equipos %}
+            <div class="col-sm-6 col-xl-3">
+                <div class="p-card equipo-card" style="--c: {{ e.color|color_clase:0 }}">
+                    <div class="cabeza">
+                        <span class="escudo">{{ e.emoji }}</span>
+                        <div class="min-w-0">
+                            <div class="fw-semibold text-truncate">{{ e.nombre }}</div>
+                            <div class="text-muted-p" style="font-size:.78rem">#{{ e.posicion }} · {{ e.lista_miembros|length }} integrantes</div>
+                        </div>
+                        <div class="pts"><b class="tnum">{{ e.total }}</b><span class="text-muted-p" style="font-size:.72rem">puntos</span></div>
+                    </div>
+                    <div class="progreso"><span style="width: {{ e.pct }}%"></span></div>
+                    <div class="miembros">
+                        {% for m in e.lista_miembros %}<img src="{{ m|avatar_url }}" alt="{{ m.nombre }}" title="{{ m.nombre }} {{ m.apellido }}">{% empty %}<span class="text-muted-p" style="font-size:.8rem">Sin integrantes</span>{% endfor %}
+                    </div>
+                    <div class="d-flex gap-1 mt-auto">
+                        <a data-modal href="{% url 'editar_equipo' e.id %}" class="p-btn xs"><i class="bi bi-pencil"></i> Editar</a>
+                        <form method="post" action="{% url 'eliminar' 'equipo' e.id %}" data-confirmar="Sus puntos se borrarán. Los alumnos quedan sin equipo." data-titulo="¿Eliminar {{ e.nombre }}?" data-boton="Eliminar" data-peligro>
+                            {% csrf_token %}<input type="hidden" name="next" value="{% url 'equipos_clase' clase.id %}"><button class="p-btn xs fantasma"><i class="bi bi-trash"></i></button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <div class="row g-3">
+        <div class="col-lg-8">
+            <section class="p-card">
+                <div class="p-card-head flex-wrap">
+                    <div><h2>Integrantes</h2><span class="sub">{% if sin_equipo %}{{ sin_equipo }} alumno{{ sin_equipo|pluralize }} sin equipo{% else %}Todos tienen equipo ✓{% endif %}</span></div>
+                    <div class="derecha">
+                        <form method="post" action="{% url 'repartir_equipos' clase.id %}" data-confirmar="Todos los alumnos se reacomodarán al azar en equipos del mismo tamaño. Los puntos ya ganados se quedan con cada equipo." data-titulo="¿Repartir al azar?" data-boton="Repartir">
+                            {% csrf_token %}<button class="p-btn sm"><i class="bi bi-shuffle"></i> Repartir al azar</button>
+                        </form>
+                    </div>
+                </div>
+                <div class="p-table-wrap">
+                    <table class="p-table">
+                        <thead><tr><th>Alumno</th><th>Equipo</th></tr></thead>
+                        <tbody>
+                        {% for a in alumnos %}
+                            <tr>
+                                <td><div class="persona"><img src="{{ a|avatar_url }}" alt="" loading="lazy"><span class="n">{{ a.nombre }} {{ a.apellido }}</span></div></td>
+                                <td>
+                                    <select class="p-input select-equipo" data-asignar-equipo data-alumno="{{ a.id }}" aria-label="Equipo de {{ a.nombre }}">
+                                        <option value="">— Sin equipo —</option>
+                                        {% for e in equipos %}<option value="{{ e.id }}" {% if a.equipo.id == e.id %}selected{% endif %}>{{ e.emoji }} {{ e.nombre }}</option>{% endfor %}
+                                    </select>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr><td colspan="2"><div class="vacio-p">Esta clase no tiene alumnos.</div></td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+        <div class="col-lg-4">
+            <section class="p-card mb-3">
+                <div class="p-card-head"><h2>Últimos puntos</h2></div>
+                <div class="p-card-body sin-pad">
+                    {% for p in historial %}
+                        <div class="feed-item">
+                            <span class="ico">{{ p.equipo.emoji }}</span>
+                            <div class="min-w-0"><div class="t text-truncate">{{ p.motivo }}</div><div class="f">{{ p.equipo.nombre }} · hace {{ p.fecha|timesince }}</div></div>
+                            <span class="v {% if p.puntos >= 0 %}pos{% else %}neg{% endif %}">{% if p.puntos >= 0 %}+{% endif %}{{ p.puntos }}</span>
+                        </div>
+                    {% empty %}
+                        <div class="vacio-p">Aún no hay puntos.</div>
+                    {% endfor %}
+                </div>
+            </section>
+            <section class="p-card">
+                <div class="p-card-body">
+                    <h2 class="h6 fw-semibold">Nueva temporada</h2>
+                    <p class="text-muted-p" style="font-size:.84rem">Pon en cero los puntos de todos los equipos, por ejemplo al iniciar un bimestre. Los alumnos conservan sus monedas y XP.</p>
+                    <form method="post" action="{% url 'reiniciar_equipos' clase.id %}" data-confirmar="Los puntos de todos los equipos volverán a cero. No se puede deshacer." data-titulo="¿Empezar nueva temporada?" data-boton="Reiniciar puntos" data-peligro>
+                        {% csrf_token %}<button class="p-btn sm peligro"><i class="bi bi-arrow-repeat"></i> Reiniciar puntos</button>
+                    </form>
+                </div>
+            </section>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.querySelectorAll('[data-asignar-equipo]').forEach(select => select.addEventListener('change', async () => {
+        const body = new FormData();
+        body.append('clase', '{{ clase.id }}');
+        body.append('alumno', select.dataset.alumno);
+        body.append('equipo', select.value);
+        try {
+            const r = await fetch("{% url 'api_asignar_equipo' %}", { method: 'POST', body, headers: { 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value } });
+            if (!r.ok) throw new Error();
+            PToast('Equipo actualizado');
+        } catch (e) { PToast('No se pudo guardar', 'error'); }
+    }));
+</script>
+{% endblock %}

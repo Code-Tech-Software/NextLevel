@@ -31,6 +31,7 @@ ALLOWED_HOSTS = ['*']
 
 CSRF_TRUSTED_ORIGINS = [
     "https://next-level.up.railway.app",
+
 ]
 # Application definition
 
@@ -82,9 +83,9 @@ WSGI_APPLICATION = 'NextLevel.wsgi.application'
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
 #DATABASES = {
-#  'default': {
-#      'ENGINE': 'django.db.backends.sqlite3',
-#     'NAME': BASE_DIR / 'db.sqlite3',
+  #'default': {
+  #    'ENGINE': 'django.db.backends.sqlite3',
+ #    'NAME': BASE_DIR / 'db.sqlite3',
 # }
 #}
 

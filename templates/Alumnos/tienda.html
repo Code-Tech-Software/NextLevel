@@ -1,409 +1,119 @@
 {% extends 'Alumnos/base.html' %}
-
-{% block title %}Tienda de Recompensas - {{ alumno.nombre }}{% endblock %}
-
-{% block extra_css %}
-
-
-    <style>
-       
-        body {
-            font-family: 'Nunito', sans-serif;
-            background-color: var(--bg-color);
-            background-image: radial-gradient(#cbd5e1 1.5px, transparent 1.5px);
-            background-size: 30px 30px;
-        }
-        
-        /* --- Encabezado de la Tienda --- */
-        .shop-header {
-            background: linear-gradient(135deg, var(--shop-accent), #6d28d9);
-            color: white;
-            border-radius: 24px;
-            padding: 40px 20px;
-            box-shadow: 0 15px 30px rgba(139, 92, 246, 0.3);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .shop-header::after {
-            content: '🛒';
-            position: absolute;
-            right: 10%;
-            top: -20px;
-            font-size: 8rem;
-            opacity: 0.1;
-            transform: rotate(15deg);
-        }
-
-        /* --- Tarjetas de Artículos --- */
-        .shop-card {
-            background: white;
-            border-radius: 24px;
-            border: 2px solid #e2e8f0;
-            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .shop-card:hover {
-            transform: translateY(-8px);
-            border-color: var(--shop-accent);
-            box-shadow: 0 20px 40px rgba(139, 92, 246, 0.15);
-        }
-
-        .item-showcase {
-            background: radial-gradient(circle at center, #f8fafc 0%, #e2e8f0 100%);
-            height: 180px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-bottom: 2px dashed #cbd5e1;
-            position: relative;
-        }
-
-        .item-showcase img {
-            max-height: 80%;
-            object-fit: contain;
-            filter: drop-shadow(0 10px 10px rgba(0, 0, 0, 0.15));
-            transition: transform 0.3s;
-        }
-
-        .shop-card:hover .item-showcase img {
-            transform: scale(1.1);
-        }
-
-        .price-tag {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            background: white;
-            padding: 6px 15px;
-            border-radius: 50px;
-            font-weight: 900;
-            font-size: 1.1rem;
-            color: #334155;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-            border: 2px solid #efa744;
-        }
-
-        /* --- Botones de Compra --- */
-        
-        
-        .btn-buy {
-            background: var(--success-color);
-            color: white;
-            font-weight: 900;
-            text-transform: uppercase;
-            border-radius: 16px;
-            padding: 12px;
-            border: none;
-            box-shadow: 0 6px 0 var(--success-dark), 0 10px 15px rgba(16, 185, 129, 0.3);
-            transition: all 0.1s;
-        }
-
-        .btn-buy:hover {
-            transform: translateY(2px);
-            box-shadow: 0 4px 0 var(--success-dark), 0 8px 10px rgba(16, 185, 129, 0.3);
-            color: white;
-        }
-
-        .btn-buy:active {
-            transform: translateY(6px);
-            box-shadow: 0 0px 0 var(--success-dark);
-        }
-
-        .btn-locked {
-            background: #e2e8f0;
-            color: #94a3b8;
-            font-weight: 800;
-            text-transform: uppercase;
-            border-radius: 16px;
-            padding: 12px;
-            border: none;
-            box-shadow: inset 0 4px 6px rgba(0, 0, 0, 0.05);
-            cursor: not-allowed;
-        }
-
-        .card-locked .item-showcase {
-            filter: grayscale(100%) opacity(0.6);
-        }
-
-        /* --- Inventario --- */
-        .inventory-section {
-            background: white;
-            border-radius: 24px;
-            border: 2px solid #e2e8f0;
-            padding: 30px;
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.03);
-        }
-
-        .inventory-item {
-            background: #f8fafc;
-            border-radius: 16px;
-            border: 1px solid #e2e8f0;
-            margin-bottom: 15px;
-            transition: transform 0.2s;
-        }
-
-        .inventory-item:hover {
-            transform: translateX(5px);
-            background: white;
-            border-color: var(--primary-color);
-        }
-
-        .badge-status-pending {
-            background-color: #fef3c7;
-            color: #d97706;
-            border: 1px solid #fde68a;
-        }
-
-        .badge-status-claimed {
-            background-color: #d1fae5;
-            color: #059669;
-            border: 1px solid #a7f3d0;
-        }
-
-        /* Ajustes SweetAlert2 personalizados para que parezca del juego */
-        div:where(.swal2-container) button:where(.swal2-styled) {
-            font-family: 'Nunito', sans-serif !important;
-            font-weight: 900 !important;
-            text-transform: uppercase !important;
-            border-radius: 16px !important;
-        }
-
-        div:where(.swal2-container) div:where(.swal2-popup) {
-            border-radius: 24px !important;
-            font-family: 'Nunito', sans-serif !important;
-            border: 2px solid #e2e8f0;
-        }
-        
-        
-        
-        /* --- Botones para SweetAlert --- */
-        .swal-btn-verde {
-            background-color: #10b981; /* Verde sólido */
-            color: white;
-            border: none;
-            border-radius: 12px;
-            padding: 12px 24px;
-            font-weight: 800;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-
-        .swal-btn-verde:hover {
-            background-color: #059669; /* Verde ligeramente más oscuro al pasar el mouse */
-        }
-
-        .swal-btn-gris {
-            background-color: #e2e8f0; /* Gris claro sólido */
-            color: #475569; /* Texto gris oscuro */
-            border: none;
-            border-radius: 12px;
-            padding: 12px 24px;
-            font-weight: 800;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-
-        .swal-btn-gris:hover {
-            background-color: #cbd5e1; /* Gris ligeramente más oscuro al pasar el mouse */
-        }
-        
-        
-        
-        /* --- Etiqueta de Tipo de Artículo --- */
-        .type-badge {
-            position: absolute;
-            top: 15px;
-            left: 15px;
-            padding: 4px 12px;
-            border-radius: 50px;
-            font-weight: 800;
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
-            z-index: 2;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        /* Colores dinámicos según el tipo */
-        .type-avatar { background-color: #e0e7ff; color: #4338ca; border: 2px solid #c7d2fe; }
-        .type-permiso { background-color: #fce7f3; color: #be185d; border: 2px solid #fbcfe8; }
-        .type-fisico { background-color: #ffedd5; color: #c2410c; border: 2px solid #fed7aa; }
-        .type-otro { background-color: #f3f4f6; color: #4b5563; border: 2px solid #e5e7eb; }
-        
-        
-        
-        
-        
-    </style>
-
-{% endblock %}
+{% load nextlevel %}
+{% block title %}Tienda · {{ alumno.nombre }}{% endblock %}
 
 {% block content %}
+<div class="contenedor">
+    <section class="tienda-hero">
+        <div class="fw-black text-uppercase" style="letter-spacing:2px;opacity:.85;font-size:.8rem">Mercado de recompensas</div>
+        <h1>¡Gasta tu botín! 🛍️</h1>
+        <p class="fw-bold mb-0" style="opacity:.9">Cambia tus monedas por premios, privilegios y avatares.</p>
+        <div class="saldo"><i class="bi bi-coin" style="color:#fde047"></i> <span data-monedas>{{ alumno.monedas }}</span> <small style="font-size:.9rem;opacity:.85">monedas</small></div>
+    </section>
 
-    <div class="container pb-5 mt-4">
-
-        <div class="shop-header text-center mb-5">
-            <h1 class="fw-black mb-2" style="font-weight: 900; font-size: 2.5rem;">
-                <i class="bi bi-shop"></i> Mercado de Recompensas
-            </h1>
-            <p class="fs-5 mb-0 opacity-75 fw-bold">¡Gasta tu botín en objetos y beneficios exclusivos!</p>
+    <div class="d-flex flex-wrap align-items-center gap-2 mt-4">
+        <div class="filtros flex-grow-1">
+            <button type="button" class="filtro activo" data-filtro="todos">✨ Todo</button>
+            <button type="button" class="filtro" data-filtro="fisico">🎁 Premios físicos</button>
+            <button type="button" class="filtro" data-filtro="permiso">⭐ Privilegios</button>
+            <button type="button" class="filtro" data-filtro="avatar">🤖 Avatares</button>
+            <button type="button" class="filtro" data-filtro="otro">🏷️ Digitales</button>
         </div>
-
-        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-5">
-            {% for articulo in articulos %}
-                <div class="col">
-                    <div class="card h-100 shop-card {% if alumno.monedas < articulo.costo_monedas %}card-locked{% endif %} border-0">
-                       
-                    
-                    <div class="item-showcase">
-                            
-                            <div class="type-badge type-{{ articulo.tipo }}">
-                                {% if articulo.tipo == 'avatar' %}
-                                    <i class="bi bi-person-bounding-box"></i>
-                                {% elif articulo.tipo == 'permiso' %}
-                                    <i class="bi bi-star-fill"></i>
-                                {% elif articulo.tipo == 'fisico' %}
-                                    <i class="bi bi-box2-heart-fill"></i>
-                                {% else %}
-                                    <i class="bi bi-tag-fill"></i>
-                                {% endif %}
-                                {{ articulo.get_tipo_display }}
-                            </div>
-                            
-                            <div class="price-tag">
-                                <i class="bi bi-coin" style="color: var(--gold-coin);"></i> {{ articulo.costo_monedas }}
-                            </div>
-                            
-                            {% if articulo.imagen %}
-                                <img src="{{ articulo.imagen.url }}" alt="{{ articulo.nombre }}">
-                            {% else %}
-                                <i class="bi bi-gift-fill text-primary"
-                                   style="font-size: 6rem; filter: drop-shadow(0 10px 10px rgba(67, 97, 238, 0.3));"></i>
-                            {% endif %}
-                        </div>
-
-                        <div class="card-body d-flex flex-column p-4">
-                            <h4 class="card-title fw-bold text-dark mb-2">{{ articulo.nombre }}</h4>
-                            <p class="card-text text-secondary fw-semibold small flex-grow-1 mb-4">{{ articulo.descripcion }}</p>
-
-                            {% if alumno.monedas >= articulo.costo_monedas %}
-                                <form action="{% url 'comprar_articulo' clase.id articulo.id %}" method="POST"
-                                      class="mt-auto form-compra"
-                                      data-item-name="{{ articulo.nombre }}"
-                                      data-item-cost="{{ articulo.costo_monedas }}">
-                                    {% csrf_token %}
-                                    <button type="submit" class="btn-buy w-100">
-                                        <i class="bi bi-bag-check-fill me-2"></i> Comprar
-                                    </button>
-                                </form>
-                            {% else %}
-                                <button class="btn-locked w-100 mt-auto" disabled>
-                                    <i class="bi bi-lock-fill me-2"></i> Faltan Monedas
-                                </button>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
-            {% empty %}
-                <div class="col-12 d-flex flex-column align-items-center justify-content-center w-100 py-5"
-                     style="min-height: 35vh;">
-                    <i class="bi bi-door-closed text-muted mb-3" style="font-size: 5rem; opacity: 0.5;"></i>
-                    <h3 class="fw-bold text-secondary">El mercader está descansando</h3>
-                    <p class="text-muted fs-5">No hay artículos disponibles por ahora. ¡Vuelve más tarde!</p>
-                </div>
-            {% endfor %}
-        </div>
-
-        <div class="row">
-            <div class="col-12">
-                <div class="inventory-section">
-                    <h3 class="fw-bold mb-4 text-dark" style="font-size: 1.8rem;">
-                        <i class="bi bi-backpack-fill text-muted opacity-50 me-2"></i> Mi Mochila
-                    </h3>
-
-                    <div class="list-group list-group-flush">
-                        {% for compra in mis_compras %}
-                            <div class="list-group-item inventory-item d-flex flex-column flex-sm-row justify-content-between align-items-sm-center p-4 border-0">
-                                <div class="d-flex align-items-center mb-3 mb-sm-0">
-                                    <div class="bg-white rounded-circle shadow-sm d-flex align-items-center justify-content-center me-3"
-                                         style="width: 50px; height: 50px;">
-                                        <i class="bi bi-box-seam-fill text-muted opacity-50 fs-4"></i>
-                                    </div>
-                                    <div>
-                                        <h5 class="mb-1 fw-bold text-dark">{{ compra.articulo.nombre }}</h5>
-                                        <small class="text-muted fw-bold"><i
-                                                class="bi bi-calendar-event me-1"></i> {{ compra.fecha_compra|date:"d M Y" }}
-                                        </small>
-                                    </div>
-                                </div>
-
-                                {% if compra.articulo.requiere_validacion and not compra.entregado_usado %}
-                                    <span class="badge badge-status-pending px-4 py-2 rounded-pill fs-6 fw-bold">
-                                    <i class="bi bi-hourglass-split me-1"></i> Esperando al Maestro
-                                </span>
-                                {% else %}
-                                    <span class="badge badge-status-claimed px-4 py-2 rounded-pill fs-6 fw-bold">
-                                    <i class="bi bi-check-circle-fill me-1"></i> Comprado 
-                                </span>
-                                {% endif %}
-                            </div>
-                        {% empty %}
-                            <div class="text-center text-muted p-5 bg-light rounded-4 border border-dashed">
-                                <i class="bi bi-basket text-secondary opacity-50 mb-3 d-block"
-                                   style="font-size: 3rem;"></i>
-                                <h5 class="fw-bold">Tu mochila está vacía</h5>
-                                <p class="mb-0">Completa misiones, gana monedas y compra premios aquí.</p>
-                            </div>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
-        </div>
-
+        {% if por_entregar %}
+            <a href="#mochila" class="chip oro text-decoration-none mb-2"><i class="bi bi-hourglass-split"></i> {{ por_entregar }} por recibir</a>
+        {% endif %}
     </div>
 
+    <div class="row g-4 mt-0">
+        {% for articulo in articulos %}
+            <div class="col-12 col-sm-6 col-lg-4 col-producto" data-tipo="{{ articulo.tipo }}">
+                <article class="producto {% if articulo.destacado %}destacado{% endif %}" data-tipo="{{ articulo.tipo }}">
+                    <div class="vitrina">
+                        {% if articulo.imagen %}
+                            <img src="{{ articulo.imagen.url }}" alt="{{ articulo.nombre }}" loading="lazy">
+                        {% else %}
+                            <span class="emoji-prod">{% if articulo.tipo == 'fisico' %}🎁{% elif articulo.tipo == 'permiso' %}🎟️{% elif articulo.tipo == 'avatar' %}🤖{% else %}💎{% endif %}</span>
+                        {% endif %}
+                        <div class="etiquetas">
+                            {% if articulo.destacado %}<span class="chip oro">🌟 Destacado</span>{% endif %}
+                            {% if articulo.stock_bajo %}<span class="chip rojo">🔥 ¡Últimas {{ articulo.stock }}!</span>{% endif %}
+                            {% if articulo.nivel_bloqueado %}<span class="chip morado">🔒 Nivel {{ articulo.nivel_requerido }}</span>{% endif %}
+                        </div>
+                        <span class="precio"><i class="bi bi-coin ico"></i> {{ articulo.costo_monedas }}</span>
+                        {% if articulo.agotado %}<div class="sello-agotado"><span>AGOTADO</span></div>{% endif %}
+                    </div>
+                    <div class="cuerpo">
+                        <div class="nombre">{{ articulo.nombre }}</div>
+                        <div class="desc">{{ articulo.descripcion }}</div>
 
+                        {% if articulo.stock is not None and not articulo.agotado %}
+                            <div class="stock">📦 Quedan {{ articulo.stock }} pieza{{ articulo.stock|pluralize }}</div>
+                        {% endif %}
+                        {% if articulo.limite_por_alumno %}
+                            <div class="stock">🎯 Compraste {{ articulo.compradas }} de {{ articulo.limite_por_alumno }} permitidos</div>
+                        {% endif %}
 
-<script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const formsCompra = document.querySelectorAll('.form-compra');
+                        {% if articulo.puede_comprar %}
+                            <form action="{% url 'comprar_articulo' clase.id articulo.id %}" method="POST" class="form-compra mt-auto"
+                                  data-nombre="{{ articulo.nombre }}" data-costo="{{ articulo.costo_monedas }}"
+                                  data-restante="{{ alumno.monedas|restar:articulo.costo_monedas }}"
+                                  data-imagen="{% if articulo.imagen %}{{ articulo.imagen.url }}{% endif %}">
+                                {% csrf_token %}
+                                <button type="submit" class="g-btn ancho"><i class="bi bi-bag-check-fill"></i> Comprar</button>
+                            </form>
+                        {% elif articulo.agotado %}
+                            <button class="g-btn ancho mt-auto" disabled><i class="bi bi-emoji-frown"></i> Agotado</button>
+                        {% elif articulo.nivel_bloqueado %}
+                            <button class="g-btn ancho mt-auto" disabled><i class="bi bi-lock-fill"></i> Requiere nivel {{ articulo.nivel_requerido }}</button>
+                        {% elif articulo.limite_alcanzado %}
+                            <button class="g-btn ancho mt-auto" disabled><i class="bi bi-check2-all"></i> Límite alcanzado</button>
+                        {% else %}
+                            <div class="mt-auto">
+                                <div class="stock">Te faltan <b>{{ articulo.faltan }}</b> monedas</div>
+                                <div class="barra oro delgada mb-2"><span style="width:0" data-ancho="{{ alumno.monedas|porcentaje:articulo.costo_monedas }}"></span></div>
+                                <button class="g-btn ancho" disabled><i class="bi bi-piggy-bank-fill"></i> ¡Sigue ahorrando!</button>
+                            </div>
+                        {% endif %}
+                    </div>
+                </article>
+            </div>
+        {% empty %}
+            <div class="col-12">
+                <div class="g-card vacio-juego">
+                    <span class="e">🚪</span>
+                    <h3 class="text-dark">El mercader está descansando</h3>
+                    <p class="mb-0">No hay artículos por ahora. ¡Vuelve más tarde!</p>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
 
-            formsCompra.forEach(form => {
-                form.addEventListener('submit', function (e) {
-                    e.preventDefault(); // Detenemos el envío automático
-
-                    const itemName = this.getAttribute('data-item-name');
-                    const itemCost = this.getAttribute('data-item-cost');
-
-                    Swal.fire({
-                        title: '¿Comprar ' + itemName + '?',
-                        html: `Te costará <b style="color: #f59e0b; font-size: 1.2rem;">${itemCost} <i class="bi bi-coin"></i></b> monedas.<br>¿Estás seguro?`,
-                        icon: 'question',
-                        showCancelButton: true,
-                        confirmButtonColor: '#10b981', // Verde éxito
-                        cancelButtonColor: '#e2e8f0', // Gris claro
-                        confirmButtonText: '<i class="bi bi-bag-check-fill me-1"></i> Sí, comprar',
-                        cancelButtonText: '<span style="color: #475569">Mejor no</span>',
-                        reverseButtons: true, // Pone el botón de confirmar a la derecha
-                        backdrop: `rgba(0, 0, 0, 0.4)` // Fondo oscurecido
-                    }).then((result) => {
-                        if (result.isConfirmed) {
-                            form.submit();
-                        }
-                    });
-                });
-            });
-
-        });
-    </script>
-  
-
+    <h2 class="seccion-titulo" id="mochila">🎒 Mi mochila</h2>
+    <section class="g-card">
+        {% for compra in mis_compras %}
+            <div class="mochila-item">
+                <span class="mini">
+                    {% if compra.articulo.imagen %}<img src="{{ compra.articulo.imagen.url }}" alt="" loading="lazy">{% else %}🎁{% endif %}
+                </span>
+                <div class="min-w-0 flex-grow-1">
+                    <div class="n text-truncate">{{ compra.articulo.nombre }}</div>
+                    <div class="f"><i class="bi bi-calendar-event"></i> {{ compra.fecha_compra|date:"d M Y" }} · <i class="bi bi-coin"></i> {{ compra.costo_pagado }}</div>
+                </div>
+                {% if compra.estado == 'pendiente' %}
+                    <span class="chip oro"><i class="bi bi-hourglass-split"></i> Por recibir</span>
+                {% elif compra.estado == 'cancelado' %}
+                    <span class="chip rojo"><i class="bi bi-arrow-counterclockwise"></i> Reembolsado</span>
+                {% else %}
+                    <span class="chip verde"><i class="bi bi-check-circle-fill"></i> {% if compra.articulo.tipo == 'avatar' %}Desbloqueado{% else %}Recibido{% endif %}</span>
+                {% endif %}
+            </div>
+        {% empty %}
+            <div class="vacio-juego">
+                <span class="e">🧺</span>
+                <h4 class="text-dark">Tu mochila está vacía</h4>
+                <p class="mb-0">Completa misiones, gana monedas y compra premios aquí.</p>
+            </div>
+        {% endfor %}
+    </section>
+</div>
 {% endblock %}

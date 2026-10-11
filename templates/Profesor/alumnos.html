@@ -1,0 +1,66 @@
+{% extends 'Profesor/baseProfesor.html' %}
+{% load nextlevel %}
+{% block title %}Alumnos{% endblock %}
+{% block titulo_pagina %}Alumnos{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1>Alumnos</h1>
+        <p><span id="conteo-alumnos">{{ alumnos|length }}</span> alumnos{% if clase %} en {{ clase.nombre }}{% endif %}</p>
+    </div>
+    <div class="acciones">
+        <a href="{% url 'credenciales' %}{% if clase %}?clase={{ clase.id }}{% endif %}" class="p-btn"><i class="bi bi-printer"></i> Credenciales</a>
+        <a data-modal href="{% url 'alta_masiva' %}{% if clase %}?clase={{ clase.id }}{% endif %}" class="p-btn"><i class="bi bi-people"></i> Alta masiva</a>
+        <a data-modal href="{% url 'alta_alumno' %}{% if clase %}?clase={{ clase.id }}{% endif %}" class="p-btn primario"><i class="bi bi-person-plus"></i> Nuevo alumno</a>
+    </div>
+</div>
+
+<section class="p-card">
+    <div class="p-card-head flex-wrap">
+        <div class="position-relative" style="max-width:300px;flex:1">
+            <i class="bi bi-search position-absolute text-muted-p" style="left:.75rem;top:50%;transform:translateY(-50%)"></i>
+            <input type="search" class="p-input" style="padding-left:2.1rem;height:36px" placeholder="Buscar por nombre o PIN…" data-buscar="#tabla-alumnos" data-contador="#conteo-alumnos">
+        </div>
+        <div class="derecha chips-filtro">
+            <a href="{% url 'alumnos_lista' %}" class="chip-f {% if not clase %}activo{% endif %}">Todas</a>
+            {% for c in clases %}<a href="?clase={{ c.id }}" class="chip-f {% if clase.id == c.id %}activo{% endif %}">{{ c.icono }} {{ c.nombre }}</a>{% endfor %}
+        </div>
+    </div>
+    <div class="p-table-wrap">
+        <table class="p-table" id="tabla-alumnos">
+            <thead>
+                <tr><th>Alumno</th><th>Clases</th><th class="num">Nivel</th><th class="num">XP</th><th class="num">Monedas</th><th class="num">Misiones</th><th class="num">Racha</th><th class="num">PIN</th><th>Activo</th><th></th></tr>
+            </thead>
+            <tbody>
+            {% for a in alumnos %}
+                <tr class="{% if not a.activo %}fila-inactiva{% endif %}">
+                    <td>
+                        <a href="{% url 'alumno_detalle' a.id %}" class="persona">
+                            <img src="{{ a|avatar_url }}" alt="" loading="lazy">
+                            <span class="min-w-0"><span class="n d-block">{{ a.nombre }} {{ a.apellido }}</span><span class="s">{{ a.rango.emoji }} {{ a.rango.nombre }}</span></span>
+                        </a>
+                    </td>
+                    <td>{% for c in a.clases.all %}<span class="p-badge me-1">{{ c.grado }}{{ c.grupo }} · {{ c.nombre|truncatechars:14 }}</span>{% empty %}<span class="text-muted-p">—</span>{% endfor %}</td>
+                    <td class="num">{{ a.nivel }}</td>
+                    <td class="num">{{ a.xp_total }}</td>
+                    <td class="num">{{ a.monedas }}</td>
+                    <td class="num">{{ a.aprobadas }}</td>
+                    <td class="num">{% if a.racha_actual %}🔥 {{ a.racha_actual }}{% else %}<span class="text-muted-p">0</span>{% endif %}</td>
+                    <td class="num"><code style="color:var(--text-2)">{{ a.pin }}</code></td>
+                    <td><input type="checkbox" class="nl-switch" {% if a.activo %}checked{% endif %} data-alternar-url="{% url 'alternar_activo' 'alumno' a.id %}" aria-label="Alumno activo"></td>
+                    <td>
+                        <div class="acciones-fila">
+                            <a data-modal href="{% url 'editar_alumno' a.id %}" class="p-btn xs icono fantasma" title="Editar"><i class="bi bi-pencil"></i></a>
+                            <a href="{% url 'alumno_detalle' a.id %}" class="p-btn xs icono fantasma" title="Ver perfil"><i class="bi bi-chevron-right"></i></a>
+                        </div>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="10"><div class="vacio-p"><i class="bi bi-people"></i><h3>No hay alumnos</h3><a data-modal href="{% url 'alta_masiva' %}" class="p-btn primario mt-2">Registrar alumnos</a></div></td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

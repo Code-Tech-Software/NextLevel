@@ -4,8 +4,8 @@
   "description": "Plataforma educativa gamificada para que estudiantes de primaria aprendan robótica y TIC de manera interactiva.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#000000",
+  "background_color": "#eef5ff",
+  "theme_color": "#142c45",
   "icons": [
     {
       "src": "/static/img/192x192.png",

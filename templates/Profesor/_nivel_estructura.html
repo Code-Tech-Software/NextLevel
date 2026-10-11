@@ -1,0 +1,66 @@
+{% load nextlevel %}
+<div class="nivel-bloque">
+    <div class="nivel-cabeza">
+        <i class="bi bi-flag text-muted-p"></i>
+        <span class="n">{{ n.nivel.nombre }}</span>
+        <span class="text-muted-p" style="font-size:.76rem">· {{ n.misiones|length }} misiones · cofre de {{ n.nivel.recompensa_cofre }} monedas</span>
+        <span class="ms-auto d-flex gap-1">
+            <a data-modal="xl" href="{% url 'alta_mision' %}?nivel={{ n.nivel.id }}" class="p-btn xs"><i class="bi bi-plus"></i> Misión</a>
+            <a data-modal href="{% url 'editar_nivel' n.nivel.id %}" class="p-btn xs icono fantasma" title="Editar nivel"><i class="bi bi-pencil"></i></a>
+            <form method="post" action="{% url 'eliminar' 'nivel' n.nivel.id %}" data-confirmar="Se borrarán sus misiones y calificaciones." data-titulo="¿Eliminar {{ n.nivel.nombre }}?" data-boton="Eliminar" data-peligro>
+                {% csrf_token %}<button class="p-btn xs icono fantasma" title="Eliminar nivel"><i class="bi bi-trash"></i></button>
+            </form>
+        </span>
+    </div>
+    {% for mision in n.misiones %}
+        <div class="mision-fila {% if not mision.activa %}opacity-50{% endif %}">
+            <span class="orden">{{ mision.orden }}</span>
+            <span class="tipo-ico" style="background: {{ mision.info.color }}" title="{{ mision.get_tipo_display }}"><i class="bi {{ mision.info.icono }}"></i></span>
+            <div class="min-w-0 flex-grow-1">
+                <a data-modal="xl" href="{% url 'editar_mision' mision.id %}" class="n d-block text-truncate text-decoration-none" style="color:var(--text)">
+                    {{ mision.nombre }}
+                    {% if mision.es_jefe %}<span class="p-badge violeta ms-1">Jefe</span>{% endif %}
+                    {% if not mision.activa %}<span class="p-badge ms-1">Oculta</span>{% endif %}
+                </a>
+                <div class="s">
+                    <span>{{ mision.get_tipo_display }}</span>
+                    <span><i class="bi bi-lightning-charge"></i> {{ mision.xp_recompensa }} XP</span>
+                    <span><i class="bi bi-coin"></i> {{ mision.monedas_recompensa }}</span>
+                    {% if mision.fecha_limite %}<span><i class="bi bi-calendar"></i> {{ mision.fecha_limite|date:"d M" }}</span>{% endif %}
+                    {% if mision.pendientes %}<a href="{% url 'revisiones' %}?clase={{ mision.clase_id }}" class="p-badge ambar text-decoration-none">{{ mision.pendientes }} por revisar</a>{% endif %}
+                </div>
+            </div>
+            <div class="avance">
+                <div class="d-flex justify-content-between mb-1"><span>Completada</span><span class="tnum">{{ mision.aprobadas }}/{{ total_alumnos }}</span></div>
+                <div class="progreso"><span style="width: {{ mision.aprobadas|porcentaje:total_alumnos }}%"></span></div>
+            </div>
+            <div class="dropdown">
+                <button class="p-btn xs icono fantasma" data-bs-toggle="dropdown" aria-label="Opciones de la misión"><i class="bi bi-three-dots-vertical"></i></button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a data-modal="xl" class="dropdown-item" href="{% url 'editar_mision' mision.id %}"><i class="bi bi-pencil"></i> Editar</a></li>
+                    <li><a data-modal="xl" class="dropdown-item" href="{% url 'calificar_mision' mision.id %}"><i class="bi bi-check2-square"></i> Calificar a todos</a></li>
+                    <li>
+                        <form method="post" action="{% url 'duplicar_mision' mision.id %}">{% csrf_token %}<button class="dropdown-item"><i class="bi bi-copy"></i> Duplicar</button></form>
+                    </li>
+                    <li>
+                        <form method="post" action="{% url 'alternar_activo' 'mision' mision.id %}">
+                            {% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}">
+                            <button class="dropdown-item">{% if mision.activa %}<i class="bi bi-eye-slash"></i> Ocultar a los alumnos{% else %}<i class="bi bi-eye"></i> Publicar{% endif %}</button>
+                        </form>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <form method="post" action="{% url 'eliminar' 'mision' mision.id %}" data-confirmar="También se borrarán las entregas y calificaciones de esta misión." data-titulo="¿Eliminar {{ mision.nombre }}?" data-boton="Eliminar" data-peligro>
+                            {% csrf_token %}<button class="dropdown-item text-danger"><i class="bi bi-trash"></i> Eliminar</button>
+                        </form>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    {% empty %}
+        <div class="mision-fila text-muted-p" style="font-size:.85rem">
+            <span class="ms-4">Sin misiones.</span>
+            <a data-modal="xl" href="{% url 'alta_mision' %}?nivel={{ n.nivel.id }}" class="ms-1">Crear la primera</a>
+        </div>
+    {% endfor %}
+</div>

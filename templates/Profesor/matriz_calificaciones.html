@@ -1,244 +1,89 @@
 {% extends 'Profesor/baseProfesor.html' %}
+{% load nextlevel %}
+{% block title %}Calificaciones · {{ clase.nombre }}{% endblock %}
+{% block migas %}<a href="{% url 'clase_detalle' clase.id %}">{{ clase.nombre }}</a><i class="bi bi-chevron-right"></i><span class="actual">Calificaciones</span>{% endblock %}
+
 {% block content %}
-
-    <!DOCTYPE html>
-    <html lang="es">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <link rel="stylesheet" href="https://cdn.datatables.net/2.2.2/css/dataTables.dataTables.min.css">
-
-        <title>Matriz de Calificaciones | Next-Level </title>
-
-
-        <style>
-          
-
-            body {
-                font-family: 'Outfit', sans-serif;
-                background-color: var(--bg-color);
-                color: var(--text-main);
-                background-image: radial-gradient(#cbd5e1 1.5px, transparent 1.5px);
-                background-size: 30px 30px;
-            }
-
-            .level-badge {
-                background: rgba(99, 102, 241, 0.1);
-                color: var(--primary-game);
-                border: 1px solid rgba(99, 102, 241, 0.2);
-                border-radius: 8px;
-                padding: 4px 10px;
-                font-weight: 600;
-                font-size: 0.85rem;
-            }
-
-            .quest-panel {
-                background: var(--surface-color);
-                border-radius: 24px;
-                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
-                border: 1px solid rgba(0, 0, 0, 0.03);
-                overflow: hidden;
-            }
-
-            .quest-header {
-                background: rgba(255, 255, 255, 0.9);
-                border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-                padding: 20px 24px;
-            }
-
-
-            .table-matrix {
-                color: var(--text-main);
-                margin-bottom: 0 !important;
-            }
-
-            .table-matrix > :not(caption) > * > * {
-                padding: 1rem;
-                border-bottom: 1px solid rgba(0, 0, 0, 0.2) ;
-                vertical-align: middle;
-                text-align: center;
-            }
-
-            .table-light-game th {
-                background-color: #f8fafc !important;
-                color: var(--text-muted) !important;
-                font-weight: 600;
-                white-space: nowrap;
-            }
-
-            .table-matrix .student-name {
-                text-align: left;
-                font-weight: 600;
-                position: sticky;
-                left: 0;
-                background: #f3f3f3 !important;
-                z-index: 10;
-                box-shadow: 2px 0 5px rgba(0, 0, 0, 0.02);
-            }
-
-            .table-light-game .student-name {
-                background-color: #f8fafc !important;
-                z-index: 11;
-            }
-
-            .badge-status {
-                font-size: 0.8rem;
-                padding: 4px 10px;
-                border-radius: 6px;
-                font-weight: 600;
-                display: inline-flex;
-                align-items: center;
-                justify-content: center;
-            }
-
-            .badge-aprobado {
-                background: rgba(16, 185, 129, 0.1);
-                color: var(--success-game);
-                border: 1px solid rgba(16, 185, 129, 0.2);
-            }
-
-            .badge-pendiente {
-                background: rgba(245, 158, 11, 0.1);
-                color: var(--accent-gold);
-                border: 1px solid rgba(245, 158, 11, 0.2);
-            }
-
-            .badge-rechazado {
-                background: rgba(239, 68, 68, 0.1);
-                color: var(--danger-game);
-                border: 1px solid rgba(239, 68, 68, 0.2);
-            }
-
-            .badge-vacio {
-                background: rgba(100, 116, 139, 0.1);
-                color: var(--text-muted);
-                border: 1px solid rgba(100, 116, 139, 0.2);
-            }
-
-            div.dataTables_wrapper div.dataTables_filter input {
-                border-radius: 10px;
-                border: 1px solid rgba(0, 0, 0, 0.1);
-                padding: 0.4rem 0.8rem;
-            }
-
-            div.dataTables_wrapper div.dataTables_length select {
-                border-radius: 8px;
-            }
-        </style>
-    </head>
-    <body>
-
-
-    <div class="container mt-4 mb-5">
-        <div class="quest-panel">
-        
-        
-            <div class="quest-header d-flex align-items-center justify-content-between flex-wrap gap-3">
-    <div class="d-flex align-items-center">
-        <div class="bg-light rounded-circle p-2 text-secondary me-3 d-flex align-items-center justify-content-center"
-             style="width: 45px; height: 45px;">
-            <i class="bi bi-bar-chart-fill fs-4"></i>
-        </div>
-        <div>
-            <div class="d-flex align-items-center gap-2">
-                <h4 class="mb-0 fw-bold text-dark">Calificaciones Globales</h4>
-                <span class="level-badge">{{ clase.nombre }} {{ clase.grado }} {{ clase.grupo }}</span>
-            </div>
-            <p class="text-muted small mb-0 mt-1">Visión general del progreso de los alumnos</p>
-        </div>
-    </div>
-
+<div class="page-head">
     <div>
-        <a href="{% url 'exportar_matriz_excel' clase.id %}" class="btn btn-success d-flex align-items-center gap-2 fw-bold" style="border-radius: 10px; background-color: #10b981; border-color: #10b981;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-file-earmark-excel-fill" viewBox="0 0 16 16">
-              <path d="M9.293 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.707A1 1 0 0 0 13.707 4L10 .293A1 1 0 0 0 9.293 0M9.5 3.5v-2l3 3h-2a1 1 0 0 1-1-1M5.884 6.68 8 9.219l2.116-2.54a.5.5 0 1 1 .768.641L8.651 10l2.233 2.68a.5.5 0 0 1-.768.64L8 10.781l-2.116 2.54a.5.5 0 0 1-.768-.641L7.349 10 5.116 7.32a.5.5 0 1 1 .768-.64"/>
-            </svg>
-            Exportar Excel
-        </a>
+        <h1>Calificaciones</h1>
+        <p>{{ clase.nombre }} · {{ clase.grado }} {{ clase.grupo }} · {{ matriz|length }} alumnos · {{ misiones_columnas|length }} misiones{% if promedio_grupo is not None %} · Promedio del grupo <b class="tnum">{{ promedio_grupo|floatformat:1 }}</b>{% endif %}</p>
+    </div>
+    <div class="acciones">
+        <div class="dropdown">
+            <button class="p-btn" data-bs-toggle="dropdown"><i class="bi bi-arrow-left-right"></i> Cambiar clase</button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                {% for c in clases %}<li><a class="dropdown-item {% if c.id == clase.id %}active{% endif %}" href="{% url 'matriz_calificaciones' c.id %}">{{ c.icono }} {{ c.nombre }} · {{ c.grado }} {{ c.grupo }}</a></li>{% endfor %}
+            </ul>
+        </div>
+        <a href="{% url 'exportar_matriz_excel' clase.id %}" class="p-btn exito"><i class="bi bi-file-earmark-excel"></i> Exportar a Excel</a>
     </div>
 </div>
-        
 
-            <div class="card-body p-4">
-                <div class="table-responsive">
-                    <table id="matrizCalificaciones" class="table table-hover table-matrix w-100 border-0">
-                        <thead class="table-light-game">
-                        <tr>
-                            <th class="student-name border-0 rounded-start">Alumno</th>
-                            {% for mision in misiones_columnas %}
-                                <th class="border-0" style="min-width: 90px;">
-                                    {{ mision.nombre }}
-                                    <span class="d-block small text-muted mb-1" style="font-size: 0.7rem; ">{{ mision.nivel.nombre }}</span>
-                                </th>
-                            {% endfor %}
-                        </tr>
-                        </thead>
-                        <tbody>
-                        {% for fila in matriz %}
-                            <tr>
-                                <td class="student-name">
-                                    <div class="d-flex align-items-center">
-                                        <span class="text-dark fw-bold">{{ fila.alumno.apellido }}, {{ fila.alumno.nombre }}</span>
-                                    </div>
-                                </td>
-                                {% for celda in fila.calificaciones %}
-                                    <td>
-                                        {% if celda.progreso %}
-                                            <div class="fw-bold mb-1 text-dark">{{ celda.progreso.calificacion_escala_10 }}
-                                                / 10
-                                            </div>
-                                            {% if celda.progreso.estado == 'aprobado' %}
-                                                <span class="badge-status badge-aprobado">Aprobado</span>
-                                            {% elif celda.progreso.estado == 'pendiente' %}
-                                                <span class="badge-status badge-pendiente">Pendiente</span>
-                                            {% elif celda.progreso.estado == 'rechazado' %}
-                                                <span class="badge-status badge-rechazado">Rechazado</span>
-                                            {% endif %}
-                                        {% else %}
-                                            <span class="badge-status badge-vacio">Sin entrega</span>
-                                        {% endif %}
-                                    </td>
-                                {% endfor %}
-                            </tr>
-                        {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+<section class="p-card">
+    <div class="p-card-head flex-wrap">
+        <div class="position-relative" style="max-width:280px;flex:1">
+            <i class="bi bi-search position-absolute text-muted-p" style="left:.75rem;top:50%;transform:translateY(-50%)"></i>
+            <input type="search" class="p-input" style="padding-left:2.1rem;height:36px" placeholder="Buscar alumno…" data-buscar="#matriz" data-filas="tbody tr">
+        </div>
+        <div class="derecha flex-wrap" style="font-size:.76rem">
+            <span class="celda a" style="min-width:auto;padding:0 .5rem;height:22px">9–10</span>
+            <span class="celda b" style="min-width:auto;padding:0 .5rem;height:22px">7–8.9</span>
+            <span class="celda c" style="min-width:auto;padding:0 .5rem;height:22px">6–6.9</span>
+            <span class="celda d" style="min-width:auto;padding:0 .5rem;height:22px">&lt; 6</span>
+            <span class="text-muted-p">⏳ por revisar · ↺ devuelta</span>
         </div>
     </div>
-
-    <!-- Scripts Data tables-->
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <script src="https://cdn.datatables.net/2.2.2/js/dataTables.min.js"></script>
-
-    <script>
-        $(document).ready(function () {
-            $('#matrizCalificaciones').DataTable({
-                language: {
-                    "decimal": "",
-                    "emptyTable": "No hay datos disponibles en la matriz",
-                    "info": "Mostrando _START_ a _END_ de _TOTAL_ alumnos",
-                    "infoEmpty": "Mostrando 0 a 0 de 0 alumnos",
-                    "infoFiltered": "(filtrado de _MAX_ alumnos totales)",
-                    "infoPostFix": "",
-                    "thousands": ",",
-                    "lengthMenu": "Mostrar _MENU_ alumnos",
-                    "loadingRecords": "Cargando...",
-                    "processing": "Procesando...",
-                    "search": "Buscar alumno:",
-                    "zeroRecords": "No se encontraron resultados coincidentes",
-                },
-                "pageLength": 25,
-                "scrollX": true,
-                "autoWidth": false,
-                "order": [],
-                "columnDefs": [
-                    {"orderable": false, "targets": "_all"}
-                ]
-            });
-        });
-    </script>
-    </body>
-    </html>
+    {% if misiones_columnas and matriz %}
+        <div class="matriz-wrap">
+            <table class="matriz" id="matriz">
+                <thead>
+                    <tr>
+                        <th class="alumno">Alumno</th>
+                        {% for m in misiones_columnas %}
+                            <th title="{{ m.nombre }}">
+                                <a data-modal="xl" href="{% url 'calificar_mision' m.id %}" class="text-decoration-none" style="color:inherit">{{ m.nombre|truncatechars:18 }}</a>
+                                <span class="sub">{{ m.nivel.nombre|truncatechars:16 }}</span>
+                                <span class="sub tnum">{{ m.completado }}% ✓</span>
+                            </th>
+                        {% endfor %}
+                        <th>Promedio</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for fila in matriz %}
+                        <tr>
+                            <td class="alumno">
+                                <a href="{% url 'alumno_detalle' fila.alumno.id %}" class="persona">
+                                    <img src="{{ fila.alumno|avatar_url }}" alt="" style="width:26px;height:26px">
+                                    <span class="n">{{ fila.alumno.apellido }}, {{ fila.alumno.nombre }}</span>
+                                </a>
+                            </td>
+                            {% for celda in fila.calificaciones %}
+                                <td>
+                                    {% with p=celda.progreso %}
+                                    {% if not p %}<span class="celda vacia">—</span>
+                                    {% elif p.estado == 'aprobado' %}<a data-modal="xl" href="{% url 'calificar_mision' celda.mision.id %}" class="celda {{ p.puntuacion|nivel_calif }}" title="{{ celda.mision.nombre }}: {{ p.puntuacion|calif10 }}">{{ p.puntuacion|calif10 }}</a>
+                                    {% elif p.estado == 'pendiente' %}<a href="{% url 'revisiones' %}?clase={{ clase.id }}" class="celda pend" title="Por revisar">⏳</a>
+                                    {% else %}<span class="celda rech" title="Devuelta para corrección">↺</span>{% endif %}
+                                    {% endwith %}
+                                </td>
+                            {% endfor %}
+                            <td>{% if fila.promedio is not None %}<span class="celda {{ fila.promedio|nivel_calif }}">{{ fila.promedio|floatformat:1 }}</span>{% else %}<span class="celda vacia">—</span>{% endif %}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td class="alumno">Promedio por misión</td>
+                        {% for m in misiones_columnas %}<td class="tnum">{% if m.promedio is not None %}{{ m.promedio|floatformat:1 }}{% else %}—{% endif %}</td>{% endfor %}
+                        <td class="tnum">{% if promedio_grupo is not None %}{{ promedio_grupo|floatformat:1 }}{% else %}—{% endif %}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    {% else %}
+        <div class="vacio-p"><i class="bi bi-table"></i><h3>Aún no hay datos</h3><p class="mb-0">Agrega alumnos y misiones a esta clase para ver la matriz.</p></div>
+    {% endif %}
+</section>
 {% endblock %}

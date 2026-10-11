@@ -1,1 +1,1 @@
-web:  python manage.py collectstatic && gunicorn NextLevel.wsgi
+web: python manage.py migrate --noinput && python manage.py collectstatic --noinput && gunicorn NextLevel.wsgi

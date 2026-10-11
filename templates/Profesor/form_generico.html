@@ -1,0 +1,59 @@
+{% extends base_plantilla|default:"Profesor/baseProfesor.html" %}
+{% block title %}{{ titulo }}{% endblock %}
+{% block migas %}
+    {% if volver %}<a href="{{ volver }}"><i class="bi bi-arrow-left"></i> Volver</a><i class="bi bi-chevron-right"></i>{% endif %}
+    <span class="actual">{{ titulo }}</span>
+{% endblock %}
+
+{% block content %}
+<form method="post" enctype="multipart/form-data" action="{{ request.get_full_path }}" class="form-panel" novalidate>
+    {% csrf_token %}
+    <div class="modal-header">
+        <span class="icono-form"><i class="bi {{ icono|default:'bi-pencil' }}"></i></span>
+        <div class="min-w-0 flex-grow-1">
+            <h2 class="titulo-form">{{ titulo }}</h2>
+            {% if subtitulo %}<p class="sub-form">{{ subtitulo }}</p>{% endif %}
+        </div>
+        {% if modal %}<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>{% endif %}
+    </div>
+
+    <div class="modal-body">
+        {% if form.non_field_errors %}
+            <div class="aviso-error">{{ form.non_field_errors|join:" " }}</div>
+        {% endif %}
+        <div class="row g-0 gx-3">
+            {% for field in form %}
+                {% if field.widget_type == 'checkbox' %}
+                    <div class="col-12">
+                        <div class="campo-check">
+                            {{ field }}
+                            <div>
+                                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                {% if field.help_text %}<div class="ayuda text-muted-p" style="font-size:.78rem">{{ field.help_text }}</div>{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="{% if field.widget_type == 'textarea' or field.widget_type == 'checkboxselectmultiple' or field.widget_type == 'radioselect' or field.widget_type == 'clearablefile' or field.widget_type == 'file' %}col-12{% else %}col-md-6{% endif %}">
+                        <div class="campo {% if field.errors %}con-error{% endif %}">
+                            <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}</label>
+                            {{ field }}
+                            {% if field.help_text %}<div class="ayuda">{{ field.help_text }}</div>{% endif %}
+                            {% for e in field.errors %}<div class="error"><i class="bi bi-exclamation-circle"></i> {{ e }}</div>{% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="modal-footer">
+        {% if modal %}
+            <button type="button" class="p-btn fantasma" data-bs-dismiss="modal">Cancelar</button>
+        {% elif volver %}
+            <a href="{{ volver }}" class="p-btn fantasma">Cancelar</a>
+        {% endif %}
+        <button type="submit" class="p-btn primario"><i class="bi bi-check2"></i> {{ boton|default:"Guardar" }}</button>
+    </div>
+</form>
+{% endblock %}

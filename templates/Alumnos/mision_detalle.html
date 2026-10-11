@@ -1,442 +1,248 @@
 {% extends 'Alumnos/base.html' %}
-
-{% block title %}{{ mision.nombre }} - Detalles de la Misión{% endblock %}
-
-{% block extra_css %}
-    <style>
-        
-
-        .hover-scale {
-            transition: transform 0.2s ease;
-        }
-
-        .hover-scale:hover {
-            transform: scale(1.05);
-        }
-
-        /* --- Tarjeta Principal de la Misión --- */
-        .quest-card {
-            background: white;
-            border-radius: 24px;
-            border: 2px solid #e2e8f0;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.05);
-            overflow: hidden;
-        }
-
-        .quest-image-container {
-            background: #1e293b;
-            position: relative;
-        }
-
-        .quest-image-container img {
-            border-radius: 24px 24px 0 0;
-            transition: opacity 0.3s;
-        }
-
-        .quest-image-container:hover img {
-            opacity: 0.8;
-        }
-
-        .quest-image-overlay {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: white;
-            font-size: 3rem;
-            opacity: 0;
-            transition: opacity 0.3s;
-            pointer-events: none;
-        }
-
-        .quest-image-container:hover .quest-image-overlay {
-            opacity: 1;
-        }
-
-        .quest-type-badge {
-            background: #e2e8f0;
-            color: #475569;
-            font-weight: 800;
-            letter-spacing: 1px;
-            padding: 8px 16px;
-            border-radius: 12px;
-            display: inline-block;
-        }
-
-        /* --- Estilos Especiales para Contenido --- */
-        .terminal-window {
-            background: #1e293b;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-        }
-
-        .terminal-header {
-            background: #334155;
-            padding: 8px 15px;
-            display: flex;
-            gap: 6px;
-        }
-
-        .terminal-dot {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-        }
-
-        .quest-link {
-            background: rgba(67, 97, 238, 0.1);
-            border: 2px dashed var(--primary-color);
-            color: var(--primary-color);
-            border-radius: 16px;
-            transition: all 0.2s;
-        }
-
-        .quest-link:hover {
-            background: rgba(67, 97, 238, 0.2);
-            transform: translateY(-2px);
-        }
-
-        /* --- Cuestionario y Opciones --- */
-        .quiz-section {
-            background: #f8fafc;
-            border: 2px solid #e2e8f0;
-        }
-
-        .quiz-option {
-            cursor: pointer;
-            transition: all 0.2s ease;
-            background: white;
-        }
-
-        .quiz-option:hover {
-            background: #f1f5f9;
-            transform: translateX(5px);
-            border-color: var(--primary-color) !important;
-        }
-
-        .quiz-option:has(input:checked) {
-            background: rgba(67, 97, 238, 0.05);
-            border-color: var(--primary-color) !important;
-            box-shadow: 0 4px 10px rgba(67, 97, 238, 0.1);
-        }
-
-        .quiz-option:has(input:checked) span {
-            color: var(--primary-color) !important;
-            font-weight: 800 !important;
-        }
-
-        /* --- Caja de Recompensas --- */
-        .reward-box {
-            background: linear-gradient(135deg, #fffbeb, #fef3c7);
-            border: 2px solid #fde68a;
-            border-radius: 16px;
-            padding: 20px;
-            box-shadow: 0 8px 15px rgba(253, 230, 138, 0.3);
-        }
-
-        .reward-pill {
-            background: white;
-            padding: 10px 24px;
-            border-radius: 50px;
-            font-weight: 900;
-            font-size: 1.1rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-            transition: transform 0.2s;
-        }
-
-        /* --- Botones Gamificados 3D --- */
-        .btn-game {
-            font-weight: 900;
-            font-size: 1.2rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            border-radius: 20px;
-            padding: 18px 40px;
-            border: none;
-            transition: all 0.1s;
-            width: 100%;
-        }
-
-        .btn-submit {
-            background: var(--primary-color);
-            color: white;
-            box-shadow: 0 8px 0 var(--primary-dark), 0 15px 20px rgba(67, 97, 238, 0.3);
-        }
-
-        .btn-submit:hover {
-            color: white;
-            transform: translateY(2px);
-            box-shadow: 0 6px 0 var(--primary-dark), 0 10px 15px rgba(67, 97, 238, 0.3);
-        }
-
-        .btn-submit:active {
-            transform: translateY(8px);
-            box-shadow: 0 0px 0 var(--primary-dark);
-        }
-
-        .btn-approved {
-            background: var(--approved-color);
-            color: white;
-            box-shadow: 0 8px 0 var(--approved-dark);
-            cursor: default;
-        }
-
-        .btn-pending {
-            background: var(--pending-color);
-            color: white;
-            box-shadow: 0 8px 0 var(--pending-dark);
-            cursor: default;
-        }
-
-
-        .btn-back {
-            background: #cbd5e1;
-            color: #334155;
-            box-shadow: 0 8px 0 #94a3b8, 0 15px 20px rgba(148, 163, 184, 0.3);
-        }
-
-        .btn-back:hover {
-            color: #1e293b;
-            transform: translateY(2px);
-            box-shadow: 0 6px 0 #94a3b8, 0 10px 15px rgba(148, 163, 184, 0.3);
-        }
-
-        .btn-back:active {
-            transform: translateY(8px);
-            box-shadow: 0 0px 0 #94a3b8;
-        }
-
-
-    </style>
-
-{% endblock %}
+{% load nextlevel %}
+{% block title %}{{ mision.nombre }} · Next-Level{% endblock %}
 
 {% block content %}
-
-
-
-    <div class="container pb-5 mt-4">
-        <div class="row justify-content-center">
-
-            <div class="col-lg-10 col-xl-10">
-                <div class="quest-card">
-
-                    {% if mision.imagen %}
-                        <div class="quest-image-container">
-                            <a href="{{ mision.imagen.url }}" target="_blank" data-bs-toggle="modal"
-                               data-bs-target="#imageModal" class="d-block position-relative">
-                                <img src="{{ mision.imagen.url }}" alt="Imagen de misión" class="w-100"
-                                     style="max-height: 350px; object-fit: cover; cursor: pointer;">
-                                <i class="bi bi-arrows-fullscreen quest-image-overlay"></i>
-                            </a>
-                        </div>
-
-                        <div class="modal fade" id="imageModal" tabindex="-1" aria-hidden="true">
-                            <div class="modal-dialog modal-dialog-centered modal-xl">
-                                <div class="modal-content bg-transparent border-0">
-                                    <div class="modal-header border-0 justify-content-end pb-0">
-                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
-                                                aria-label="Close"></button>
-                                    </div>
-                                    <div class="modal-body p-0 d-flex justify-content-center align-items-center">
-                                        <img src="{{ mision.imagen.url }}" alt="Imagen completa"
-                                             class="img-fluid rounded-4 shadow-lg"
-                                             style="max-width: 90vw; max-height: 85vh; object-fit: contain;">
-                                    </div>
-                                    <div class="modal-footer border-0 justify-content-center">
-                                        <a href="{{ mision.imagen.url }}" target="_blank"
-                                           class="btn btn-light rounded-pill px-4 fw-bold shadow">
-                                            <i class="bi bi-box-arrow-up-right me-2"></i> Abrir en nueva pestaña
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    {% endif %}
-
-                    <div class="card-body p-4 p-md-5">
-
-                        <div class="d-flex align-items-center mb-3">
-                        <span class="quest-type-badge text-uppercase">
-                            <i class="bi bi-journal-text me-2"></i>{{ mision.get_tipo_display }}
-                        </span>
-                        </div>
-
-                        <h1 class="text-dark mb-4" style="font-weight: 900; font-size: 2.2rem;">
-                            {{ mision.nombre }}
-                        </h1>
-
-                        <div class="fs-5 text-secondary mb-5 lh-lg" style="font-weight: 600;">
-                            {{ mision.descripcion|linebreaks }}
-                        </div>
-
-                        {% if mision.codigo %}
-                            <div class="terminal-window mb-5">
-                                <div class="terminal-header">
-                                    <div class="terminal-dot bg-danger"></div>
-                                    <div class="terminal-dot bg-warning"></div>
-                                    <div class="terminal-dot bg-success"></div>
-                                </div>
-                                <div class="p-4 text-light font-monospace"
-                                     style="overflow-x: auto; font-size: 0.95rem;">
-                                    <pre class="m-0"><code>{{ mision.codigo }}</code></pre>
-                                </div>
-                            </div>
-                        {% endif %}
-
-                        {% if mision.link %}
-                            <a href="{{ mision.link }}" target="_blank" class="text-decoration-none">
-                                <div class="quest-link p-4 text-center fs-5 fw-bold mb-5">
-                                    <i class="bi bi-link-45deg fs-4"></i> Clic aquí para ir al link de la página.
-                                </div>
-                            </a>
-                        {% endif %}
-
-                        <div class="mt-5 pt-3 border-top">
-
-                            {% if progreso.estado == 'aprobado' %}
-
-                                <div class="reward-box mb-4 text-center">
-                                    <h5 class="fw-bold text-muted mb-3 text-uppercase"
-                                        style="letter-spacing: 1px; font-size: 0.9rem;">Botín Obtenido</h5>
-                                    <div class="d-flex justify-content-center gap-3 flex-wrap">
-                                        <div class="reward-pill text-dark">
-                                            <i class="bi bi-coin" style="color: var(--gold-coin);"></i>
-                                            +{{ progreso.monedas_obtenidas }}
-                                        </div>
-                                        <div class="reward-pill text-dark">
-                                            <i class="bi bi-lightning-charge-fill" style="color: var(--xp-blue);"></i>
-                                            +{{ mision.xp_recompensa }} XP
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="text-center">
-                                    <button class="btn-game mt-3 btn-approved" disabled>
-                                        <i class="bi bi-check-circle-fill me-2"></i> Misión Completada
-                                    </button>
-                                    {% if mision.tipo == 'cuestionario' %}
-                                        <p class="mt-3 fs-5 fw-bold text-success">
-                                            Calificación obtenida: {{ progreso.calificacion_escala_10|floatformat:1 }}
-                                        </p>
-                                    {% endif %}
-                                </div>
-
-                            {% elif progreso.estado == 'pendiente' and mision.tipo != 'cuestionario' %}
-
-                                <div class="reward-box mb-4 text-center opacity-75">
-                                    <h5 class="fw-bold text-muted mb-3 text-uppercase"
-                                        style="letter-spacing: 1px; font-size: 0.9rem;">Botín en espera</h5>
-                                    <div class="d-flex justify-content-center gap-3 flex-wrap">
-                                        <div class="reward-pill text-dark">
-                                            <i class="bi bi-coin" style="color: var(--gold-coin);"></i>
-                                            +{{ mision.monedas_recompensa }}
-                                        </div>
-                                        <div class="reward-pill text-dark">
-                                            <i class="bi bi-lightning-charge-fill" style="color: var(--xp-blue);"></i>
-                                            +{{ mision.xp_recompensa }} XP
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="text-center">
-                                    <button class="btn-game mt-3 btn-pending" disabled>
-                                        <i class="bi bi-hourglass-split me-2"></i> En revisión por el maestro
-                                    </button>
-                                </div>
-
-                            {% else %}
-                                <form action="{% url 'marcar_completada' clase.id mision.id %}" method="POST">
-                                    {% csrf_token %}
-
-                                    {% if progreso.estado == 'rechazado' %}
-                                        <div class="alert alert-danger rounded-4 fw-bold mb-4 shadow-sm text-center border-0"
-                                             style="background-color: #fef2f2; color: #991b1b;">
-                                            <i class="bi bi-exclamation-triangle-fill me-2"></i> ¡Ups! Esta misión
-                                            necesita
-                                            correcciones. Inténtalo de nuevo.
-                                        </div>
-                                    {% endif %}
-
-                                    {% if mision.tipo == 'cuestionario' %}
-                                        <div class="quiz-section mb-5 p-4 rounded-4">
-                                            <h3 class="text-dark mb-4" style="font-weight: 800;">
-                                                <i class="bi bi-joystick text-primary me-2"></i> ¡Hora de demostrar tu
-                                                conocimiento!
-                                            </h3>
-
-                                            {% for pregunta in preguntas %}
-                                                <div class="card shadow-sm border-0 mb-4 rounded-4 overflow-hidden">
-                                                    <div class="card-body p-4">
-                                                        <h5 class="fw-bold mb-4 d-flex justify-content-between align-items-start gap-3">
-                                                            <span>{{ forloop.counter }}. {{ pregunta.texto }}</span>
-                                                            <span class="badge bg-warning text-dark rounded-pill fs-6 flex-shrink-0">{{ pregunta.puntos }} pts</span>
-                                                        </h5>
-
-                                                        <div class="list-group">
-                                                            {% for opcion in pregunta.opciones.all %}
-                                                                <label class="list-group-item list-group-item-action border-2 rounded-4 mb-2 p-3 d-flex align-items-center gap-3 quiz-option">
-                                                                    <input class="form-check-input flex-shrink-0 fs-4 m-0"
-                                                                           type="radio"
-                                                                           name="pregunta_{{ pregunta.id }}"
-                                                                           value="{{ opcion.id }}" required
-                                                                           style="cursor: pointer;">
-                                                                    <span class="fs-5"
-                                                                          style="font-weight: 600; color: #475569;">
-                                                                    {{ opcion.texto }}
-                                                                </span>
-                                                                </label>
-                                                            {% endfor %}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            {% endfor %}
-                                        </div>
-                                    {% endif %}
-
-                                    <div class="reward-box mb-4 text-center">
-                                        <h5 class="fw-bold text-muted mb-3 text-uppercase"
-                                            style="letter-spacing: 1px; font-size: 0.9rem;">Botín al completar</h5>
-                                        <div class="d-flex justify-content-center gap-3 flex-wrap">
-                                            <div class="reward-pill text-dark">
-                                                <i class="bi bi-coin" style="color: var(--gold-coin);"></i>
-                                                +{{ mision.monedas_recompensa }}
-                                            </div>
-                                            <div class="reward-pill text-dark">
-                                                <i class="bi bi-lightning-charge-fill"
-                                                   style="color: var(--xp-blue);"></i>
-                                                +{{ mision.xp_recompensa }} XP
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="text-center ">
-                                        <button type="submit" class="btn-game btn-submit mt-3">
-                                            {% if mision.tipo == 'cuestionario' %}
-                                                <i class="bi bi-send-fill me-2"></i> ¡Enviar Respuestas!
-                                            {% else %}
-                                                <i class="bi bi-check-lg me-2"></i> ¡Ya terminé esta misión!
-                                            {% endif %}
-                                        </button>
-                                    </div>
-                                </form>
-                            {% endif %}
-
-                            <div class="text-center mt-4">
-                                <a href="{% url 'dashboard_alumno' clase.id %}"
-                                   class="btn-game btn-back d-inline-block text-decoration-none">
-                                    <i class="bi bi-pin-map me-2"></i> Volver al Mapa
-                                </a>
-                            </div>
-
-
-                        </div>
-
-                    </div>
-                </div>
+<div class="tema-{{ mundo.tema|default:'bosque' }}">
+    <section class="mision-hero">
+        <div class="contenedor angosto contenido py-0">
+            <div class="migas">
+                <a href="{% url 'dashboard_alumno' clase.id %}"><i class="bi bi-map-fill"></i> Mapa</a>
+                {% if mundo %}<i class="bi bi-chevron-right"></i>
+                    <a href="{% url 'ver_mundo' clase.id mundo.mundo.id|default:0 %}">{{ mundo.tema_info.emoji }} {{ mundo.nombre }}</a>{% endif %}
+                <i class="bi bi-chevron-right"></i> <span>{{ mision.nivel.nombre }}</span>
+            </div>
+            <h1>{{ mision.nombre }}</h1>
+            <div class="d-flex flex-wrap gap-2 mt-2">
+                <span class="tipo">{{ info.emoji }} {{ mision.get_tipo_display }}</span>
+                {% if mision.es_jefe %}<span class="tipo jefe-badge">👾 Batalla final</span>{% endif %}
+                {% if mision.fecha_limite %}<span class="tipo"><i class="bi bi-alarm"></i> Entrega: {{ mision.fecha_limite|date:"d M" }}</span>{% endif %}
             </div>
         </div>
-    </div>
+    </section>
 
+    <div class="contenedor angosto mision-cuerpo">
+        {% if resultado %}
+            <section class="g-card text-center mb-4" id="resultado-mision" style="border-color:#fde047;box-shadow:0 6px 0 #facc15">
+                <div class="fw-black text-uppercase" style="letter-spacing:2px;color:var(--morado);font-size:.85rem">¡Misión completada!</div>
+                <div class="estrellas-grandes my-2">{% for e in resultado.estrellas|estrellas %}<span class="{% if not e %}apagada{% endif %}">⭐</span>{% endfor %}</div>
+                <h2 class="mb-1" style="color:var(--navy)">Calificación: {{ resultado.calificacion }}</h2>
+                <div class="botin mt-3">
+                    <span class="botin-item"><i class="bi bi-coin ico" style="color:var(--moneda)"></i> +{{ resultado.monedas }}</span>
+                    <span class="botin-item"><i class="bi bi-lightning-charge-fill ico" style="color:var(--azul)"></i> +{{ resultado.xp }} XP</span>
+                </div>
+                <a href="{% url 'dashboard_alumno' clase.id %}" class="g-btn grande mt-4">¡Continuar! <i class="bi bi-arrow-right"></i></a>
+            </section>
+        {% endif %}
+
+        <section class="g-card mb-4">
+            <div class="g-card-titulo"><span>📜</span> Tu misión</div>
+            <div class="descripcion">{{ mision.descripcion|linebreaks }}</div>
+
+            {% if mision.imagen %}
+                <a href="#" class="mision-imagen mt-4" data-bs-toggle="modal" data-bs-target="#modalImagen">
+                    <img src="{{ mision.imagen.url }}" alt="Imagen de la misión">
+                    <span class="lupa"><i class="bi bi-arrows-fullscreen"></i></span>
+                </a>
+                <div class="modal fade" id="modalImagen" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered modal-xl">
+                        <div class="modal-content bg-transparent border-0">
+                            <div class="text-end"><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>
+                            <img src="{{ mision.imagen.url }}" alt="Imagen completa" class="img-fluid rounded-4 mx-auto" style="max-height:85vh;object-fit:contain">
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+
+            {% if mision.codigo %}
+                <div class="terminal mt-4">
+                    <div class="terminal-barra">
+                        <i class="p" style="background:#ef4444"></i><i class="p" style="background:#f59e0b"></i><i class="p" style="background:#10b981"></i>
+                        <span class="titulo">sketch.ino</span>
+                        <button type="button" class="copiar" data-objetivo="codigo-mision"><i class="bi bi-clipboard"></i> Copiar</button>
+                    </div>
+                    <pre><code id="codigo-mision">{{ mision.codigo }}</code></pre>
+                </div>
+            {% endif %}
+
+            {% if mision.tipo == 'video' and mision.link|youtube_embed %}
+                <div class="video-marco mt-4">
+                    <iframe src="{{ mision.link|youtube_embed }}" title="Video de la misión" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe>
+                </div>
+            {% elif mision.link %}
+                <a href="{{ mision.link }}" target="_blank" rel="noopener" class="enlace-grande mt-4">
+                    <span class="ico">{% if mision.tipo == 'video' %}🎬{% else %}🔗{% endif %}</span>
+                    <span>Abrir el enlace de la misión<br><small class="fw-bold opacity-75">Se abrirá en una pestaña nueva</small></span>
+                    <i class="bi bi-box-arrow-up-right ms-auto fs-4"></i>
+                </a>
+            {% endif %}
+        </section>
+
+        {% if progreso.estado == 'aprobado' %}
+            <section class="g-card mb-4">
+                <div class="estado-caja aprobado">
+                    <div class="estrellas-grandes">{% for e in progreso.estrellas|estrellas %}<span class="{% if not e %}apagada{% endif %}">⭐</span>{% endfor %}</div>
+                    <div class="fs-4 mt-2" style="font-family:var(--fuente-titulo)">¡Misión completada!</div>
+                    <div>Calificación: <b>{{ progreso.calificacion_escala_10|floatformat:1 }}</b> / 10</div>
+                    <div class="botin mt-3">
+                        <span class="botin-item"><i class="bi bi-coin ico" style="color:var(--moneda)"></i> +{{ progreso.monedas_obtenidas }}</span>
+                        <span class="botin-item"><i class="bi bi-lightning-charge-fill ico" style="color:var(--azul)"></i> +{{ mision.xp_recompensa }} XP</span>
+                    </div>
+                    {% if progreso.comentario_profesor %}
+                        <div class="comentario-profe"><b>💬 Tu profe dice:</b><br>{{ progreso.comentario_profesor|linebreaksbr }}</div>
+                    {% endif %}
+                </div>
+
+                {% if preguntas %}
+                    <h3 class="seccion-titulo" style="font-size:1.2rem;margin-top:1.5rem">🔍 Tus respuestas</h3>
+                    {% for pregunta in preguntas %}
+                        {% with r=respuestas|get_item:pregunta.id %}
+                            <div class="revision-respuesta {% if r and r.opcion_seleccionada.es_correcta %}bien{% else %}mal{% endif %}">
+                                <span class="ico">{% if r and r.opcion_seleccionada.es_correcta %}✅{% else %}❌{% endif %}</span>
+                                <div>
+                                    <div class="p">{{ forloop.counter }}. {{ pregunta.texto }}</div>
+                                    <div class="r">Respondiste: {{ r.opcion_seleccionada.texto|default:"(sin respuesta)" }}</div>
+                                </div>
+                            </div>
+                        {% endwith %}
+                    {% endfor %}
+                {% endif %}
+            </section>
+
+        {% elif progreso.estado == 'pendiente' and not mision.es_automatica %}
+            <section class="g-card mb-4">
+                <div class="estado-caja pendiente">
+                    <div class="grande">⏳</div>
+                    <div class="fs-4 mt-2" style="font-family:var(--fuente-titulo)">En revisión</div>
+                    <div>Tu profe revisará tu trabajo muy pronto. ¡Buen trabajo!</div>
+                    {% if progreso.evidencia %}
+                        <img src="{{ progreso.evidencia.url }}" alt="Tu evidencia" class="mt-3 rounded-4" style="max-height:220px;max-width:100%;object-fit:contain">
+                    {% endif %}
+                    {% if progreso.respuesta_texto %}
+                        <div class="comentario-profe"><b>📝 Lo que enviaste:</b><br>{{ progreso.respuesta_texto|linebreaksbr }}</div>
+                    {% endif %}
+                </div>
+                <div class="botin mt-3 opacity-75">
+                    <span class="botin-item"><i class="bi bi-coin ico" style="color:var(--moneda)"></i> hasta +{{ mision.monedas_recompensa }}</span>
+                    <span class="botin-item"><i class="bi bi-lightning-charge-fill ico" style="color:var(--azul)"></i> +{{ mision.xp_recompensa }} XP</span>
+                </div>
+            </section>
+
+        {% elif mision.tipo == 'presencial' %}
+            <section class="g-card mb-4">
+                <div class="estado-caja presencial">
+                    <div class="grande">🙋</div>
+                    <div class="fs-4 mt-2" style="font-family:var(--fuente-titulo)">Misión en el salón</div>
+                    <div>Esta misión se completa en clase. Cuando la termines, tu profe la marcará como lograda.</div>
+                </div>
+                <div class="botin mt-3">
+                    <span class="botin-item"><i class="bi bi-coin ico" style="color:var(--moneda)"></i> hasta +{{ mision.monedas_recompensa }}</span>
+                    <span class="botin-item"><i class="bi bi-lightning-charge-fill ico" style="color:var(--azul)"></i> +{{ mision.xp_recompensa }} XP</span>
+                </div>
+            </section>
+
+        {% else %}
+            <form action="{% url 'marcar_completada' clase.id mision.id %}" method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                {% if progreso.estado == 'rechazado' %}
+                    <div class="estado-caja rechazado mb-4">
+                        <div class="grande">🔧</div>
+                        <div class="fs-5 mt-1" style="font-family:var(--fuente-titulo)">¡Casi! Esta misión necesita correcciones</div>
+                        {% if progreso.comentario_profesor %}
+                            <div class="comentario-profe"><b>💬 Tu profe dice:</b><br>{{ progreso.comentario_profesor|linebreaksbr }}</div>
+                        {% endif %}
+                    </div>
+                {% endif %}
+
+                {% if mision.tipo == 'cuestionario' %}
+                    <section class="g-card mb-4 quiz" data-carrusel>
+                        <div class="quiz-top">
+                            <div class="barra verde"><span style="width:4%"></span></div>
+                            <span class="contador">1 / {{ preguntas|length }}</span>
+                        </div>
+                        {% for pregunta in preguntas %}
+                            <div class="quiz-pregunta {% if forloop.first %}activa{% endif %}">
+                                <div class="quiz-texto">{{ pregunta.texto }} <span class="quiz-puntos">{{ pregunta.puntos }} pts</span></div>
+                                <div class="quiz-opciones {% if pregunta.opciones.all|length > 2 %}dos-col{% endif %}">
+                                    {% for opcion in pregunta.opciones.all %}
+                                        <label class="quiz-opcion">
+                                            <input type="radio" name="pregunta_{{ pregunta.id }}" value="{{ opcion.id }}" required>
+                                            <span class="caja"><span class="letra">{% cycle 'A' 'B' 'C' 'D' 'E' 'F' %}</span> {{ opcion.texto }}</span>
+                                        </label>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% resetcycle %}
+                        {% empty %}
+                            <div class="vacio-juego"><span class="e">🤔</span>Este cuestionario aún no tiene preguntas.</div>
+                        {% endfor %}
+                        {% if preguntas %}
+                            <div class="quiz-acciones">
+                                <button type="button" class="g-btn blanco oculto" data-quiz="anterior"><i class="bi bi-arrow-left"></i> Atrás</button>
+                                <span></span>
+                                <button type="button" class="g-btn azul" data-quiz="siguiente">Siguiente <i class="bi bi-arrow-right"></i></button>
+                                <button type="submit" class="g-btn oculto" data-quiz="enviar"><i class="bi bi-send-fill"></i> ¡Terminar!</button>
+                            </div>
+                        {% endif %}
+                    </section>
+
+                {% elif mision.tipo == 'video' %}
+                    <section class="g-card mb-4 text-center">
+                        <div style="font-size:2.5rem">🍿</div>
+                        <h3 style="color:var(--navy)">Mira el video completo</h3>
+                        <p class="fw-bold texto-suave mb-0">Cuando termines, presiona el botón para reclamar tu recompensa.</p>
+                    </section>
+
+                {% else %}
+                    <section class="g-card mb-4">
+                        <div class="g-card-titulo"><span>🚀</span> Entrega tu misión</div>
+                        {% if mision.tipo == 'texto' %}
+                            <label for="respuesta" class="fw-black mb-2 d-block">✍️ Escribe tu respuesta</label>
+                            <textarea name="respuesta_texto" id="respuesta" class="area-texto" required placeholder="Escribe aquí...">{{ progreso.respuesta_texto|default:'' }}</textarea>
+                        {% else %}
+                            <label class="subir-foto">
+                                <input type="file" name="evidencia" accept="image/*" {% if mision.tipo == 'evidencia' %}required{% endif %}>
+                                <img class="vista" alt="Vista previa">
+                                <span class="ayuda">
+                                    <span class="ico d-block">📸</span>
+                                    <span class="fw-black d-block">{% if mision.tipo == 'evidencia' %}Sube una foto de tu trabajo{% else %}Sube una foto de tu trabajo (opcional){% endif %}</span>
+                                    <span class="texto-suave fw-bold" style="font-size:.85rem">Toca aquí para tomarla o elegirla</span>
+                                </span>
+                            </label>
+                            <label for="comentario" class="fw-black mt-3 mb-2 d-block">💬 ¿Quieres contarle algo a tu profe? <span class="texto-suave">(opcional)</span></label>
+                            <textarea name="respuesta_texto" id="comentario" class="area-texto" style="min-height:90px" placeholder="Ej. Usé un LED rojo en vez de verde"></textarea>
+                        {% endif %}
+                    </section>
+                {% endif %}
+
+                {% if mision.tipo != 'cuestionario' or not preguntas %}
+                    <div class="text-center mb-4">
+                        <div class="fw-black texto-suave text-uppercase mb-2" style="letter-spacing:1px;font-size:.8rem">Botín al completar</div>
+                        <div class="botin mb-4">
+                            <span class="botin-item"><i class="bi bi-coin ico" style="color:var(--moneda)"></i> +{{ mision.monedas_recompensa }}</span>
+                            <span class="botin-item"><i class="bi bi-lightning-charge-fill ico" style="color:var(--azul)"></i> +{{ mision.xp_recompensa }} XP</span>
+                        </div>
+                        {% if mision.tipo != 'cuestionario' %}
+                            <button type="submit" class="g-btn grande">
+                                {% if mision.tipo == 'video' %}<i class="bi bi-check2-circle"></i> ¡Ya lo vi!
+                                {% else %}<i class="bi bi-send-fill"></i> ¡Enviar mi misión!{% endif %}
+                            </button>
+                        {% endif %}
+                    </div>
+                {% else %}
+                    <div class="botin mb-4">
+                        <span class="botin-item"><i class="bi bi-coin ico" style="color:var(--moneda)"></i> hasta +{{ mision.monedas_recompensa }}</span>
+                        <span class="botin-item"><i class="bi bi-lightning-charge-fill ico" style="color:var(--azul)"></i> +{{ mision.xp_recompensa }} XP</span>
+                    </div>
+                {% endif %}
+            </form>
+        {% endif %}
+
+        <div class="text-center mb-4">
+            <a href="{% if mundo %}{% url 'ver_mundo' clase.id mundo.mundo.id|default:0 %}{% else %}{% url 'dashboard_alumno' clase.id %}{% endif %}" class="g-btn blanco">
+                <i class="bi bi-map-fill"></i> Volver al mapa
+            </a>
+        </div>
+    </div>
+</div>
 {% endblock %}

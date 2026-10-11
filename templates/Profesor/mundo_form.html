@@ -1,0 +1,76 @@
+{% extends base_plantilla|default:"Profesor/baseProfesor.html" %}
+{% load nextlevel %}
+{% block title %}{% if mundo %}Editar mundo{% else %}Nuevo mundo{% endif %}{% endblock %}
+{% block migas %}
+    <a href="{% url 'clases_lista' %}">Clases</a><i class="bi bi-chevron-right"></i>
+    <span class="actual">{% if mundo %}{{ mundo.nombre }}{% else %}Nuevo mundo{% endif %}</span>
+{% endblock %}
+
+{% block content %}
+<form method="post" action="{{ request.get_full_path }}" class="form-panel" novalidate>
+    {% csrf_token %}
+    <div class="modal-header">
+        <span class="icono-form"><i class="bi bi-globe-americas"></i></span>
+        <div class="min-w-0 flex-grow-1">
+            <h2 class="titulo-form">{% if mundo %}Editar mundo{% else %}Nuevo mundo{% endif %}</h2>
+            <p class="sub-form">Los mundos son las grandes zonas del mapa. Cada tema tiene sus propios colores y decoraciones.</p>
+        </div>
+        {% if modal %}<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>{% endif %}
+    </div>
+
+    <div class="modal-body">
+        <div class="row gx-3">
+            <div class="col-md-6">
+                <div class="campo {% if form.clase.errors %}con-error{% endif %}">
+                    <label for="{{ form.clase.id_for_label }}">Clase <span class="text-danger">*</span></label>
+                    {{ form.clase }}
+                    {% for e in form.clase.errors %}<div class="error">{{ e }}</div>{% endfor %}
+                </div>
+            </div>
+            <div class="col-8 col-md-4">
+                <div class="campo {% if form.nombre.errors %}con-error{% endif %}">
+                    <label for="{{ form.nombre.id_for_label }}">Nombre <span class="text-danger">*</span></label>
+                    {{ form.nombre }}
+                    {% for e in form.nombre.errors %}<div class="error">{{ e }}</div>{% endfor %}
+                </div>
+            </div>
+            <div class="col-4 col-md-2">
+                <div class="campo">
+                    <label for="{{ form.orden.id_for_label }}">Orden</label>
+                    {{ form.orden }}
+                </div>
+            </div>
+            <div class="col-12">
+                <div class="campo">
+                    <label for="{{ form.descripcion.id_for_label }}">Descripción</label>
+                    {{ form.descripcion }}
+                </div>
+            </div>
+            <div class="col-12">
+                <span class="etiqueta-campo">Tema visual</span>
+                <div class="temas-grid">
+                    {% for radio in form.tema %}
+                        <label class="tema-op">
+                            {{ radio.tag }}
+                            <span class="caja">
+                                <span class="muestra {{ radio.data.value }}">{{ temas|get_item:radio.data.value|get_item:'emoji' }}</span>
+                                <span class="nombre d-block">{{ radio.choice_label|sin_icono }}</span>
+                            </span>
+                        </label>
+                    {% endfor %}
+                </div>
+                {% for e in form.tema.errors %}<div class="error mt-2" style="color:var(--danger);font-size:.8rem">{{ e }}</div>{% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-footer">
+        {% if modal %}
+            <button type="button" class="p-btn fantasma" data-bs-dismiss="modal">Cancelar</button>
+        {% else %}
+            <a href="{% if mundo %}{% url 'clase_detalle' mundo.clase_id %}{% else %}{% url 'clases_lista' %}{% endif %}" class="p-btn fantasma">Cancelar</a>
+        {% endif %}
+        <button type="submit" class="p-btn primario"><i class="bi bi-check2"></i> Guardar mundo</button>
+    </div>
+</form>
+{% endblock %}

@@ -1,0 +1,78 @@
+{% extends 'Profesor/baseProfesor.html' %}
+{% block title %}Tienda{% endblock %}
+{% block titulo_pagina %}Tienda · Artículos{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1>Artículos de la tienda</h1>
+        <p>Controla precios, stock de premios físicos, límites por alumno y nivel requerido.</p>
+    </div>
+    <div class="acciones">
+        <a href="{% url 'pedidos' %}" class="p-btn"><i class="bi bi-box-seam"></i> Ver pedidos</a>
+        <a data-modal href="{% url 'alta_articulo' %}" class="p-btn primario"><i class="bi bi-plus-lg"></i> Nuevo artículo</a>
+    </div>
+</div>
+
+<section class="p-card">
+    <div class="p-card-head">
+        <div class="position-relative" style="max-width:300px;flex:1">
+            <i class="bi bi-search position-absolute text-muted-p" style="left:.75rem;top:50%;transform:translateY(-50%)"></i>
+            <input type="search" class="p-input" style="padding-left:2.1rem;height:36px" placeholder="Buscar artículo…" data-buscar="#tabla-tienda">
+        </div>
+    </div>
+    <div class="p-table-wrap">
+        <table class="p-table" id="tabla-tienda">
+            <thead><tr><th>Artículo</th><th>Tipo</th><th class="num">Precio</th><th class="text-center">Stock</th><th class="num">Vendidos</th><th>Reglas</th><th>Visible</th><th></th></tr></thead>
+            <tbody>
+            {% for a in articulos %}
+                <tr class="{% if not a.activo %}fila-inactiva{% endif %}">
+                    <td>
+                        <div class="persona">
+                            {% if a.imagen %}<img src="{{ a.imagen.url }}" alt="" style="border-radius:10px;object-fit:contain;background:var(--surface-2)">{% else %}<span class="ini" style="border-radius:10px">🎁</span>{% endif %}
+                            <span class="min-w-0">
+                                <span class="n d-block">{{ a.nombre }} {% if a.destacado %}<i class="bi bi-star-fill text-warning" title="Destacado"></i>{% endif %}</span>
+                                <span class="s d-block text-truncate" style="max-width:260px">{{ a.descripcion }}</span>
+                            </span>
+                        </div>
+                    </td>
+                    <td><span class="p-badge">{{ a.get_tipo_display }}</span></td>
+                    <td class="num"><i class="bi bi-coin text-warning"></i> {{ a.costo_monedas }}</td>
+                    <td class="text-center">
+                        <div class="d-inline-flex align-items-center gap-1">
+                            <button type="button" class="p-btn xs icono" data-stock-url="{% url 'ajustar_stock' a.id %}" data-accion="restar" data-objetivo="stock-{{ a.id }}" aria-label="Restar 1"><i class="bi bi-dash"></i></button>
+                            <span class="tnum fw-semibold" id="stock-{{ a.id }}" style="min-width:2.2rem;display:inline-block">{% if a.stock is None %}∞{% else %}{{ a.stock }}{% endif %}</span>
+                            <button type="button" class="p-btn xs icono" data-stock-url="{% url 'ajustar_stock' a.id %}" data-accion="sumar" data-objetivo="stock-{{ a.id }}" aria-label="Sumar 1"><i class="bi bi-plus"></i></button>
+                        </div>
+                        <div class="alerta-stock {% if a.stock is None or a.stock > 3 %}d-none{% endif %}"><span class="p-badge {% if a.stock == 0 %}rojo{% else %}ambar{% endif %} mt-1">{% if a.stock == 0 %}Agotado{% else %}Poco stock{% endif %}</span></div>
+                    </td>
+                    <td class="num">{{ a.vendidos }}{% if a.por_entregar %} <a href="{% url 'pedidos' %}" class="p-badge ambar text-decoration-none ms-1">{{ a.por_entregar }} por entregar</a>{% endif %}</td>
+                    <td style="font-size:.78rem" class="text-muted-p">
+                        {% if a.nivel_requerido > 1 %}<div>Nivel {{ a.nivel_requerido }}+</div>{% endif %}
+                        {% if a.limite_por_alumno %}<div>Máx. {{ a.limite_por_alumno }} por alumno</div>{% endif %}
+                        {% if a.requiere_validacion %}<div>Entrega el profe</div>{% else %}<div>Automático</div>{% endif %}
+                    </td>
+                    <td><input type="checkbox" class="nl-switch" {% if a.activo %}checked{% endif %} data-alternar-url="{% url 'alternar_activo' 'articulo' a.id %}" aria-label="Visible en la tienda"></td>
+                    <td>
+                        <div class="acciones-fila">
+                            <a data-modal href="{% url 'editar_articulo' a.id %}" class="p-btn xs icono fantasma" title="Editar"><i class="bi bi-pencil"></i></a>
+                            <div class="dropdown">
+                                <button class="p-btn xs icono fantasma" data-bs-toggle="dropdown" aria-label="Más opciones"><i class="bi bi-three-dots"></i></button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><form method="post" action="{% url 'ajustar_stock' a.id %}">{% csrf_token %}<input type="hidden" name="accion" value="ilimitado"><button class="dropdown-item"><i class="bi bi-infinity"></i> Stock ilimitado</button></form></li>
+                                    <li><form method="post" action="{% url 'ajustar_stock' a.id %}">{% csrf_token %}<input type="hidden" name="accion" value="fijar"><input type="hidden" name="cantidad" value="0"><button class="dropdown-item"><i class="bi bi-slash-circle"></i> Marcar agotado</button></form></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><form method="post" action="{% url 'eliminar' 'articulo' a.id %}" data-confirmar="También se borrará el historial de compras de este artículo. Si solo quieres ocultarlo, desactívalo." data-titulo="¿Eliminar {{ a.nombre }}?" data-boton="Eliminar" data-peligro>{% csrf_token %}<button class="dropdown-item text-danger"><i class="bi bi-trash"></i> Eliminar</button></form></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="8"><div class="vacio-p"><i class="bi bi-shop"></i><h3>La tienda está vacía</h3><a data-modal href="{% url 'alta_articulo' %}" class="p-btn primario mt-2">Agregar el primer artículo</a></div></td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

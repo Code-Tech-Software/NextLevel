@@ -1,0 +1,52 @@
+{% extends 'Profesor/baseProfesor.html' %}
+{% load nextlevel %}
+{% block title %}Actividad{% endblock %}
+{% block titulo_pagina %}Actividad{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1>Actividad</h1>
+        <p>Cada moneda y punto de XP que se gana o se gasta, en orden cronológico.</p>
+    </div>
+    <form method="get" class="acciones">
+        <select name="clase" class="p-input" style="width:auto;height:36px" onchange="this.form.submit()" aria-label="Clase">
+            <option value="">Todas las clases</option>
+            {% for c in clases %}<option value="{{ c.id }}" {% if request.GET.clase == c.id|stringformat:"s" %}selected{% endif %}>{{ c.nombre }} · {{ c.grado }}{{ c.grupo }}</option>{% endfor %}
+        </select>
+        <select name="tipo" class="p-input" style="width:auto;height:36px" onchange="this.form.submit()" aria-label="Tipo">
+            <option value="">Todos los tipos</option>
+            {% for v, e in tipos %}<option value="{{ v }}" {% if tipo == v %}selected{% endif %}>{{ e }}</option>{% endfor %}
+        </select>
+    </form>
+</div>
+
+<section class="p-card">
+    <div class="p-table-wrap">
+        <table class="p-table">
+            <thead><tr><th>Alumno</th><th>Descripción</th><th>Tipo</th><th class="num">Monedas</th><th class="num">XP</th><th>Fecha</th></tr></thead>
+            <tbody>
+            {% for m in pagina %}
+                <tr>
+                    <td><a href="{% url 'alumno_detalle' m.alumno.id %}" class="persona"><img src="{{ m.alumno|avatar_url }}" alt="" loading="lazy" style="width:28px;height:28px"><span class="n">{{ m.alumno.nombre }} {{ m.alumno.apellido }}</span></a></td>
+                    <td>{{ m.descripcion }}</td>
+                    <td><span class="p-badge">{{ m.get_tipo_display }}</span></td>
+                    <td class="num">{% if m.monedas %}<span class="{% if m.monedas > 0 %}pos{% else %}neg{% endif %}">{% if m.monedas > 0 %}+{% endif %}{{ m.monedas }}</span>{% else %}<span class="text-muted-p">—</span>{% endif %}</td>
+                    <td class="num">{% if m.xp %}<span class="{% if m.xp > 0 %}pos{% else %}neg{% endif %}">{% if m.xp > 0 %}+{% endif %}{{ m.xp }}</span>{% else %}<span class="text-muted-p">—</span>{% endif %}</td>
+                    <td class="text-muted-p" style="font-size:.8rem;white-space:nowrap">{{ m.fecha|date:"d M Y, H:i" }}</td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="6"><div class="vacio-p"><i class="bi bi-activity"></i>Sin actividad registrada.</div></td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if pagina.has_other_pages %}
+        <div class="p-card-head" style="border-top:1px solid var(--border);border-bottom:0;justify-content:center">
+            {% if pagina.has_previous %}<a href="?page={{ pagina.previous_page_number }}{% if tipo %}&tipo={{ tipo }}{% endif %}{% if request.GET.clase %}&clase={{ request.GET.clase }}{% endif %}" class="p-btn sm">Anterior</a>{% endif %}
+            <span class="text-muted-p" style="font-size:.85rem">Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>
+            {% if pagina.has_next %}<a href="?page={{ pagina.next_page_number }}{% if tipo %}&tipo={{ tipo }}{% endif %}{% if request.GET.clase %}&clase={{ request.GET.clase }}{% endif %}" class="p-btn sm">Siguiente</a>{% endif %}
+        </div>
+    {% endif %}
+</section>
+{% endblock %}

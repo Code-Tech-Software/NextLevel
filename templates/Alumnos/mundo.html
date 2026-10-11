@@ -1,0 +1,119 @@
+{% extends 'Alumnos/base.html' %}
+{% load nextlevel %}
+{% block title %}{{ datos.nombre }} · {{ alumno.nombre }}{% endblock %}
+
+{% block content %}
+<div class="mundo-pagina tema-{{ datos.tema }}">
+    <div aria-hidden="true">
+        {% for d in datos.tema_info.decos %}
+            <span class="deco-flotante" style="top: {{ forloop.counter|multiplicar:13 }}%; {% if forloop.counter|divisibleby:2 %}right{% else %}left{% endif %}: {{ forloop.counter|multiplicar:2 }}%; animation-delay: -{{ forloop.counter }}s">{{ d }}</span>
+        {% endfor %}
+        {% for d in datos.tema_info.decos|slice:":3" %}
+            <span class="deco-flotante" style="top: {{ forloop.counter|multiplicar:21|add:8 }}%; {% if forloop.counter|divisibleby:2 %}left{% else %}right{% endif %}: 14%; font-size:1.5rem; animation-delay: -{{ forloop.counter|add:2 }}s">{{ d }}</span>
+        {% endfor %}
+    </div>
+
+    <div class="px-3">
+        <div class="mundo-banner">
+            <span class="emoji">{{ datos.tema_info.emoji }}</span>
+            <div class="min-w-0">
+                <div class="kicker">Mundo {{ datos.numero }}</div>
+                <h1>{{ datos.nombre }}</h1>
+                {% if datos.mundo.descripcion %}<div class="desc">{{ datos.mundo.descripcion }}</div>{% endif %}
+            </div>
+            <div class="progreso-mini">
+                <div class="pct">{{ datos.pct }}%</div>
+                <div class="lbl">⭐ {{ datos.estrellas }}/{{ datos.estrellas_max }}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mundo-nav">
+        {% if anterior %}
+            <a href="{% url 'ver_mundo' clase.id anterior.mundo.id|default:0 %}" class="g-btn blanco chico"><i class="bi bi-chevron-left"></i> <span class="d-none d-sm-inline">{{ anterior.nombre }}</span></a>
+        {% else %}<span></span>{% endif %}
+        <a href="{% url 'dashboard_alumno' clase.id %}" class="g-btn blanco chico"><i class="bi bi-map-fill"></i> Mapa</a>
+        {% if siguiente %}
+            <a href="{% url 'ver_mundo' clase.id siguiente.mundo.id|default:0 %}" class="g-btn blanco chico"><span class="d-none d-sm-inline">{{ siguiente.nombre }}</span> <i class="bi bi-chevron-right"></i></a>
+        {% else %}<span></span>{% endif %}
+    </div>
+
+    <div class="ruta">
+        {% for nivel in datos.niveles %}
+            <div class="nivel-cartel">
+                <span class="bandera"><i class="bi bi-flag-fill"></i></span>
+                <div class="min-w-0">
+                    <div class="kicker">Nivel {{ forloop.counter }}</div>
+                    <div class="nombre text-truncate">{{ nivel.nivel.nombre }}</div>
+                </div>
+                <span class="cuenta">{% if nivel.completo %}✅{% else %}🏁{% endif %} {{ nivel.misiones|length }}<span class="d-none d-sm-inline"> misiones</span></span>
+            </div>
+
+            {% for item in nivel.misiones %}
+                {% with zz=item.indice|zigzag m=item.mision %}
+                <div class="nodo-wrap {% if zz < 0 %}zz-neg{% endif %} {% if item.actual %}es-actual{% endif %} {% if m.es_jefe %}con-jefe{% endif %}" style="--zz: {{ zz }}">
+                    {% if item.actual %}
+                        <span class="nodo-globo">
+                            {% if item.estado == 'pendiente' %}⏳ En revisión{% elif item.estado == 'rechazado' %}🔧 ¡Corrígela!{% else %}¡Empieza!{% endif %}
+                        </span>
+                    {% endif %}
+
+                    {% if item.desbloqueada or item.estado == 'aprobado' %}
+                        <a href="{% url 'ver_mision' clase.id m.id %}" title="{{ m.nombre }}"
+                           class="nodo {{ item.estado }} {% if item.actual %}actual{% endif %} {% if m.es_jefe %}jefe{% endif %}">
+                    {% else %}
+                        <div class="nodo bloqueado {% if m.es_jefe %}jefe{% endif %}" title="Bloqueada: completa las misiones anteriores">
+                    {% endif %}
+                        {% if m.es_jefe %}<span class="corona">{% if item.estado == 'aprobado' %}👑{% else %}👾{% endif %}</span>{% endif %}
+                        {% if item.estado == 'aprobado' %}<i class="bi bi-star-fill"></i>
+                        {% elif not item.desbloqueada %}<i class="bi bi-lock-fill"></i>
+                        {% elif item.estado == 'pendiente' %}<i class="bi bi-hourglass-split"></i>
+                        {% elif item.estado == 'rechazado' %}<i class="bi bi-wrench-adjustable"></i>
+                        {% else %}<i class="bi {{ item.info.icono }}"></i>{% endif %}
+                    {% if item.desbloqueada or item.estado == 'aprobado' %}</a>{% else %}</div>{% endif %}
+
+                    {% if item.estado == 'aprobado' %}
+                        <div class="nodo-estrellas">{% for e in item.estrellas|estrellas %}<span class="{% if not e %}apagada{% endif %}">⭐</span>{% endfor %}</div>
+                    {% endif %}
+                    <div class="nodo-nombre">{{ item.info.emoji }} {{ m.nombre }}</div>
+
+                    {% if item.actual %}
+                        <span class="nodo-avatar"><img src="{{ alumno|avatar_url }}" alt="Tú" class="avatar anillo-{{ alumno.rango.color }}"></span>
+                    {% endif %}
+                </div>
+                {% endwith %}
+            {% endfor %}
+
+            <div class="nodo-wrap" style="--zz: 0">
+                {% if nivel.cofre_abierto %}
+                    <button type="button" class="cofre-nodo abierto" disabled title="Cofre abierto">💰</button>
+                    <span class="cofre-etiqueta">+{{ nivel.cofre_abierto.monedas }} monedas</span>
+                {% elif nivel.cofre_disponible %}
+                    <button type="button" class="cofre-nodo disponible" data-url="{% url 'abrir_cofre' clase.id nivel.nivel.id %}" title="¡Ábreme!">🎁</button>
+                    <span class="cofre-etiqueta">¡Toca para abrir!</span>
+                {% else %}
+                    <button type="button" class="cofre-nodo bloqueado" disabled title="Completa el nivel para abrirlo">🎁</button>
+                    <span class="cofre-etiqueta">🔒 Cofre del nivel</span>
+                {% endif %}
+            </div>
+        {% empty %}
+            <div class="mundo-fin">
+                <div style="font-size:3rem">🛠️</div>
+                <h3>Este mundo está en construcción</h3>
+                <p class="mb-0 fw-bold texto-suave">Tu profe está preparando misiones increíbles.</p>
+            </div>
+        {% endfor %}
+
+        {% if datos.estado == 'completado' %}
+            <div class="mundo-fin">
+                <div style="font-size:3.5rem">🏆</div>
+                <h3>¡Mundo completado!</h3>
+                <p class="fw-bold texto-suave">Conseguiste {{ datos.estrellas }} de {{ datos.estrellas_max }} estrellas.</p>
+                {% if siguiente %}
+                    <a href="{% url 'ver_mundo' clase.id siguiente.mundo.id|default:0 %}" class="g-btn">Siguiente mundo <i class="bi bi-arrow-right"></i></a>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

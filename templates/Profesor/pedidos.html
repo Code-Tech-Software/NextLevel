@@ -1,0 +1,66 @@
+{% extends 'Profesor/baseProfesor.html' %}
+{% load nextlevel %}
+{% block title %}Pedidos{% endblock %}
+{% block titulo_pagina %}Tienda · Pedidos{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1>Pedidos de la tienda</h1>
+        <p>Entrega los premios que compraron tus alumnos o cancela una compra para devolver sus monedas.</p>
+    </div>
+</div>
+
+<nav class="tabs-p">
+    <a href="?estado=pendiente" class="{% if estado == 'pendiente' %}activo{% endif %}">Por entregar <span class="p-badge ms-1">{{ conteos.pendiente|default:0 }}</span></a>
+    <a href="?estado=entregado" class="{% if estado == 'entregado' %}activo{% endif %}">Entregados <span class="p-badge ms-1">{{ conteos.entregado|default:0 }}</span></a>
+    <a href="?estado=cancelado" class="{% if estado == 'cancelado' %}activo{% endif %}">Cancelados <span class="p-badge ms-1">{{ conteos.cancelado|default:0 }}</span></a>
+</nav>
+
+<section class="p-card">
+    <div class="p-table-wrap">
+        <table class="p-table">
+            <thead><tr><th>Alumno</th><th>Artículo</th><th class="num">Pagó</th><th>Fecha</th><th></th></tr></thead>
+            <tbody>
+            {% for c in pagina %}
+                <tr>
+                    <td>
+                        <a href="{% url 'alumno_detalle' c.alumno.id %}" class="persona">
+                            <img src="{{ c.alumno|avatar_url }}" alt="">
+                            <span><span class="n d-block">{{ c.alumno.nombre }} {{ c.alumno.apellido }}</span><span class="s">{% for cl in c.alumno.clases.all %}{{ cl.grado }}{{ cl.grupo }}{% if not forloop.last %}, {% endif %}{% endfor %}</span></span>
+                        </a>
+                    </td>
+                    <td><span class="fw-semibold">{{ c.articulo.nombre }}</span><div class="text-muted-p" style="font-size:.76rem">{{ c.articulo.get_tipo_display }}</div></td>
+                    <td class="num">{{ c.costo_pagado }}</td>
+                    <td class="text-muted-p" style="font-size:.82rem">{{ c.fecha_compra|date:"d M Y, H:i" }}{% if c.fecha_entrega %}<div>Entregado {{ c.fecha_entrega|date:"d M" }}</div>{% endif %}</td>
+                    <td>
+                        {% if c.estado == 'pendiente' %}
+                            <div class="acciones-fila">
+                                <form method="post" action="{% url 'cancelar_compra' c.id %}" data-confirmar="Se devolverán {{ c.costo_pagado }} monedas a {{ c.alumno.nombre }} y la pieza regresa al stock." data-titulo="¿Cancelar la compra?" data-boton="Cancelar y reembolsar" data-peligro>
+                                    {% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                    <button class="p-btn sm fantasma" title="Cancelar y reembolsar"><i class="bi bi-arrow-counterclockwise"></i> <span class="d-none d-md-inline">Reembolsar</span></button>
+                                </form>
+                                <form method="post" action="{% url 'entregar_articulo_tienda' c.id %}">
+                                    {% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                    <button class="p-btn sm exito"><i class="bi bi-check2"></i> Entregado</button>
+                                </form>
+                            </div>
+                        {% elif c.estado == 'entregado' %}<span class="p-badge verde float-end">Entregado</span>
+                        {% else %}<span class="p-badge float-end">Reembolsado</span>{% endif %}
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="5"><div class="vacio-p"><i class="bi bi-box-seam"></i>{% if estado == 'pendiente' %}<h3>No hay premios por entregar</h3>Cuando un alumno compre algo aparecerá aquí.{% else %}Nada por aquí.{% endif %}</div></td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if pagina.has_other_pages %}
+        <div class="p-card-head" style="border-top:1px solid var(--border);border-bottom:0;justify-content:center">
+            {% if pagina.has_previous %}<a href="?estado={{ estado }}&page={{ pagina.previous_page_number }}" class="p-btn sm">Anterior</a>{% endif %}
+            <span class="text-muted-p" style="font-size:.85rem">Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>
+            {% if pagina.has_next %}<a href="?estado={{ estado }}&page={{ pagina.next_page_number }}" class="p-btn sm">Siguiente</a>{% endif %}
+        </div>
+    {% endif %}
+</section>
+{% endblock %}

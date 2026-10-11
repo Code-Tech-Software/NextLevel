@@ -1,663 +1,451 @@
-import json
-from django.shortcuts import render, get_object_or_404, redirect
-from django.http import JsonResponse, HttpResponseForbidden, HttpResponseRedirect
-from django.views.decorators.http import require_POST
-from django.contrib.auth.decorators import login_required
+"""Vistas del lado del alumno (la experiencia gamificada)."""
+import time
+from datetime import timedelta
+from functools import wraps
+
 from django.contrib import messages
-from django.db import transaction
-from .models import Clase, Alumno, ArticuloTienda, CompraAlumno, Pregunta, OpcionRespuesta, Nivel
-from .forms import AlumnoForm, ClaseForm, ArticuloTiendaForm, MisionForm, NivelForm
+from django.db.models import Count, Q
+from django.http import HttpResponseRedirect, JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+from django.utils import timezone
+from django.views.decorators.http import require_POST
+
+from . import gamificacion as juego
+from .models import (
+    Alumno, ArticuloTienda, Clase, CompraAlumno, Mision, Nivel, OpcionRespuesta, ProgresoMision,
+    RespuestaAlumno,
+)
+
+MAX_INTENTOS_PIN = 5
+BLOQUEO_PIN_SEGUNDOS = 60
+TAMANO_MAX_EVIDENCIA = 8 * 1024 * 1024
 
 
 def home_redirect(request):
     return HttpResponseRedirect('/seleccionar-clase/')
 
 
-# Vista para seleccionar la clase
+def alumno_requerido(vista):
+    """Inyecta (alumno, clase) y regresa a la selección de jugador si no hay sesión válida."""
+
+    @wraps(vista)
+    def envoltura(request, clase_id, *args, **kwargs):
+        clase = get_object_or_404(Clase, id=clase_id)
+        alumno_id = request.session.get('alumno_id')
+        alumno = Alumno.objects.filter(id=alumno_id, activo=True, clases=clase).first() if alumno_id else None
+        if not alumno:
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'ok': False, 'mensaje': 'Tu sesión terminó.'}, status=403)
+            return redirect('lista_alumnos', clase_id=clase.id)
+        juego.actualizar_racha(alumno)
+        return vista(request, alumno, clase, *args, **kwargs)
+
+    return envoltura
+
+
+def _es_ajax(request):
+    return request.headers.get('x-requested-with') == 'XMLHttpRequest'
+
+
+# ========================
+# LOBBY Y ACCESO
+# ========================
 def seleccionar_clase(request):
-    clases = Clase.objects.all()
+    clases = Clase.objects.filter(activa=True).annotate(
+        total_alumnos=Count('alumnos', filter=Q(alumnos__activo=True), distinct=True),
+        total_mundos=Count('mundos', distinct=True),
+    ).order_by('anio', 'grado', 'grupo')
     return render(request, 'Alumnos/seleccionar_clase.html', {'clases': clases})
 
 
-# Vista original (solo le agregamos el request al render)
 def lista_alumnos(request, clase_id):
     clase = get_object_or_404(Clase, id=clase_id)
     alumnos = clase.alumnos.filter(activo=True).order_by('apellido', 'nombre')
-    return render(request, 'Alumnos/lista_alumnos.html', {'clase': clase, 'alumnos': alumnos})
-
-
-# 1. Vista para procesar el PIN
-
-def ingresar_pin(request, clase_id, alumno_id):
-    if request.method == 'POST':
-        pin_ingresado = request.POST.get('pin')
-        alumno = get_object_or_404(Alumno, id=alumno_id)
-
-        if alumno.pin == pin_ingresado:
-            # Guardamos el ID del alumno en la sesión de Django
-            request.session['alumno_id'] = alumno.id
-            return redirect('dashboard_alumno', clase_id=clase_id)
-        else:
-            messages.error(request, f"PIN incorrecto para {alumno.nombre}")
-
-    return redirect('lista_alumnos', clase_id=clase_id)
-
-
-# 2. Vista del Dashboard (Estilo Duolingo)
-def dashboard_alumno(request, clase_id):
-    alumno_id = request.session.get('alumno_id')
-    if not alumno_id:
-        return redirect('lista_alumnos', clase_id=clase_id)  # Si no hay sesión, regresa a la lista
-
-    alumno = get_object_or_404(Alumno, id=alumno_id)
-    clase = get_object_or_404(Clase, id=clase_id)
-
-    # Traemos todas las misiones de la clase ordenadas por Nivel y luego por Misión
-    misiones = Mision.objects.filter(clase=clase).select_related('nivel').order_by('nivel__orden', 'orden')
-
-    # Traemos el progreso del alumno y lo convertimos en un diccionario para búsqueda rápida
-    progresos = ProgresoMision.objects.filter(alumno=alumno)
-    progreso_dict = {p.mision_id: p for p in progresos}
-
-    misiones_ruta = []
-    mision_desbloqueada = True  # La primera misión siempre debe estar desbloqueada
-
-    for mision in misiones:
-        progreso = progreso_dict.get(mision.id)
-        estado_actual = progreso.estado if progreso else 'pendiente'
-
-        misiones_ruta.append({
-            'mision': mision,
-            'progreso': progreso,
-            'estado': estado_actual,
-            'desbloqueada': mision_desbloqueada
-        })
-
-        # LA REGLA DE ORO: Si esta misión NO está 'aprobada', bloqueamos todas las que siguen
-        if estado_actual != 'aprobado':
-            mision_desbloqueada = False
-
-    return render(request, 'Alumnos/dashboard.html', {
-        'alumno': alumno,
+    return render(request, 'Alumnos/lista_alumnos.html', {
         'clase': clase,
-        'misiones_ruta': misiones_ruta
+        'alumnos': alumnos,
+        'pin_error': request.session.pop('pin_error', None),
     })
 
 
-# 3. Vista para cerrar sesión
-def salir_alumno(request):
-    if 'alumno_id' in request.session:
-        del request.session['alumno_id']
-    return_url = request.META.get('HTTP_REFERER', '/')
-    return redirect(return_url)
-
-
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib import messages
-from .models import Alumno, Clase, Mision, ProgresoMision, RespuestaAlumno, OpcionRespuesta
-
-
-def ver_mision(request, clase_id, mision_id):
-    alumno_id = request.session.get('alumno_id')
-    if not alumno_id:
-        return redirect('lista_alumnos', clase_id=clase_id)
-
-    alumno = get_object_or_404(Alumno, id=alumno_id)
+@require_POST
+def ingresar_pin(request, clase_id, alumno_id):
     clase = get_object_or_404(Clase, id=clase_id)
-    mision = get_object_or_404(Mision, id=mision_id, clase=clase)
-    progreso = ProgresoMision.objects.filter(alumno=alumno, mision=mision).first()
+    alumno = get_object_or_404(Alumno, id=alumno_id, activo=True, clases=clase)
 
-    # Si es cuestionario, enviamos las preguntas a la plantilla
-    preguntas = mision.preguntas.all() if mision.tipo == "cuestionario" else None
+    clave = f'pin_fallos_{alumno.id}'
+    fallos, desde = request.session.get(clave, [0, 0])
+    if fallos >= MAX_INTENTOS_PIN and time.time() - desde < BLOQUEO_PIN_SEGUNDOS:
+        espera = int(BLOQUEO_PIN_SEGUNDOS - (time.time() - desde))
+        messages.error(request, f'Demasiados intentos. Espera {espera} segundos e inténtalo otra vez.')
+        return redirect('lista_alumnos', clase_id=clase.id)
+
+    if alumno.pin == request.POST.get('pin', '').strip():
+        request.session.pop(clave, None)
+        request.session['alumno_id'] = alumno.id
+        request.session['clase_id'] = clase.id
+        juego.actualizar_racha(alumno)
+        juego.registrar_evento(alumno, 'login', clase=clase)
+        return redirect('dashboard_alumno', clase_id=clase.id)
+
+    if time.time() - desde >= BLOQUEO_PIN_SEGUNDOS:
+        fallos = 0
+    request.session[clave] = [fallos + 1, time.time()]
+    request.session['pin_error'] = alumno.id
+    return redirect('lista_alumnos', clase_id=clase.id)
+
+
+def salir_alumno(request):
+    clase_id = request.session.pop('clase_id', None)
+    request.session.pop('alumno_id', None)
+    if clase_id:
+        return redirect('lista_alumnos', clase_id=clase_id)
+    return redirect('seleccionar_clase')
+
+
+# ========================
+# MAPA
+# ========================
+def _segundos_para_medianoche():
+    ahora = timezone.localtime()
+    manana = (ahora + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+    return int((manana - ahora).total_seconds())
+
+
+@alumno_requerido
+def dashboard_alumno(request, alumno, clase):
+    juego.registrar_evento(alumno, 'login', clase=clase)
+    ruta = juego.construir_ruta(alumno, clase)
+    ranking = juego.ranking_clase(clase, 'semana')
+    mi_posicion = next((a.posicion for a in ranking if a.id == alumno.id), None)
+
+    equipos = juego.ranking_equipos(clase)
+    mi_equipo = next((e for e in equipos if any(m.id == alumno.id for m in e.lista_miembros)), None)
+    return render(request, 'Alumnos/dashboard.html', {
+        'alumno': alumno,
+        'clase': clase,
+        'ruta': ruta,
+        'equipos': equipos,
+        'mi_equipo': mi_equipo,
+        'metas': juego.metas_visibles(clase),
+        'diarias': juego.misiones_del_dia(alumno, clase),
+        'segundos_reinicio': _segundos_para_medianoche(),
+        'podio': ranking[:3],
+        'mi_posicion': mi_posicion,
+        'total_jugadores': len(ranking),
+        'logros_recientes': alumno.logros.select_related('logro')[:4],
+        'seccion': 'mapa',
+    })
+
+
+@alumno_requerido
+def ver_mundo(request, alumno, clase, mundo_id):
+    ruta = juego.construir_ruta(alumno, clase)
+    mundo = next((m for m in ruta['mundos'] if (m['mundo'].id if m['mundo'] else 0) == mundo_id), None)
+    if not mundo:
+        messages.info(request, 'Ese mundo no existe todavía.')
+        return redirect('dashboard_alumno', clase_id=clase.id)
+
+    indice = ruta['mundos'].index(mundo)
+    return render(request, 'Alumnos/mundo.html', {
+        'alumno': alumno,
+        'clase': clase,
+        'datos': mundo,
+        'anterior': ruta['mundos'][indice - 1] if indice > 0 else None,
+        'siguiente': ruta['mundos'][indice + 1] if indice + 1 < len(ruta['mundos']) else None,
+        'seccion': 'mapa',
+    })
+
+
+@alumno_requerido
+def ver_mision(request, alumno, clase, mision_id):
+    mision = get_object_or_404(Mision.objects.select_related('nivel', 'nivel__mundo'), id=mision_id, clase=clase)
+    ruta = juego.construir_ruta(alumno, clase)
+    mundo, nivel, item = juego.buscar_en_ruta(ruta, mision.id)
+    if not item or (not item['desbloqueada'] and item['estado'] != 'aprobado'):
+        messages.warning(request, '🔒 Esta misión aún está bloqueada. ¡Completa las anteriores primero!')
+        return redirect('dashboard_alumno', clase_id=clase.id)
+
+    progreso = item['progreso']
+    preguntas = mision.preguntas.prefetch_related('opciones') if mision.tipo == 'cuestionario' else None
+    respuestas = {}
+    if progreso and mision.tipo == 'cuestionario':
+        respuestas = {
+            r.pregunta_id: r for r in progreso.respuestas_detalladas.select_related('opcion_seleccionada')
+        }
 
     return render(request, 'Alumnos/mision_detalle.html', {
         'alumno': alumno,
         'clase': clase,
         'mision': mision,
         'progreso': progreso,
-        'preguntas': preguntas  # <-- ¡Nuevo!
+        'preguntas': preguntas,
+        'respuestas': respuestas,
+        'mundo': mundo,
+        'info': juego.TIPO_INFO.get(mision.tipo),
+        'resultado': request.session.pop('resultado_mision', None),
+        'seccion': 'mapa',
     })
-
-
-def marcar_completada(request, clase_id, mision_id):
-    alumno_id = request.session.get('alumno_id')
-    if not alumno_id or request.method != 'POST':
-        return redirect('lista_alumnos', clase_id=clase_id)
-
-    alumno = get_object_or_404(Alumno, id=alumno_id)
-    mision = get_object_or_404(Mision, id=mision_id)
-
-    progreso, creado = ProgresoMision.objects.get_or_create(
-        alumno=alumno,
-        mision=mision,
-        defaults={'estado': 'pendiente'}
-    )
-
-    # Lógica para CUESTIONARIOS
-    if mision.tipo == "cuestionario":
-
-        RespuestaAlumno.objects.filter(progreso=progreso).delete()
-        puntuacion_obtenida = 0
-
-        # 1. Calculamos los puntos totales posibles del cuestionario
-        preguntas_mision = mision.preguntas.all()
-        puntos_totales = sum(pregunta.puntos for pregunta in preguntas_mision)
-
-        # Procesamos cada respuesta enviada
-        for pregunta in preguntas_mision:
-            opcion_id = request.POST.get(f'pregunta_{pregunta.id}')
-            if opcion_id:
-                opcion_seleccionada = get_object_or_404(OpcionRespuesta, id=opcion_id)
-                RespuestaAlumno.objects.create(
-                    progreso=progreso,
-                    pregunta=pregunta,
-                    opcion_seleccionada=opcion_seleccionada
-                )
-
-                if opcion_seleccionada.es_correcta:
-                    puntuacion_obtenida += pregunta.puntos
-
-        # 2. Calculamos la calificación en porcentaje (0 a 100)
-        if puntos_totales > 0:
-            calificacion_porcentaje = int((puntuacion_obtenida / puntos_totales) * 100)
-        else:
-            calificacion_porcentaje = 0
-
-        # 3. Calculamos las monedas proporcionales (convertidas a entero)
-        monedas_ganadas = int((calificacion_porcentaje / 100.0) * mision.monedas_recompensa)
-
-        # 4. La XP se otorga completa, independientemente de la calificación
-        xp_ganada = mision.xp_recompensa
-
-        # Actualizamos el progreso con el porcentaje como puntuación
-        progreso.puntuacion = calificacion_porcentaje
-        progreso.estado = 'aprobado'
-        progreso.revisado = True
-        progreso.save()
-
-        # 5. Otorgamos las recompensas al alumno
-        # para evitar que los alumnos envíen el cuestionario varias veces para "farmear" XP.
-        if creado:
-            alumno.monedas += monedas_ganadas
-            alumno.xp_total += xp_ganada
-            alumno.save()
-
-        calificacion_base_10 = calificacion_porcentaje / 10.0
-
-        messages.success(
-            request,
-            f"¡Cuestionario completado! Calificación: {calificacion_base_10:.1f}. Ganaste {monedas_ganadas} monedas."
-        )
-
-    else:
-        # Lógica para Misiones de Arduino o Link
-        if not creado and progreso.estado == 'rechazado':
-            progreso.estado = 'pendiente'
-            progreso.revisado = False
-            progreso.save()
-        messages.success(request, f"¡Excelente! La misión '{mision.nombre}' fue enviada a revisión.")
-
-    return redirect('dashboard_alumno', clase_id=clase_id)
-
-
-@login_required()
-def panel_profesor(request, clase_id):
-    clase = get_object_or_404(Clase, id=clase_id)
-
-    # Obtenemos solo los progresos que están pendientes de revisión para esta clase en específico
-    entregas_pendientes = ProgresoMision.objects.filter(
-        mision__clase=clase,
-        estado='pendiente'
-    ).select_related('alumno', 'mision').order_by('fecha')
-
-    return render(request, 'Profesor/panel_calificar.html', {
-        'clase': clase,
-        'entregas_pendientes': entregas_pendientes
-    })
-
-
-@login_required()
-def aprobar_mision(request, progreso_id):
-    progreso = get_object_or_404(ProgresoMision, id=progreso_id)
-
-    if request.method == 'POST' and progreso.estado == 'pendiente':
-        # Obtenemos la calificación del formulario (por defecto 100 si no se envía)
-        puntuacion = int(request.POST.get('puntuacion', 100))
-
-        with transaction.atomic():
-            # 1. Actualizamos el progreso con la nota manual
-            progreso.estado = 'aprobado'
-            progreso.revisado = True
-            progreso.puntuacion = puntuacion
-            progreso.save()
-
-            # 2. Calculamos recompensas (XP completa, Monedas proporcionales)
-            xp_ganada = progreso.mision.xp_recompensa
-            # Usamos la misma lógica que en el cuestionario: monedas según la nota
-            monedas_ganadas = int((puntuacion / 100.0) * progreso.mision.monedas_recompensa)
-
-            # 3. Sumar al alumno
-            alumno = progreso.alumno
-            alumno.xp_total += xp_ganada  # O el campo que uses para XP
-            alumno.monedas += monedas_ganadas
-            alumno.save()
-
-            calif_display = puntuacion / 10.0
-            messages.success(request,
-                             f"Misión de {alumno.nombre} aprobada con {calif_display}. Otorgadas {monedas_ganadas} monedas.")
-
-    return redirect('panel_profesor', clase_id=progreso.mision.clase.id)
-
-
-@login_required()
-def rechazar_mision(request, progreso_id):
-    progreso = get_object_or_404(ProgresoMision, id=progreso_id)
-
-    if progreso.estado == 'pendiente':
-        progreso.estado = 'rechazado'
-        progreso.revisado = True
-        progreso.save()
-        messages.warning(request, f"Misión de {progreso.alumno.nombre} rechazada. Deberá corregirla.")
-
-    return redirect('panel_profesor', clase_id=progreso.mision.clase.id)
-
-
-def tienda_alumno(request, clase_id):
-    alumno_id = request.session.get('alumno_id')
-    if not alumno_id:
-        return redirect('lista_alumnos', clase_id=clase_id)
-
-    alumno = get_object_or_404(Alumno, id=alumno_id)
-    clase = get_object_or_404(Clase, id=clase_id)
-
-    # CAMBIO AQUÍ: Traemos absolutamente todos los artículos de la tienda
-    articulos = ArticuloTienda.objects.all()
-
-    # El inventario sigue siendo personal del alumno
-    mis_compras = CompraAlumno.objects.filter(alumno=alumno).order_by('-fecha_compra')
-
-    return render(request, 'Alumnos/tienda.html', {
-        'alumno': alumno,
-        'clase': clase,  # Lo pasamos para que el botón "Volver" sepa a qué clase regresar
-        'articulos': articulos,
-        'mis_compras': mis_compras
-    })
-
-
-def comprar_articulo(request, clase_id, articulo_id):
-    alumno_id = request.session.get('alumno_id')
-    if not alumno_id or request.method != 'POST':
-        return redirect('lista_alumnos', clase_id=clase_id)
-
-    alumno = get_object_or_404(Alumno, id=alumno_id)
-    articulo = get_object_or_404(ArticuloTienda, id=articulo_id)
-
-    # Verificamos si tiene suficientes monedas
-    if alumno.monedas >= articulo.costo_monedas:
-        with transaction.atomic():
-            # Descontamos monedas
-            alumno.monedas -= articulo.costo_monedas
-
-            # NUEVA LÓGICA: Si es un avatar y tiene imagen, se lo equipamos
-            if articulo.tipo == 'avatar' and articulo.imagen:
-                # Al asignar una ImageField a otra, Django vincula la misma ruta
-                alumno.avatar = articulo.imagen
-
-            alumno.save()
-
-            # Registramos la compra
-            CompraAlumno.objects.create(
-                alumno=alumno,
-                articulo=articulo,
-                entregado_usado=not articulo.requiere_validacion  # Si es digital, ya está "entregado"
-            )
-
-            messages.success(request, f"¡Compraste '{articulo.nombre}' con éxito! 🎉")
-    else:
-        messages.error(request, "¡Oh no! No tienes suficientes monedas para este artículo.")
-
-    return redirect('tienda_alumno', clase_id=clase_id)
-
-@login_required()
-def dashboard_profesor(request):
-    # Obtenemos todas las clases registradas
-    clases = Clase.objects.all().order_by('anio', 'grado', 'grupo')
-
-    # Enriquecemos cada clase con estadísticas útiles para el profesor
-    for clase in clases:
-        # Contamos cuántos alumnos hay en esta clase
-        clase.total_alumnos = clase.alumnos.count()
-        # Contamos cuántas misiones están esperando calificación en esta clase
-        clase.misiones_pendientes = ProgresoMision.objects.filter(
-            mision__clase=clase,
-            estado='pendiente'
-        ).count()
-
-    # Extra: Obtenemos las compras de la tienda que requieren que el profe entregue algo físico
-    entregas_tienda = CompraAlumno.objects.filter(
-        articulo__requiere_validacion=True,
-        entregado_usado=False
-    ).select_related('alumno', 'articulo').order_by('fecha_compra')
-
-    return render(request, 'Profesor/dashboard_principal.html', {
-        'clases': clases,
-        'entregas_tienda': entregas_tienda
-    })
-
-
-@login_required()
-def entregar_articulo_tienda(request, compra_id):
-    # Vista rápida para marcar que ya le diste su premio físico al alumno
-    if request.method == 'POST':
-        compra = get_object_or_404(CompraAlumno, id=compra_id)
-        compra.entregado_usado = True
-        compra.save()
-        messages.success(request,
-                         f"¡Recompensa '{compra.articulo.nombre}' entregada con éxito a {compra.alumno.nombre}!")
-
-    # Redirigimos de vuelta al dashboard principal
-    return redirect('dashboard_profesor')
-
-
-@login_required()
-def matriz_calificaciones(request, clase_id):
-    clase = get_object_or_404(Clase, id=clase_id)
-
-    # Obtener alumnos de la clase y misiones ordenadas
-    alumnos = clase.alumnos.filter(activo=True).order_by('apellido', 'nombre')
-    misiones = Mision.objects.filter(clase=clase).select_related('nivel').order_by('nivel__orden', 'orden')
-
-    # Obtener todos los progresos de esta clase en una sola consulta
-    progresos = ProgresoMision.objects.filter(
-        alumno__in=alumnos,
-        mision__in=misiones
-    )
-
-    # Crear un diccionario para buscar rápido: {(alumno_id, mision_id): progreso}
-    diccionario_progresos = {(p.alumno_id, p.mision_id): p for p in progresos}
-
-    # Construir la matriz
-    matriz = []
-    for alumno in alumnos:
-        fila = {
-            'alumno': alumno,
-            'calificaciones': []
-        }
-        for mision in misiones:
-            # Buscar si el alumno tiene progreso en esta misión
-            progreso = diccionario_progresos.get((alumno.id, mision.id))
-            fila['calificaciones'].append({
-                'mision': mision,
-                'progreso': progreso
-            })
-        matriz.append(fila)
-
-    context = {
-        'clase': clase,
-        'misiones_columnas': misiones,
-        'matriz': matriz,
-    }
-
-    return render(request, 'Profesor/matriz_calificaciones.html', context)
-
-
-import openpyxl
-from openpyxl.styles import Font, PatternFill, Alignment
-from openpyxl.utils import get_column_letter
-from django.http import HttpResponse
-from django.shortcuts import get_object_or_404
-from django.contrib.auth.decorators import login_required
-
-
-# Asegúrate de importar tus modelos: Clase, Mision, ProgresoMision
-@login_required()
-def exportar_matriz_excel(request, clase_id):
-    clase = get_object_or_404(Clase, id=clase_id)
-
-    # 1. Obtener los mismos datos que en tu vista original
-    alumnos = clase.alumnos.filter(activo=True).order_by('apellido', 'nombre')
-    misiones = Mision.objects.filter(clase=clase).select_related('nivel').order_by('nivel__orden', 'orden')
-    progresos = ProgresoMision.objects.filter(alumno__in=alumnos, mision__in=misiones)
-
-    diccionario_progresos = {(p.alumno_id, p.mision_id): p for p in progresos}
-
-    # 2. Crear el libro de trabajo (Workbook) y la hoja de Excel
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = f"Matriz {clase.grado} {clase.grupo}"
-
-    # 3. Definir estilos para el Excel (opcional pero le da toque profesional)
-    header_font = Font(bold=True, color="FFFFFF")
-    header_fill = PatternFill(start_color="4F46E5", end_color="4F46E5", fill_type="solid")  # Color similar a tu UI
-    center_alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-    left_alignment = Alignment(horizontal="left", vertical="center")
-
-    # 4. Escribir la fila de Encabezados
-    headers = ['Alumno'] + [f"{m.nombre}\n({m.nivel.nombre})" for m in misiones]
-    ws.append(headers)
-
-    # Aplicar estilos a los encabezados y ajustar ancho de columnas
-    for col_num, cell in enumerate(ws[1], 1):
-        cell.font = header_font
-        cell.fill = header_fill
-        cell.alignment = center_alignment
-
-        # Ajustar el ancho: la columna de alumnos más ancha que las de misiones
-        col_letter = get_column_letter(col_num)
-        ws.column_dimensions[col_letter].width = 35 if col_num == 1 else 18
-
-    # 5. Escribir los datos de los alumnos y sus calificaciones (¡YA FUERA DEL BUCLE ANTERIOR!)
-    for alumno in alumnos:
-        fila = [f"{alumno.apellido}, {alumno.nombre}"]
-
-        for mision in misiones:
-            progreso = diccionario_progresos.get((alumno.id, mision.id))
-            if progreso:
-                # Extraemos solo el valor numérico de la calificación
-                valor_celda = progreso.calificacion_escala_10
-            else:
-                # Puedes dejar "Sin entrega" o cambiarlo por None / "" si prefieres la celda vacía
-                valor_celda = "Sin entrega"
-
-            fila.append(valor_celda)
-
-        ws.append(fila)
-
-    # Aplicar alineación a las filas de datos
-    for row in ws.iter_rows(min_row=2, max_col=len(headers), max_row=len(alumnos) + 1):
-        row[0].alignment = left_alignment  # Alumno a la izquierda
-        for cell in row[1:]:
-            cell.alignment = center_alignment  # Calificaciones centradas
-
-    # 6. Preparar y devolver la respuesta HTTP con el archivo
-    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    nombre_archivo = f"Matriz_Calificaciones_{clase.nombre}_{clase.grado}_{clase.grupo}.xlsx".replace(" ", "_")
-    response['Content-Disposition'] = f'attachment; filename="{nombre_archivo}"'
-
-    wb.save(response)
-    return response
-
-def mi_progreso(request, clase_id):
-    # 1. Obtener el alumno actual (Ajusta esto según cómo manejes tu login)
-    alumno_id = request.session.get('alumno_id')
-    alumno = get_object_or_404(Alumno, id=alumno_id)
-
-    # 2. Obtener la clase actual
-    clase = get_object_or_404(Clase, id=clase_id)
-
-    # 3. Filtrar los progresos de este alumno específicamente para las misiones de esta clase
-    progresos = ProgresoMision.objects.filter(
-        alumno=alumno,
-        mision__clase=clase
-    ).select_related('mision', 'mision__nivel').order_by('mision__nivel__orden', 'mision__orden')
-
-    context = {
-        'alumno': alumno,
-        'clase': clase,
-        'progresos': progresos,
-    }
-
-    return render(request, 'Alumnos/mi_progreso.html', context)
-
-
-def alta_alumno(request):
-    if request.method == 'POST':
-        form = AlumnoForm(request.POST, request.FILES)
-        if form.is_valid():
-            form.save()
-            messages.success(request, '¡Nuevo alumno registrado con éxito en la plataforma!')
-            return redirect('dashboard_profesor')
-    else:
-        form = AlumnoForm()
-
-    context = {
-        'form': form
-    }
-    return render(request, 'Administrativo/alta_alumno.html', context)
-
-
-def alta_clase(request):
-    if request.method == 'POST':
-        form = ClaseForm(request.POST)
-        if form.is_valid():
-            form.save()
-            messages.success(request, '¡Nueva clase registrada con éxito!')
-            return redirect('dashboard_profesor')
-    else:
-        form = ClaseForm()
-
-    context = {
-        'form': form
-    }
-    return render(request, 'Administrativo/alta_clase.html', context)
-
-
-def alta_articulo(request):
-    if request.method == 'POST':
-        form = ArticuloTiendaForm(request.POST, request.FILES)
-        if form.is_valid():
-            form.save()
-            messages.success(request, '¡Nuevo artículo añadido al inventario de la tienda!')
-            return redirect('dashboard_profesor')
-    else:
-        form = ArticuloTiendaForm()
-
-    context = {
-        'form': form
-    }
-    return render(request, 'Administrativo/alta_articulo.html', context)
-
-
-def alta_mision(request):
-    if request.method == 'POST':
-        form = MisionForm(request.POST, request.FILES)
-        preguntas_data = request.POST.get('preguntas_json', '[]')
-
-        if form.is_valid():
-            try:
-                with transaction.atomic():
-                    mision = form.save()
-
-                    if mision.tipo == 'cuestionario':
-                        preguntas = json.loads(preguntas_data)
-                        for idx_p, p_data in enumerate(preguntas):
-                            nueva_pregunta = Pregunta.objects.create(
-                                mision=mision,
-                                texto=p_data.get('texto', ''),
-                                orden=idx_p + 1,
-                                puntos=p_data.get('puntos', 10)
-                            )
-                            for o_data in p_data.get('opciones', []):
-                                OpcionRespuesta.objects.create(
-                                    pregunta=nueva_pregunta,
-                                    texto=o_data.get('texto', ''),
-                                    es_correcta=o_data.get('es_correcta', False)
-                                )
-
-                messages.success(request, '¡Nueva misión creada y asignada con éxito!')
-                return redirect('dashboard_profesor')
-            except Exception as e:
-                messages.error(request, f'Ocurrió un error al procesar el cuestionario: {str(e)}')
-    else:
-        form = MisionForm()
-
-    return render(request, 'Administrativo/alta_mision.html', {'form': form})
-
-
-def cargar_niveles(request):
-    clase_id = request.GET.get('clase_id')
-
-    if clase_id:
-        niveles = Nivel.objects.filter(clase_id=clase_id).order_by('orden')
-        # Retornamos solo el id y el nombre para llenar el <select>
-        return JsonResponse(list(niveles.values('id', 'nombre')), safe=False)
-
-    return JsonResponse([], safe=False)
-
-def alta_nivel(request):
-    if request.method == 'POST':
-        form = NivelForm(request.POST)
-        if form.is_valid():
-            form.save()
-            messages.success(request, '¡Nuevo nivel creado con éxito! Ya puedes asignarle misiones.')
-            return redirect('dashboard_profesor')
-    else:
-        form = NivelForm()
-
-    return render(request, 'Administrativo/alta_nivel.html', {'form': form})
-
-
- # Dar monedas
-from django.shortcuts import render, get_object_or_404
-from django.http import JsonResponse
-from django.views.decorators.http import require_POST
-from .models import Alumno, Clase
-
-
-def gestionar_monedas(request):
-    """Renderiza la vista principal con opciones de filtrado."""
-    clases = Clase.objects.all().order_by('grado', 'grupo')
-    clase_id = request.GET.get('clase')
-
-    # Por defecto, traemos todos los alumnos activos
-    alumnos = Alumno.objects.filter(activo=True).order_by('apellido', 'nombre')
-
-    # Si se selecciona una clase en el filtro, aplicamos el queryset
-    if clase_id:
-        alumnos = alumnos.filter(clases__id=clase_id)
-
-    context = {
-        'clases': clases,
-        'alumnos': alumnos.distinct(),
-        'clase_seleccionada': int(clase_id) if clase_id and clase_id.isdigit() else None
-    }
-    return render(request, 'Monedas/gestionar_monedas.html', context)
 
 
 @require_POST
-def api_actualizar_monedas(request):
-    """Recibe peticiones AJAX para sumar o restar monedas."""
-    try:
-        alumno_id = request.POST.get('alumno_id')
-        cantidad = int(request.POST.get('cantidad', 0))
-        accion = request.POST.get('accion')  # 'sumar' o 'restar'
+@alumno_requerido
+def marcar_completada(request, alumno, clase, mision_id):
+    mision = get_object_or_404(Mision, id=mision_id, clase=clase, activa=True)
+    ruta = juego.construir_ruta(alumno, clase)
+    _, _, item = juego.buscar_en_ruta(ruta, mision.id)
+    if not item or not item['desbloqueada']:
+        messages.warning(request, '🔒 Esta misión aún está bloqueada.')
+        return redirect('dashboard_alumno', clase_id=clase.id)
 
-        alumno = get_object_or_404(Alumno, id=alumno_id)
+    progreso = item['progreso']
+    if progreso and progreso.estado == 'aprobado':
+        messages.info(request, '¡Ya completaste esta misión!')
+        return redirect('ver_mision', clase_id=clase.id, mision_id=mision.id)
+    if progreso and progreso.estado == 'pendiente' and not mision.es_automatica:
+        messages.info(request, 'Tu trabajo ya está en revisión. ¡Paciencia, aventurero!')
+        return redirect('ver_mision', clase_id=clase.id, mision_id=mision.id)
 
-        if accion == 'sumar':
-            alumno.monedas += cantidad
-        elif accion == 'restar':
-            alumno.monedas -= cantidad
-            # Extra: Prevenir que las monedas queden en negativo
-            if alumno.monedas < 0:
-                alumno.monedas = 0
+    if mision.tipo == 'presencial':
+        messages.info(request, 'Esta misión se completa en clase. ¡El profe la marcará cuando la termines!')
+        return redirect('ver_mision', clase_id=clase.id, mision_id=mision.id)
 
-        alumno.save()
+    if mision.tipo == 'cuestionario':
+        return _resolver_cuestionario(request, alumno, clase, mision, progreso)
+    if mision.tipo == 'video':
+        progreso = progreso or ProgresoMision(alumno=alumno, mision=mision)
+        monedas = juego.calificar(progreso, 100, avisar=False)
+        juego.registrar_evento(alumno, 'misiones', clase=clase)
+        request.session['resultado_mision'] = {
+            'estrellas': 3, 'monedas': monedas, 'xp': mision.xp_recompensa, 'calificacion': '10.0',
+        }
+        return redirect('ver_mision', clase_id=clase.id, mision_id=mision.id)
 
-        return JsonResponse({
-            'status': 'success',
-            'nuevas_monedas': alumno.monedas,
-            'mensaje': f'Monedas actualizadas para {alumno.nombre}'
-        })
-    except Exception as e:
-        return JsonResponse({'status': 'error', 'mensaje': str(e)}, status=400)
+    # Misiones que revisa el profesor
+    evidencia = request.FILES.get('evidencia')
+    texto = request.POST.get('respuesta_texto', '').strip()
+    if evidencia:
+        if not (evidencia.content_type or '').startswith('image/'):
+            messages.error(request, 'La evidencia debe ser una foto o imagen.')
+            return redirect('ver_mision', clase_id=clase.id, mision_id=mision.id)
+        if evidencia.size > TAMANO_MAX_EVIDENCIA:
+            messages.error(request, 'La foto es muy pesada (máximo 8 MB).')
+            return redirect('ver_mision', clase_id=clase.id, mision_id=mision.id)
+    if mision.tipo == 'evidencia' and not evidencia:
+        messages.error(request, '📸 Esta misión necesita una foto de tu trabajo.')
+        return redirect('ver_mision', clase_id=clase.id, mision_id=mision.id)
+    if mision.tipo == 'texto' and not texto:
+        messages.error(request, '✍️ Escribe tu respuesta antes de enviar.')
+        return redirect('ver_mision', clase_id=clase.id, mision_id=mision.id)
+
+    if progreso:
+        progreso.intentos += 1
+    else:
+        progreso = ProgresoMision(alumno=alumno, mision=mision)
+    progreso.estado = 'pendiente'
+    progreso.revisado = False
+    progreso.respuesta_texto = texto
+    if evidencia:
+        progreso.evidencia = evidencia
+    progreso.save()
+
+    juego.registrar_evento(alumno, 'misiones', clase=clase)
+    juego.registrar_evento(alumno, 'evidencias', clase=clase)
+    messages.success(request, f'¡Excelente! "{mision.nombre}" fue enviada a revisión. 🚀')
+    return redirect('dashboard_alumno', clase_id=clase.id)
+
+
+def _resolver_cuestionario(request, alumno, clase, mision, progreso):
+    preguntas = list(mision.preguntas.prefetch_related('opciones'))
+    puntos_totales = sum(p.puntos for p in preguntas)
+
+    progreso = progreso or ProgresoMision(alumno=alumno, mision=mision)
+    if progreso.pk:
+        progreso.intentos += 1
+        RespuestaAlumno.objects.filter(progreso=progreso).delete()
+    progreso.save()
+
+    obtenidos = 0
+    for pregunta in preguntas:
+        opcion_id = request.POST.get(f'pregunta_{pregunta.id}')
+        opcion = next((o for o in pregunta.opciones.all() if str(o.id) == opcion_id), None)
+        if not opcion:
+            continue
+        RespuestaAlumno.objects.create(progreso=progreso, pregunta=pregunta, opcion_seleccionada=opcion)
+        if opcion.es_correcta:
+            obtenidos += pregunta.puntos
+
+    porcentaje = int(obtenidos * 100 / puntos_totales) if puntos_totales else 0
+    monedas = juego.calificar(progreso, porcentaje, avisar=False)
+
+    juego.registrar_evento(alumno, 'misiones', clase=clase)
+    juego.registrar_evento(alumno, 'cuestionarios', clase=clase)
+    if porcentaje >= 100:
+        juego.registrar_evento(alumno, 'perfecto', clase=clase)
+        juego.verificar_logros(alumno)
+
+    request.session['resultado_mision'] = {
+        'estrellas': progreso.estrellas,
+        'monedas': monedas,
+        'xp': mision.xp_recompensa,
+        'calificacion': f'{porcentaje / 10:.1f}',
+    }
+    return redirect('ver_mision', clase_id=clase.id, mision_id=mision.id)
+
+
+@require_POST
+@alumno_requerido
+def abrir_cofre(request, alumno, clase, nivel_id):
+    nivel = get_object_or_404(Nivel, id=nivel_id, clase=clase)
+    monedas = juego.abrir_cofre(alumno, nivel)
+    if monedas is None:
+        respuesta = {'ok': False, 'mensaje': 'Este cofre todavía no se puede abrir.'}
+    else:
+        respuesta = {'ok': True, 'monedas': monedas, 'total': alumno.monedas, 'xp': alumno.xp_total}
+    if _es_ajax(request):
+        return JsonResponse(respuesta)
+    if respuesta['ok']:
+        messages.success(request, f'¡Abriste el cofre y encontraste {monedas} monedas! 💰')
+    return redirect(request.POST.get('next') or reverse('dashboard_alumno', args=[clase.id]))
+
+
+@require_POST
+@alumno_requerido
+def reclamar_diaria(request, alumno, clase, diaria_id):
+    diaria = juego.reclamar_diaria(alumno, diaria_id, clase)
+    if diaria:
+        respuesta = {
+            'ok': True, 'titulo': diaria.titulo, 'monedas': diaria.recompensa_monedas, 'xp': diaria.recompensa_xp,
+            'total': alumno.monedas, 'xp_total': alumno.xp_total,
+        }
+    else:
+        respuesta = {'ok': False, 'mensaje': 'Esta misión del día aún no está lista.'}
+    if _es_ajax(request):
+        return JsonResponse(respuesta)
+    if diaria:
+        messages.success(request, f'¡Recompensa reclamada! +{diaria.recompensa_monedas} monedas')
+    return redirect('dashboard_alumno', clase_id=clase.id)
+
+
+@require_POST
+@alumno_requerido
+def leer_notificaciones(request, alumno, clase):
+    ids = request.POST.getlist('ids')
+    notificaciones = alumno.notificaciones.filter(leida=False)
+    if ids:
+        notificaciones = notificaciones.filter(id__in=[i for i in ids if i.isdigit()])
+    notificaciones.update(leida=True)
+    return JsonResponse({'ok': True})
+
+
+# ========================
+# TIENDA
+# ========================
+@alumno_requerido
+def tienda_alumno(request, alumno, clase):
+    juego.registrar_evento(alumno, 'tienda', clase=clase)
+    articulos = list(ArticuloTienda.objects.filter(activo=True).order_by('-destacado', 'costo_monedas'))
+    compradas = dict(
+        CompraAlumno.objects.filter(alumno=alumno).exclude(estado='cancelado')
+        .values_list('articulo_id').annotate(total=Count('id'))
+    )
+    for articulo in articulos:
+        articulo.compradas = compradas.get(articulo.id, 0)
+        articulo.limite_alcanzado = bool(
+            articulo.limite_por_alumno and articulo.compradas >= articulo.limite_por_alumno
+        )
+        articulo.nivel_bloqueado = alumno.nivel < articulo.nivel_requerido
+        articulo.faltan = max(0, articulo.costo_monedas - alumno.monedas)
+        articulo.puede_comprar = not (
+            articulo.agotado or articulo.limite_alcanzado or articulo.nivel_bloqueado or articulo.faltan
+        )
+
+    return render(request, 'Alumnos/tienda.html', {
+        'alumno': alumno,
+        'clase': clase,
+        'articulos': articulos,
+        'destacados': [a for a in articulos if a.destacado][:3],
+        'mis_compras': alumno.compras.select_related('articulo').order_by('-fecha_compra')[:30],
+        'por_entregar': alumno.compras.filter(estado='pendiente').count(),
+        'seccion': 'tienda',
+    })
+
+
+@require_POST
+@alumno_requerido
+def comprar_articulo(request, alumno, clase, articulo_id):
+    articulo = get_object_or_404(ArticuloTienda, id=articulo_id)
+    ok, mensaje = juego.comprar(alumno, articulo)
+    (messages.success if ok else messages.error)(request, mensaje)
+    return redirect('tienda_alumno', clase_id=clase.id)
+
+
+# ========================
+# PERFIL, LOGROS Y RANKING
+# ========================
+@alumno_requerido
+def mi_progreso(request, alumno, clase):
+    logros, stats = juego.progreso_logros(alumno)
+    progresos = ProgresoMision.objects.filter(alumno=alumno, mision__clase=clase).select_related(
+        'mision', 'mision__nivel', 'mision__nivel__mundo'
+    ).order_by('mision__nivel__mundo__orden', 'mision__nivel__orden', 'mision__orden')
+    avatares = (
+        alumno.compras.filter(articulo__tipo='avatar').exclude(estado='cancelado').exclude(articulo__imagen='')
+        .select_related('articulo').order_by('-fecha_compra')
+    )
+    vistos, avatares_unicos = set(), []
+    for compra in avatares:
+        if compra.articulo_id not in vistos:
+            vistos.add(compra.articulo_id)
+            avatares_unicos.append(compra)
+
+    return render(request, 'Alumnos/mi_progreso.html', {
+        'alumno': alumno,
+        'clase': clase,
+        'stats': stats,
+        'logros': logros,
+        'logros_obtenidos': sum(1 for l in logros if l['obtenido']),
+        'progresos': progresos,
+        'movimientos': alumno.movimientos.all()[:40],
+        'avatares': avatares_unicos,
+        'rangos': juego.info_rangos(),
+        'mi_equipo': juego.equipo_de(alumno, clase),
+        'seccion': 'perfil',
+    })
+
+
+@require_POST
+@alumno_requerido
+def equipar_avatar(request, alumno, clase, compra_id):
+    if compra_id == 0:
+        alumno.avatar = None
+        alumno.save(update_fields=['avatar'])
+        messages.success(request, '¡Volviste a tu robot clásico! 🤖')
+    else:
+        compra = get_object_or_404(CompraAlumno, id=compra_id, alumno=alumno, articulo__tipo='avatar')
+        if compra.estado == 'cancelado' or not compra.articulo.imagen:
+            messages.error(request, 'No puedes usar ese avatar.')
+        else:
+            alumno.avatar = compra.articulo.imagen
+            alumno.save(update_fields=['avatar'])
+            messages.success(request, f'¡Avatar "{compra.articulo.nombre}" equipado! 😎')
+    return redirect('mi_progreso', clase_id=clase.id)
+
+
+@alumno_requerido
+def ranking(request, alumno, clase):
+    periodo = request.GET.get('periodo') if request.GET.get('periodo') in ('total', 'equipos') else 'semana'
+    lista = juego.ranking_clase(clase, 'total' if periodo == 'total' else 'semana')
+    equipos = juego.ranking_equipos(clase)
+    return render(request, 'Alumnos/ranking.html', {
+        'alumno': alumno,
+        'clase': clase,
+        'periodo': periodo,
+        'equipos': equipos,
+        'mi_equipo': next((e for e in equipos if any(m.id == alumno.id for m in e.lista_miembros)), None),
+        'podio': lista[:3],
+        'resto': lista[3:],
+        'mi_posicion': next((a for a in lista if a.id == alumno.id), None),
+        'seccion': 'ranking',
+    })

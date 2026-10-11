@@ -1,0 +1,88 @@
+{% extends 'Alumnos/base.html' %}
+{% load nextlevel %}
+{% block title %}Ranking · {{ clase.nombre }}{% endblock %}
+
+{% block content %}
+<div class="contenedor angosto">
+    <div class="text-center mt-2">
+        <div style="font-size:3rem;line-height:1">🏆</div>
+        <h1 class="titulo-juego mt-2 mb-1" style="color:var(--navy);font-size:clamp(1.9rem,5vw,2.6rem)">Salón de la Fama</h1>
+        <p class="fw-bold texto-suave">{{ clase.nombre }} · {{ clase.grado }} {{ clase.grupo }}</p>
+        <div class="tabs-juego">
+            <a href="?periodo=semana" class="{% if periodo == 'semana' %}activo{% endif %}">📅 Esta semana</a>
+            <a href="?periodo=total" class="{% if periodo == 'total' %}activo{% endif %}">♾️ Histórico</a>
+            {% if equipos %}<a href="?periodo=equipos" class="{% if periodo == 'equipos' %}activo{% endif %}">🛡️ Equipos</a>{% endif %}
+        </div>
+    </div>
+
+    {% if periodo == 'equipos' %}
+        <section class="mt-4">
+            {% for e in equipos %}
+                <div class="equipo-ranking {% if mi_equipo and e.id == mi_equipo.id %}mio{% endif %}" style="--c1: {{ e.color|color_clase:0 }}; --c2: {{ e.color|color_clase:1 }}">
+                    <span class="pos">{% if e.posicion == 1 %}🥇{% elif e.posicion == 2 %}🥈{% elif e.posicion == 3 %}🥉{% else %}{{ e.posicion }}{% endif %}</span>
+                    <span class="escudo">{{ e.emoji }}</span>
+                    <div class="flex-grow-1 min-w-0">
+                        <div class="d-flex justify-content-between align-items-baseline gap-2">
+                            <span class="n text-truncate">{{ e.nombre }}{% if mi_equipo and e.id == mi_equipo.id %} (tu equipo){% endif %}</span>
+                            <span class="pts">{{ e.total }} pts</span>
+                        </div>
+                        <div class="barra delgada mt-1"><span style="width:0" data-ancho="{{ e.pct }}"></span></div>
+                        <div class="miembros">{% for m in e.lista_miembros %}<img src="{{ m|avatar_url }}" alt="{{ m.nombre }}" title="{{ m.nombre }}">{% endfor %}</div>
+                    </div>
+                </div>
+            {% empty %}
+                <div class="g-card vacio-juego"><span class="e">🛡️</span>Tu clase todavía no tiene equipos.</div>
+            {% endfor %}
+        </section>
+    {% else %}
+    {% if podio %}
+        <div class="podio">
+            {% for pos in "213" %}
+                {% for a in podio %}
+                    {% if forloop.counter|stringformat:"s" == pos %}
+                        <div class="podio-lugar p{{ pos }}">
+                            <div class="avatar-wrap">
+                                {% if pos == '1' %}<span class="corona">👑</span>{% endif %}
+                                <img src="{{ a|avatar_url }}" alt="" class="avatar anillo-{{ a.rango.color }}">
+                                <span class="nivel-badge">{{ a.nivel }}</span>
+                            </div>
+                            <div class="n">{{ a.nombre }}{% if a.id == alumno.id %} (tú){% endif %}</div>
+                            <div class="pts">{{ a.puntos }} XP</div>
+                            <div class="podio-bloque">{{ pos }}</div>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <section class="g-card" style="border-radius:0 0 24px 24px;margin-top:0">
+        {% for a in resto %}
+            <div class="ranking-fila {% if a.id == alumno.id %}yo{% endif %}">
+                <span class="pos">{{ a.posicion }}</span>
+                <img src="{{ a|avatar_url }}" alt="" class="avatar anillo-{{ a.rango.color }}" loading="lazy">
+                <div class="min-w-0">
+                    <div class="n text-truncate">{{ a.nombre }} {{ a.apellido|slice:":1" }}.{% if a.id == alumno.id %} (tú){% endif %}</div>
+                    <div class="r">{{ a.rango.emoji }} {{ a.rango.nombre }} · Nivel {{ a.nivel }}</div>
+                </div>
+                <span class="pts">{{ a.puntos }} XP</span>
+            </div>
+        {% empty %}
+            {% if not podio %}
+                <div class="vacio-juego"><span class="e">🌱</span>Aún no hay puntos esta semana. ¡Completa una misión y sé el primero!</div>
+            {% else %}
+                <div class="vacio-juego py-3">¡Solo los mejores están en el podio!</div>
+            {% endif %}
+        {% endfor %}
+    </section>
+
+    {% endif %}
+
+    {% if mi_posicion and periodo != 'equipos' %}
+        <div class="text-center mt-4 fw-black texto-suave">
+            {% if mi_posicion.posicion == 1 %}¡Vas en primer lugar! 🥳 Sigue así.
+            {% else %}Vas en el lugar <span style="color:var(--azul)">#{{ mi_posicion.posicion }}</span>. ¡Completa misiones para subir!{% endif %}
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

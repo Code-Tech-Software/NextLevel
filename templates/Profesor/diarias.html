@@ -1,0 +1,64 @@
+{% extends 'Profesor/baseProfesor.html' %}
+{% block title %}Misiones del día{% endblock %}
+{% block titulo_pagina %}Misiones del día{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1>Misiones del día</h1>
+        <p>Cada día se eligen {{ por_dia }} misiones al azar de este catálogo (siempre incluye la de entrar a la plataforma). Se renuevan a medianoche.</p>
+    </div>
+    <div class="acciones"><a data-modal href="{% url 'alta_diaria' %}" class="p-btn primario"><i class="bi bi-plus-lg"></i> Nueva misión del día</a></div>
+</div>
+
+<div class="row g-3">
+    <div class="col-xl-8">
+        <section class="p-card">
+            <div class="p-card-head"><h2>Catálogo</h2><span class="sub">{{ diarias|length }} misiones</span></div>
+            <div class="p-table-wrap">
+                <table class="p-table">
+                    <thead><tr><th>Misión</th><th>Objetivo</th><th class="num">Premio</th><th>Clase</th><th class="num">Hoy</th><th>Activa</th><th></th></tr></thead>
+                    <tbody>
+                    {% for d in diarias %}
+                        <tr class="{% if not d.activa %}fila-inactiva{% endif %}">
+                            <td><div class="d-flex align-items-center gap-2"><span style="font-size:1.4rem">{{ d.icono }}</span><div><div class="fw-semibold">{{ d.titulo }}</div><div class="text-muted-p" style="font-size:.76rem">{{ d.descripcion }}</div></div></div></td>
+                            <td style="font-size:.82rem">{{ d.get_objetivo_display }}{% if d.meta > 1 %} × {{ d.meta }}{% endif %}</td>
+                            <td class="num" style="font-size:.82rem;white-space:nowrap">{{ d.recompensa_monedas }} <i class="bi bi-coin text-warning"></i>{% if d.recompensa_xp %} · {{ d.recompensa_xp }} XP{% endif %}</td>
+                            <td style="font-size:.82rem">{{ d.clase.nombre|default:"Todas" }}</td>
+                            <td class="num" title="Reclamadas hoy">{{ d.reclamadas_hoy }}</td>
+                            <td><input type="checkbox" class="nl-switch" {% if d.activa %}checked{% endif %} data-alternar-url="{% url 'alternar_activo' 'diaria' d.id %}" aria-label="Activa"></td>
+                            <td>
+                                <div class="acciones-fila">
+                                    <a data-modal href="{% url 'editar_diaria' d.id %}" class="p-btn xs icono fantasma" title="Editar"><i class="bi bi-pencil"></i></a>
+                                    <form method="post" action="{% url 'eliminar' 'diaria' d.id %}" data-confirmar="Se borrará también su progreso." data-titulo="¿Eliminar «{{ d.titulo }}»?" data-boton="Eliminar" data-peligro>{% csrf_token %}<button class="p-btn xs icono fantasma" title="Eliminar"><i class="bi bi-trash"></i></button></form>
+                                </div>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="7"><div class="vacio-p"><i class="bi bi-calendar-check"></i>No hay misiones del día.</div></td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+    <div class="col-xl-4">
+        <section class="p-card">
+            <div class="p-card-head"><h2>Las de hoy</h2><span class="sub">{% now "j \d\e F" %}</span></div>
+            <div class="p-card-body sin-pad">
+                {% for item in hoy_por_clase %}
+                    <div class="feed-item" style="align-items:flex-start">
+                        <span class="ico">{{ item.clase.icono }}</span>
+                        <div class="min-w-0">
+                            <div class="t fw-semibold">{{ item.clase.nombre }}</div>
+                            {% for d in item.diarias %}<div class="f" style="font-size:.8rem;color:var(--text-2)">{{ d.icono }} {{ d.titulo }}</div>{% empty %}<div class="f">Sin misiones activas</div>{% endfor %}
+                        </div>
+                    </div>
+                {% empty %}
+                    <div class="vacio-p">No hay clases activas.</div>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}

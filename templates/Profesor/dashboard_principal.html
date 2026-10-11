@@ -1,423 +1,227 @@
 {% extends 'Profesor/baseProfesor.html' %}
-
-{% block extra_css %}
-    <style>
-        /* Variables adicionales necesarias solo para esta vista */
-
-        /* --- PANEL DE ACCIONES RÁPIDAS (Forja) --- */
-        .admin-actions-panel {
-            background: var(--surface-color);
-            border-radius: 24px;
-            padding: 24px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
-            border: 1px solid rgba(0, 0, 0, 0.03);
-            margin-bottom: 2rem;
-        }
-
-        .action-btn {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 12px 20px;
-            background: var(--bg-color);
-            border: 2px solid transparent;
-            border-radius: 16px;
-            color: var(--text-main);
-            font-weight: 600;
-            text-decoration: none;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            flex: 1 1 auto;
-            min-width: 180px;
-        }
-
-        .action-icon {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 38px;
-            height: 38px;
-            border-radius: 10px;
-            font-size: 1.2rem;
-            transition: all 0.3s ease;
-        }
-
-        /* Botones de acción */
-        .btn-class .action-icon {
-            background: rgba(99, 102, 241, 0.1);
-            color: var(--primary-game);
-        }
-
-        .btn-class:hover {
-            border-color: var(--primary-game);
-            background: #fff;
-            transform: translateY(-4px);
-            box-shadow: 0 10px 20px rgba(99, 102, 241, 0.15);
-            color: var(--primary-game);
-        }
-
-        .btn-class:hover .action-icon {
-            background: var(--primary-game);
-            color: white;
-        }
-
-        .btn-student .action-icon {
-            background: rgba(236, 72, 153, 0.1);
-            color: var(--secondary-game);
-        }
-
-        .btn-student:hover {
-            border-color: var(--secondary-game);
-            background: #fff;
-            transform: translateY(-4px);
-            box-shadow: 0 10px 20px rgba(236, 72, 153, 0.15);
-            color: var(--secondary-game);
-        }
-
-        .btn-student:hover .action-icon {
-            background: var(--secondary-game);
-            color: white;
-        }
-
-        .btn-mission .action-icon {
-            background: rgba(16, 185, 129, 0.1);
-            color: var(--success-game);
-        }
-
-        .btn-mission:hover {
-            border-color: var(--success-game);
-            background: #fff;
-            transform: translateY(-4px);
-            box-shadow: 0 10px 20px rgba(16, 185, 129, 0.15);
-            color: var(--success-game);
-        }
-
-        .btn-mission:hover .action-icon {
-            background: var(--success-game);
-            color: white;
-        }
-
-        .btn-level .action-icon {
-            background: rgba(139, 92, 246, 0.1);
-            color: var(--epic-purple);
-        }
-
-        .btn-level:hover {
-            border-color: var(--epic-purple);
-            background: #fff;
-            transform: translateY(-4px);
-            box-shadow: 0 10px 20px rgba(139, 92, 246, 0.15);
-            color: var(--epic-purple);
-        }
-
-        .btn-level:hover .action-icon {
-            background: var(--epic-purple);
-            color: white;
-        }
-
-        .btn-store .action-icon {
-            background: rgba(245, 158, 11, 0.1);
-            color: var(--accent-gold);
-        }
-
-        .btn-store:hover {
-            border-color: var(--accent-gold);
-            background: #fff;
-            transform: translateY(-4px);
-            box-shadow: 0 10px 20px rgba(245, 158, 11, 0.15);
-            color: var(--accent-gold);
-        }
-
-        .btn-store:hover .action-icon {
-            background: var(--accent-gold);
-            color: white;
-        }
-        
-        /* NUEVO: Botón de Economía/Monedas */
-        .btn-economy .action-icon {
-            background: rgba(234, 179, 8, 0.1); /* Amarillo cálido / Oro */
-            color: #eab308; 
-        }
-
-        .btn-economy:hover {
-            border-color: #eab308;
-            background: #fff;
-            transform: translateY(-4px);
-            box-shadow: 0 10px 20px rgba(234, 179, 8, 0.15);
-            color: #eab308;
-        }
-
-        .btn-economy:hover .action-icon {
-            background: #eab308;
-            color: white;
-        }
-
-        /* --- TARJETAS DE CLASE (Niveles) --- */
-        .class-card {
-            background: var(--surface-color);
-            border-radius: 20px;
-            border: none;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            cursor: pointer;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .class-card::before {
-            content: "";
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 5px;
-            height: 100%;
-            background: linear-gradient(to bottom, var(--primary-game), var(--secondary-game));
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        .class-card:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 15px 30px rgba(99, 102, 241, 0.15) !important;
-        }
-
-        .class-card:hover::before {
-            opacity: 1;
-        }
-
-        .level-badge {
-            background: rgba(99, 102, 241, 0.1);
-            color: var(--primary-game);
-            border: 1px solid rgba(99, 102, 241, 0.2);
-            border-radius: 8px;
-            padding: 4px 10px;
-            font-weight: 600;
-            font-size: 0.85rem;
-        }
-
-        .game-icon-box {
-            width: 48px;
-            height: 48px;
-            border-radius: 14px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: linear-gradient(135deg, var(--primary-game), var(--secondary-game));
-            color: white;
-            font-size: 1.5rem;
-            box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3);
-        }
-
-        /* --- PANEL DE MISIONES / TIENDA (Sidebar) --- */
-        .quest-panel {
-            background: var(--surface-color);
-            border-radius: 24px;
-            padding: 24px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
-            border: 1px solid rgba(0, 0, 0, 0.03);
-            height: 100%;
-        }
-
-        .quest-header {
-            font-weight: 800;
-            font-size: 1.25rem;
-            color: var(--text-main);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-
-        .quest-item {
-            background: var(--bg-color);
-            border-radius: 16px;
-            padding: 16px;
-            margin-bottom: 12px;
-            border: 1px solid transparent;
-            transition: all 0.2s ease;
-        }
-
-        .quest-item:hover {
-            border-color: var(--accent-gold);
-            background: #fffbfa;
-            transform: translateX(4px);
-        }
-
-        .btn-loot {
-            background: rgba(245, 158, 11, 0.1);
-            color: var(--accent-gold);
-            border: 1px solid var(--accent-gold);
-            border-radius: 10px;
-            font-weight: 600;
-            transition: all 0.2s;
-        }
-
-        .btn-loot:hover {
-            background: var(--accent-gold);
-            color: white;
-            box-shadow: 0 4px 10px rgba(245, 158, 11, 0.3);
-        }
-
-        .status-alert {
-            color: #ef4444;
-            font-weight: 600;
-        }
-
-        .status-ok {
-            color: #10b981;
-            font-weight: 600;
-        }
-    </style>
-{% endblock %}
+{% load nextlevel %}
+{% block title %}Inicio{% endblock %}
+{% block titulo_pagina %}Inicio{% endblock %}
 
 {% block content %}
-    <div class="container mb-5">
+<div class="page-head">
+    <div>
+        <h1>{{ saludo }}, {{ user.first_name|default:"profe" }} 👋</h1>
+        <p>{% now "l j \d\e F" %} · Esto es lo que pasa en tus clases.</p>
+    </div>
+    <div class="acciones">
+        <a data-modal href="{% url 'alta_masiva' %}" class="p-btn"><i class="bi bi-people"></i> Alta de alumnos</a>
+        <a data-modal="xl" href="{% url 'alta_mision' %}" class="p-btn primario"><i class="bi bi-plus-lg"></i> Nueva misión</a>
+    </div>
+</div>
 
-        <div class="admin-actions-panel">
-            <div class="d-flex align-items-center mb-3">
-                <h5 class="fw-bold mb-0 text-dark">
-                    <i class="bi bi-gear text-secondary me-2"></i>Forja de Creación
-                </h5>
-                <span class="badge bg-light text-muted border ms-3">Acciones Rápidas</span>
-            </div>
+<div class="row g-3 mb-4">
+    <div class="col-6 col-xl-3">
+        <a href="{% url 'alumnos_lista' %}" class="p-card kpi">
+            <span class="etiqueta"><i class="bi bi-people ico-azul"></i> Alumnos activos</span>
+            <span class="valor">{{ kpi_alumnos }}</span>
+            <span class="nota">En todas tus clases</span>
+        </a>
+    </div>
+    <div class="col-6 col-xl-3">
+        <a href="{% url 'revisiones' %}" class="p-card kpi">
+            <span class="etiqueta"><i class="bi bi-inbox ico-ambar"></i> Por revisar</span>
+            <span class="valor">{{ kpi_revisiones }}</span>
+            <span class="nota">{% if kpi_revisiones %}Entregas esperando calificación{% else %}Bandeja al día ✓{% endif %}</span>
+        </a>
+    </div>
+    <div class="col-6 col-xl-3">
+        <a href="{% url 'pedidos' %}" class="p-card kpi">
+            <span class="etiqueta"><i class="bi bi-box-seam ico-violeta"></i> Pedidos por entregar</span>
+            <span class="valor">{{ kpi_pedidos }}</span>
+            <span class="nota">Premios de la tienda</span>
+        </a>
+    </div>
+    <div class="col-6 col-xl-3">
+        <a href="{% url 'actividad' %}" class="p-card kpi">
+            <span class="etiqueta"><i class="bi bi-lightning-charge ico-verde"></i> XP ganada (7 días)</span>
+            <span class="valor">{{ kpi_xp_semana }}</span>
+            <span class="nota">{{ kpi_aprobadas_semana }} misiones aprobadas esta semana</span>
+        </a>
+    </div>
+</div>
 
-            <div class="d-flex flex-wrap gap-3">
-                <a href="{% url 'alta_clase' %}" class="action-btn btn-class">
-                    <div class="action-icon"><i class="bi bi-journal-plus"></i></div>
-                    <span>Nueva Clase</span>
-                </a>
-
-                <a href="{% url 'alta_alumno' %}" class="action-btn btn-student">
-                    <div class="action-icon"><i class="bi bi-person-plus-fill"></i></div>
-                    <span>Alta Alumno</span>
-                </a>
-
-                <a href="{% url 'alta_mision' %}" class="action-btn btn-mission">
-                    <div class="action-icon"><i class="bi bi-flag-fill"></i></div>
-                    <span>Crear Misión</span>
-                </a>
-
-                <a href="{% url 'alta_nivel' %}" class="action-btn btn-level">
-                    <div class="action-icon"><i class="bi bi-bar-chart-steps"></i></div>
-                    <span>Nuevo Nivel</span>
-                </a>
-
-                <a href="{% url 'alta_articulo' %}" class="action-btn btn-store">
-                    <div class="action-icon"><i class="bi bi-bag-plus-fill"></i></div>
-                    <span>Artículo Tienda</span>
-                </a>
-                
-                <!-- NUEVO BOTÓN: Economía / Monedas -->
-                <a href="{% url 'gestionar_monedas' %}" class="action-btn btn-economy">
-                    <div class="action-icon"><i class="bi bi-coin"></i></div>
-                    <span>Economía del Aula</span>
-                </a>
-            </div>
-        </div>
-
-        <div class="row g-5">
-            <div class="col-lg-8">
-                <div class="d-flex justify-content-between align-items-end mb-4">
-                    <div>
-                        <h3 class="fw-bold mb-0 text-dark"><i class="bi bi-layers-half text-secondary me-2"></i>Selección
-                            de clases</h3>
-                        <p class="text-muted small mb-0 mt-1">Elige una clase para administrar las misiones</p>
-                    </div>
+<div class="row g-3 mb-4">
+    <div class="col-lg-8">
+        <section class="p-card h-100">
+            <div class="p-card-head">
+                <div>
+                    <h2>Actividad de los últimos 14 días</h2>
+                    <div class="sub">{{ grafica.total_entregas }} entregas · {{ grafica.total_aprobadas }} aprobadas</div>
                 </div>
+                <div class="derecha">
+                    <div class="leyenda d-none d-sm-flex">
+                        <span><i style="background:var(--series-1)"></i> Entregas</span>
+                        <span><i style="background:var(--series-2)"></i> Aprobadas</span>
+                    </div>
+                    <button type="button" class="p-btn xs" id="ver-tabla-actividad">Ver como tabla</button>
+                </div>
+            </div>
+            <div class="p-card-body">
+                <div class="leyenda d-sm-none mb-2">
+                    <span><i style="background:var(--series-1)"></i> Entregas</span>
+                    <span><i style="background:var(--series-2)"></i> Aprobadas</span>
+                </div>
+                <div class="grafica">
+                    <svg viewBox="0 0 {{ grafica.ancho }} {{ grafica.alto }}" role="img" aria-label="Entregas y misiones aprobadas por día durante los últimos 14 días">
+                        {% for t in grafica.ticks %}
+                            <line class="{% if forloop.first %}base{% else %}linea-grid{% endif %}" x1="{{ grafica.izq }}" x2="{{ grafica.der }}" y1="{{ t.y|stringformat:".1f" }}" y2="{{ t.y|stringformat:".1f" }}"></line>
+                            <text class="eje" x="{{ grafica.izq|add:-8 }}" y="{{ t.y|stringformat:".1f" }}" text-anchor="end" dominant-baseline="middle">{{ t.valor }}</text>
+                        {% endfor %}
+                        {% for g in grafica.grupos %}
+                            <g class="grupo" tabindex="0" data-fecha="{{ g.fecha }}" data-entregas="{{ g.entregas }}" data-aprobadas="{{ g.aprobadas }}" aria-label="{{ g.etiqueta }}: {{ g.entregas }} entregas, {{ g.aprobadas }} aprobadas">
+                                <rect class="zona" x="{{ g.zona_x|stringformat:".1f" }}" y="{{ grafica.arriba }}" width="{{ g.zona_ancho|stringformat:".1f" }}" height="{{ grafica.alto_plot }}" rx="6"></rect>
+                                {% if g.p1 %}<path class="barra-g s1" d="{{ g.p1 }}"></path>{% endif %}
+                                {% if g.p2 %}<path class="barra-g s2" d="{{ g.p2 }}"></path>{% endif %}
+                                {% if g.etiqueta_visible %}<text class="eje" x="{{ g.centro|stringformat:".1f" }}" y="{{ grafica.base|add:16 }}" text-anchor="middle">{{ g.etiqueta }}</text>{% endif %}
+                            </g>
+                        {% endfor %}
+                    </svg>
+                    <div class="tooltip-g" role="status"></div>
+                </div>
+                <div id="tabla-actividad" class="d-none mt-3 p-table-wrap">
+                    <table class="p-table">
+                        <thead><tr><th>Día</th><th class="num">Entregas</th><th class="num">Aprobadas</th></tr></thead>
+                        <tbody>{% for g in grafica.grupos %}<tr><td>{{ g.etiqueta }}</td><td class="num">{{ g.entregas }}</td><td class="num">{{ g.aprobadas }}</td></tr>{% endfor %}</tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </div>
 
-                <div class="row g-4">
-                    {% for clase in clases %}
-                        <div class="col-md-6">
-                            <div class="card class-card h-100 p-2"
-                                 onclick="location.href='{% url 'panel_profesor' clase.id %}'">
-                                <div class="card-body">
-                                    <div class="d-flex justify-content-between align-items-start mb-3">
-                                        <div>
-                                            <div class="level-badge mb-2 d-inline-block">{{ clase.nombre }}</div>
-                                            <h5 class="card-title fw-bold text-dark mb-0">{{ clase.grado }} {{ clase.grupo }}</h5>
-                                        </div>
-                                        <div class="game-icon-box">
-                                            <i class="bi bi-rocket-takeoff-fill"></i>
-                                        </div>
-                                    </div>
-
-                                    <div class="mt-4 pt-3 border-top border-light">
-                                        <div class="d-flex justify-content-between align-items-center small mb-3">
-                                        <span class="text-muted fw-semibold">
-                                            <i class="bi bi-people-fill me-1"></i> {{ clase.total_alumnos }} Alumnos
-                                        </span>
-
-                                            {% if clase.misiones_pendientes > 0 %}
-                                                <span class="status-alert">
-                                                <i class="bi bi-exclamation-triangle-fill me-1"></i> {{ clase.misiones_pendientes }} Por revisar
-                                            </span>
-                                            {% else %}
-                                                <span class="status-ok">
-                                                <i class="bi bi-shield-check me-1"></i> Todo al día
-                                            </span>
-                                            {% endif %}
-                                        </div>
-
-                                        <button class="btn btn-sm w-100"
-                                                style="background-color: rgba(99, 102, 241, 0.1); color: var(--primary-game); font-weight: 600;"
-                                                onclick="event.stopPropagation(); location.href='{% url 'matriz_calificaciones' clase.id %}'">
-                                            <i class="bi bi-grid-3x3 me-2"></i> Ver Calificaciones
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
+    <div class="col-lg-4 d-flex flex-column gap-3">
+        <section class="p-card">
+            <div class="p-card-head">
+                <h2>Premios por entregar</h2>
+                <div class="derecha"><a href="{% url 'pedidos' %}" class="p-btn xs fantasma">Ver todos</a></div>
+            </div>
+            <div class="p-card-body sin-pad">
+                {% for compra in entregas_tienda %}
+                    <div class="feed-item">
+                        <img src="{{ compra.alumno|avatar_url }}" alt="" style="width:32px;height:32px;border-radius:50%;object-fit:cover">
+                        <div class="min-w-0">
+                            <div class="t text-truncate"><b>{{ compra.articulo.nombre }}</b></div>
+                            <div class="f">{{ compra.alumno.nombre }} {{ compra.alumno.apellido }} · hace {{ compra.fecha_compra|timesince }}</div>
                         </div>
-                    {% empty %}
-                        <div class="col-12 text-center py-5">
-                            <div class="d-inline-block bg-light rounded-circle p-4 mb-3">
-                                <i class="bi bi-folder-x fs-1 text-muted"></i>
-                            </div>
-                            <h5 class="fw-bold text-dark">Inventario de clases vacío</h5>
-                            <p class="text-muted">No se han registrado niveles todavía.</p>
+                        <form method="post" action="{% url 'entregar_articulo_tienda' compra.id %}" class="ms-auto">
+                            {% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}">
+                            <button type="submit" class="p-btn xs exito" title="Marcar como entregado"><i class="bi bi-check2"></i> Entregar</button>
+                        </form>
+                    </div>
+                {% empty %}
+                    <div class="vacio-p"><i class="bi bi-gift"></i>No hay premios pendientes.</div>
+                {% endfor %}
+            </div>
+        </section>
+
+        {% if stock_bajo %}
+            <section class="p-card">
+                <div class="p-card-head"><h2><i class="bi bi-exclamation-triangle text-warning me-1"></i> Poco stock</h2></div>
+                <div class="p-card-body sin-pad">
+                    {% for a in stock_bajo %}
+                        <div class="feed-item">
+                            <div class="min-w-0"><div class="t">{{ a.nombre }}</div><div class="f">{{ a.get_tipo_display }}</div></div>
+                            <span class="v"><span class="p-badge {% if a.stock == 0 %}rojo{% else %}ambar{% endif %}">{% if a.stock == 0 %}Agotado{% else %}Quedan {{ a.stock }}{% endif %}</span></span>
                         </div>
                     {% endfor %}
                 </div>
-            </div>
+            </section>
+        {% endif %}
+    </div>
+</div>
 
-            <div class="col-lg-4">
-                <div class="quest-panel">
-                    <div class="quest-header">
-                        <i class="bi bi-shop text-warning fs-3"></i>
-                        Recompensas Pendientes
-                    </div>
-
-                    <div class="quest-list">
-                        {% if entregas_tienda %}
-                            {% for compra in entregas_tienda %}
-                                <div class="quest-item d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <strong class="d-block text-dark fs-6">{{ compra.articulo.nombre }}</strong>
-                                        <small class="text-muted d-flex align-items-center mt-1">
-                                            <i class="bi bi-person-fill text-secondary me-1"></i>
-                                            {{ compra.alumno.nombre }} {{ compra.alumno.apellido }}
-                                        </small>
-                                    </div>
-
-                                    <form action="{% url 'entregar_articulo_tienda' compra.id %}" method="POST"
-                                          class="m-0">
-                                        {% csrf_token %}
-                                        <button type="submit" class="btn btn-sm btn-loot px-3 py-2"
-                                                title="Entregar recompensa">
-                                            <i class="bi bi-gift-fill me-1"></i> Dar
-                                        </button>
-                                    </form>
-                                </div>
-                            {% endfor %}
-                        {% else %}
-                            <div class="text-center py-5">
-                                <i class="bi bi-box-seam fs-1 d-block mb-3 text-muted opacity-50"></i>
-                                <strong class="d-block text-dark">Recompensas entregados</strong>
-                                <small class="text-muted">No hay recompensas pendientes.</small>
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+            <h2 class="h6 mb-0 fw-semibold">Mis clases</h2>
+            <a data-modal href="{% url 'alta_clase' %}" class="p-btn xs fantasma"><i class="bi bi-plus"></i> Nueva clase</a>
+        </div>
+        <div class="row g-3">
+            {% for clase in clases %}
+                <div class="col-md-6">
+                    <div class="p-card clase-card" style="--c: {{ clase.color|color_clase:0 }}">
+                        <div class="d-flex gap-3 align-items-start">
+                            <span class="icono">{{ clase.icono|default:'🚀' }}</span>
+                            <div class="min-w-0 flex-grow-1">
+                                <a href="{% url 'clase_detalle' clase.id %}" class="titulo d-block text-truncate">{{ clase.nombre }}</a>
+                                <div class="text-muted-p" style="font-size:.8rem">{{ clase.grado }} {{ clase.grupo }} · {{ clase.anio }}{% if not clase.activa %} · <span class="p-badge">Inactiva</span>{% endif %}</div>
                             </div>
-                        {% endif %}
+                            {% if clase.misiones_pendientes %}
+                                <a href="{% url 'revisiones' %}?clase={{ clase.id }}" class="p-badge ambar text-decoration-none">{{ clase.misiones_pendientes }} por revisar</a>
+                            {% endif %}
+                        </div>
+                        <div class="meta">
+                            <span><i class="bi bi-people"></i> {{ clase.total_alumnos }} alumnos</span>
+                            <span><i class="bi bi-globe-americas"></i> {{ clase.total_mundos }} mundos</span>
+                            <span><i class="bi bi-flag"></i> {{ clase.total_misiones }} misiones</span>
+                        </div>
+                        <div>
+                            <div class="d-flex justify-content-between text-muted-p mb-1" style="font-size:.76rem"><span>Avance del grupo</span><span class="tnum">{{ clase.avance }}%</span></div>
+                            <div class="progreso"><span style="width: {{ clase.avance }}%"></span></div>
+                        </div>
+                        <div class="acciones-c">
+                            <a href="{% url 'clase_detalle' clase.id %}" class="p-btn sm"><i class="bi bi-diagram-3"></i> Contenido</a>
+                            <a href="{% url 'matriz_calificaciones' clase.id %}" class="p-btn sm"><i class="bi bi-table"></i> Notas</a>
+                            <a href="{% url 'proyector' clase.id %}" class="p-btn sm icono fantasma ms-auto" target="_blank" title="Modo proyector"><i class="bi bi-display"></i></a>
+                        </div>
                     </div>
                 </div>
-            </div>
-
+            {% empty %}
+                <div class="col-12">
+                    <div class="p-card vacio-p">
+                        <i class="bi bi-easel2"></i>
+                        <h3>Aún no tienes clases</h3>
+                        <p>Crea tu primera clase para empezar a construir mundos.</p>
+                        <a data-modal href="{% url 'alta_clase' %}" class="p-btn primario"><i class="bi bi-plus-lg"></i> Crear clase</a>
+                    </div>
+                </div>
+            {% endfor %}
         </div>
     </div>
+
+    <div class="col-lg-4 d-flex flex-column gap-3">
+        <section class="p-card">
+            <div class="p-card-head"><h2>Top de la semana</h2></div>
+            <div class="p-card-body sin-pad">
+                {% for a in top_semana %}
+                    <div class="feed-item">
+                        <span class="text-muted-p tnum" style="width:16px">{{ forloop.counter }}</span>
+                        <a href="{% url 'alumno_detalle' a.id %}" class="persona">
+                            <img src="{{ a|avatar_url }}" alt="">
+                            <span class="min-w-0"><span class="n d-block text-truncate">{{ a.nombre }} {{ a.apellido }}</span><span class="s">Nivel {{ a.nivel }}</span></span>
+                        </a>
+                        <span class="v">{{ a.puntos }} XP</span>
+                    </div>
+                {% empty %}
+                    <div class="vacio-p"><i class="bi bi-trophy"></i>Aún no hay XP esta semana.</div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="p-card">
+            <div class="p-card-head"><h2>Actividad reciente</h2><div class="derecha"><a href="{% url 'actividad' %}" class="p-btn xs fantasma">Ver todo</a></div></div>
+            <div class="p-card-body sin-pad">
+                {% for m in movimientos %}
+                    <div class="feed-item">
+                        <span class="ico">{% if m.tipo == 'mision' %}🏁{% elif m.tipo == 'cofre' %}🎁{% elif m.tipo == 'diaria' %}📅{% elif m.tipo == 'logro' %}🏅{% elif m.tipo == 'nivel' %}⬆️{% elif m.tipo == 'compra' %}🛍️{% elif m.tipo == 'reembolso' %}↩️{% else %}✨{% endif %}</span>
+                        <div class="min-w-0">
+                            <div class="t text-truncate"><b>{{ m.alumno.nombre }}</b> · {{ m.descripcion }}</div>
+                            <div class="f">hace {{ m.fecha|timesince }}</div>
+                        </div>
+                        <span class="v">
+                            {% if m.monedas %}<span class="{% if m.monedas > 0 %}pos{% else %}neg{% endif %}">{% if m.monedas > 0 %}+{% endif %}{{ m.monedas }}</span>{% endif %}
+                        </span>
+                    </div>
+                {% empty %}
+                    <div class="vacio-p"><i class="bi bi-activity"></i>Sin actividad todavía.</div>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+</div>
 {% endblock %}

@@ -1,335 +1,147 @@
-{% extends 'Profesor/baseProfesor.html' %}
-
-{% block extra_css %}
-    <style>
-
-        .form-panel {
-            background: var(--surface-color, #ffffff);
-            border-radius: 24px;
-            padding: 32px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
-            border: 1px solid rgba(0, 0, 0, 0.03);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .form-icon-box {
-            width: 56px;
-            height: 56px;
-            flex-shrink: 0;
-            border-radius: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: rgba(16, 185, 129, 0.1);
-            color: var(--success-game);
-            font-size: 1.8rem;
-        }
-
-        .custom-label {
-            font-weight: 600;
-            color: var(--text-muted);
-            margin-bottom: 8px;
-            display: block;
-            font-size: 0.95rem;
-        }
-
-        .btn-submit-game {
-            background-color: var(--success-game);
-            color: white;
-            border: 2px solid var(--success-game);
-            border-radius: 14px;
-            padding: 14px 28px;
-            font-weight: bold;
-            font-size: 1.1rem;
-            transition: all 0.2s ease-in-out;
-            width: 100%;
-        }
-
-        .btn-submit-game:hover {
-            background-color: white;
-            color: var(--success-game);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
-        }
-
-        /* Estilos dinámicos para el cuestionario */
-        .dinamic-section {
-            display: none;
-        }
-
-        .question-card {
-            background-color: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 15px;
-            border-left: 4px solid var(--success-game);
-        }
-
-        .option-row {
-            background: white;
-            border-radius: 8px;
-            padding: 10px;
-            margin-top: 10px;
-            border: 1px solid #e2e8f0;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .btn-add-item {
-            color: var(--success-game);
-            background: rgba(16, 185, 129, 0.1);
-            border: none;
-            border-radius: 8px;
-            padding: 8px 16px;
-            font-weight: 600;
-            transition: background 0.2s;
-        }
-
-        .btn-add-item:hover {
-            background: rgba(16, 185, 129, 0.2);
-        }
-    </style>
+{% extends base_plantilla|default:"Profesor/baseProfesor.html" %}
+{% load nextlevel %}
+{% block title %}{% if mision %}Editar misión{% else %}Nueva misión{% endif %}{% endblock %}
+{% block migas %}
+    {% if mision %}<a href="{% url 'clase_detalle' mision.clase_id %}">{{ mision.clase.nombre }}</a><i class="bi bi-chevron-right"></i>{% else %}<a href="{% url 'clases_lista' %}">Clases</a><i class="bi bi-chevron-right"></i>{% endif %}
+    <span class="actual">{% if mision %}{{ mision.nombre }}{% else %}Nueva misión{% endif %}</span>
 {% endblock %}
 
 {% block content %}
-    <div class="container mb-5 mt-4">
-        <div class="row justify-content-center">
-            <div class="col-lg-10 col-xl-9">
-                <div class="form-panel">
-                    <div class="d-flex align-items-center gap-4 mb-4 pb-4 border-bottom border-light">
-                        <div class="form-icon-box">
-                            <i class="bi bi-flag-fill"></i>
-                        </div>
-                        <div>
-                            <h3 class="fw-bold text-dark mb-1">Diseñar Nueva Misión</h3>
-                            <p class="text-muted small mb-0">Configura los desafíos y las recompensas para tus
-                                estudiantes.</p>
-                        </div>
-                    </div>
+<form method="post" enctype="multipart/form-data" action="{{ request.get_full_path }}" class="form-panel ancho" data-form="mision" novalidate>
+    {% csrf_token %}
+    <input type="hidden" name="preguntas_json" value="[]">
+    {% if request.GET.next %}<input type="hidden" name="next" value="{{ request.GET.next }}">{% endif %}
 
-                    <form method="POST" enctype="multipart/form-data" id="misionForm">
-                        {% csrf_token %}
-                        <input type="hidden" name="preguntas_json" id="preguntas_json" value="[]">
-
-                        <div class="row g-4">
-                            <div class="col-md-6">
-                                <label class="custom-label"><i class="bi bi-journal-bookmark text-secondary me-1"></i>
-                                    Clase Destino:</label>
-                                {{ form.clase }}
-                            </div>
-                            <div class="col-md-6">
-                                <label class="custom-label"><i class="bi bi-bar-chart-steps text-secondary me-1"></i>
-                                    Nivel:</label>
-                                {{ form.nivel }}
-                            </div>
-
-                            <div class="col-12">
-                                <label class="custom-label"><i class="bi bi-fonts text-secondary me-1"></i> Nombre de la
-                                    Misión:</label>
-                                {{ form.nombre }}
-                            </div>
-
-                            <div class="col-12">
-                                <label class="custom-label"><i class="bi bi-card-text text-secondary me-1"></i>
-                                    Descripción de la tarea:</label>
-                                {{ form.descripcion }}
-                            </div>
-
-                            <div class="col-md-4">
-                                <label class="custom-label"><i class="bi bi-controller text-secondary me-1"></i> Tipo de
-                                    Misión:</label>
-                                {{ form.tipo }}
-                            </div>
-
-                            <div class="col-md-8">
-                                <label class="custom-label"><i class="bi bi-image text-secondary me-1"></i> Portada de
-                                    la Misión:</label>
-                                {{ form.imagen }}
-                            </div>
-
-                            <div class="col-12 dinamic-section" id="sec_codigo">
-                                <label class="custom-label"><i class="bi bi-code-slash text-success me-1"></i> Código
-                                    Arduino Base:</label>
-                                {{ form.codigo }}
-                            </div>
-
-                            <div class="col-12 dinamic-section" id="sec_link">
-                                <label class="custom-label"><i class="bi bi-link-45deg text-success me-1"></i> Enlace
-                                    Externo:</label>
-                                {{ form.link }}
-                            </div>
-
-                            <div class="col-12 dinamic-section" id="sec_cuestionario">
-                                <label class="custom-label mb-3"><i class="bi bi-ui-checks text-success me-1"></i>
-                                    Constructor de Cuestionario:</label>
-
-                                <div id="contenedor_preguntas">
-                                </div>
-
-                                <button type="button" class="btn-add-item mt-3" onclick="agregarPregunta()">
-                                    <i class="bi bi-plus-circle-fill me-1"></i> Añadir Nueva Pregunta
-                                </button>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="custom-label"><i
-                                        class="bi bi-lightning-charge-fill text-warning me-1"></i> Recompensa
-                                    XP:</label>
-                                {{ form.xp_recompensa }}
-                            </div>
-
-                            <div class="col-md-4">
-                                <label class="custom-label"><i class="bi bi-coin text-warning me-1"></i> Recompensa
-                                    Monedas:</label>
-                                {{ form.monedas_recompensa }}
-                            </div>
-
-                            <div class="col-md-4">
-                                <label class="custom-label"><i class="bi bi-sort-numeric-down text-success me-1"></i>
-                                    Orden de aparición:</label>
-                                {{ form.orden }}
-                            </div>
-                        </div>
-
-                        <div class="mt-5 pt-2">
-                            <button type="submit"
-                                    class="btn-submit-game d-flex justify-content-center align-items-center gap-2">
-                                <i class="bi bi-rocket-takeoff-fill"></i> Crear Misión
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
+    <div class="modal-header">
+        <span class="icono-form"><i class="bi bi-flag"></i></span>
+        <div class="min-w-0 flex-grow-1">
+            <h2 class="titulo-form">{% if mision %}Editar «{{ mision.nombre }}»{% else %}Nueva misión{% endif %}</h2>
+            <p class="sub-form">Diseña el reto, elige cómo se entrega y define el botín.</p>
         </div>
+        {% if mision %}<a href="{% url 'calificar_mision' mision.id %}" class="p-btn sm d-none d-sm-inline-flex" data-modal="xl"><i class="bi bi-check2-square"></i> Calificar</a>{% endif %}
+        {% if modal %}<button type="button" class="btn-close ms-2" data-bs-dismiss="modal" aria-label="Cerrar"></button>{% endif %}
     </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const selectorTipo = document.getElementById('selector_tipo_mision');
-            const secCodigo = document.getElementById('sec_codigo');
-            const secLink = document.getElementById('sec_link');
-            const secCuestionario = document.getElementById('sec_cuestionario');
-            const formulario = document.getElementById('misionForm');
+    <div class="modal-body">
+        {% if form.errors or error_cuestionario %}
+            <div class="aviso-error"><i class="bi bi-exclamation-circle"></i> {{ error_cuestionario|default:"Revisa los campos marcados en rojo." }}</div>
+        {% endif %}
 
-            function actualizarVistas() {
-                secCodigo.style.display = 'none';
-                secLink.style.display = 'none';
-                secCuestionario.style.display = 'none';
-
-                if (selectorTipo.value === 'arduino') secCodigo.style.display = 'block';
-                if (selectorTipo.value === 'link') secLink.style.display = 'block';
-                if (selectorTipo.value === 'cuestionario') secCuestionario.style.display = 'block';
-            }
-
-            selectorTipo.addEventListener('change', actualizarVistas);
-            actualizarVistas();
-
-
-            // --- NUEVO CÓDIGO PARA SELECTS DINÁMICOS ---
-            const claseSelect = document.getElementById('id_clase');
-            const nivelSelect = document.getElementById('id_nivel');
-
-            // Guardamos la URL de nuestra vista AJAX que definimos en urls.py
-            const urlCargarNiveles = "{% url 'ajax_cargar_niveles' %}";
-
-            claseSelect.addEventListener('change', function () {
-                const claseId = this.value;
-
-                // Limpiamos las opciones actuales del selector de Nivel
-                nivelSelect.innerHTML = '<option value="">---------</option>';
-
-                if (claseId) {
-                    // Hacemos la petición AJAX a la URL
-                    fetch(`${urlCargarNiveles}?clase_id=${claseId}`)
-                        .then(response => response.json())
-                        .then(data => {
-                            // Rellenamos el selector con los datos obtenidos
-                            data.forEach(nivel => {
-                                const option = document.createElement('option');
-                                option.value = nivel.id;
-                                option.textContent = nivel.nombre; // O puedes mostrar `nivel.orden` también si lo incluyes en la vista
-                                nivelSelect.appendChild(option);
-                            });
-                        })
-                        .catch(error => console.error('Error cargando los niveles:', error));
-                }
-            });
-
-
-            formulario.addEventListener('submit', function (e) {
-                if (selectorTipo.value === 'cuestionario') {
-                    const preguntasArray = [];
-                    const tarjetasPregunta = document.querySelectorAll('.question-card');
-
-                    tarjetasPregunta.forEach((tarjeta) => {
-                        const textoPregunta = tarjeta.querySelector('.input-pregunta').value;
-                        const opcionesNodos = tarjeta.querySelectorAll('.option-row');
-                        const opcionesArray = [];
-
-                        opcionesNodos.forEach((opcion) => {
-                            opcionesArray.push({
-                                texto: opcion.querySelector('.input-opcion').value,
-                                es_correcta: opcion.querySelector('.check-correcta').checked
-                            });
-                        });
-
-                        preguntasArray.push({
-                            texto: textoPregunta,
-                            puntos: 10,
-                            opciones: opcionesArray
-                        });
-                    });
-
-                    document.getElementById('preguntas_json').value = JSON.stringify(preguntasArray);
-                }
-            });
-        });
-
-        let preguntaContador = 0;
-
-        function agregarPregunta() {
-            preguntaContador++;
-            const contenedor = document.getElementById('contenedor_preguntas');
-            const idPregunta = 'preg_' + preguntaContador;
-
-            const htmlPregunta = `
-                <div class="question-card" id="${idPregunta}">
-                    <div class="d-flex justify-content-between mb-2">
-                        <strong class="text-dark">Pregunta ${preguntaContador}</strong>
-                        <button type="button" class="btn btn-sm btn-outline-danger border-0" onclick="document.getElementById('${idPregunta}').remove()">
-                            <i class="bi bi-trash-fill"></i>
-                        </button>
+        <div class="row g-3">
+            <div class="col-lg-8">
+                <section class="p-card mb-3">
+                    <div class="p-card-head"><h3>Información</h3></div>
+                    <div class="p-card-body">
+                        <div class="campo {% if form.nivel.errors %}con-error{% endif %}">
+                            <label for="{{ form.nivel.id_for_label }}">Nivel donde aparece <span class="text-danger">*</span></label>
+                            {{ form.nivel }}
+                            {% for e in form.nivel.errors %}<div class="error">{{ e }}</div>{% endfor %}
+                            <div class="ayuda">Agrupado por clase y mundo.</div>
+                        </div>
+                        <div class="campo {% if form.nombre.errors %}con-error{% endif %}">
+                            <label for="{{ form.nombre.id_for_label }}">Nombre de la misión <span class="text-danger">*</span></label>
+                            {{ form.nombre }}
+                            {% for e in form.nombre.errors %}<div class="error">{{ e }}</div>{% endfor %}
+                        </div>
+                        <div class="campo mb-0 {% if form.descripcion.errors %}con-error{% endif %}">
+                            <label for="{{ form.descripcion.id_for_label }}">Instrucciones <span class="text-danger">*</span></label>
+                            {{ form.descripcion }}
+                            {% for e in form.descripcion.errors %}<div class="error">{{ e }}</div>{% endfor %}
+                        </div>
                     </div>
-                    <input type="text" class="form-control input-pregunta mb-3" placeholder="Escribe el planteamiento de la pregunta aquí..." required>
-                    
-                    <div class="opciones-contenedor"></div>
-                    
-                    <button type="button" class="btn btn-sm btn-light mt-2" onclick="agregarOpcion('${idPregunta}')">
-                        <i class="bi bi-plus me-1"></i> Añadir Respuesta
-                    </button>
-                </div>
-            `;
-            contenedor.insertAdjacentHTML('beforeend', htmlPregunta);
-            agregarOpcion(idPregunta);
-            agregarOpcion(idPregunta);
-        }
+                </section>
 
-        function agregarOpcion(idPregunta) {
-            const contenedorOpciones = document.querySelector(`#${idPregunta} .opciones-contenedor`);
-            const nameRadio = 'radio_' + idPregunta;
+                <section class="p-card mb-3">
+                    <div class="p-card-head"><h3>Tipo de misión</h3><span class="sub">¿Cómo la completa el alumno?</span></div>
+                    <div class="p-card-body">
+                        <div class="tipos-grid">
+                            {% for valor, etiqueta in form.fields.tipo.choices %}{% if valor %}
+                                {% with info=tipos|get_item:valor %}
+                                <label class="tipo-op">
+                                    <input type="radio" name="tipo" value="{{ valor }}" {% if form.tipo.value == valor %}checked{% endif %} required>
+                                    <span class="caja d-block">
+                                        <span class="e d-block">{{ info.emoji }}</span>
+                                        <span class="n d-block">{{ etiqueta }}</span>
+                                        <span class="d d-block">
+                                            {% if valor == 'arduino' %}Código base y revisión del profe{% elif valor == 'cuestionario' %}Se califica automáticamente{% elif valor == 'link' %}Enlace externo con revisión{% elif valor == 'video' %}YouTube, se aprueba al verlo{% elif valor == 'evidencia' %}El alumno sube una foto{% elif valor == 'texto' %}El alumno escribe su respuesta{% else %}Tú la calificas en clase{% endif %}
+                                        </span>
+                                    </span>
+                                </label>
+                                {% endwith %}
+                            {% endif %}{% endfor %}
+                        </div>
+                        {% for e in form.tipo.errors %}<div class="error mt-2" style="color:var(--danger);font-size:.8rem">{{ e }}</div>{% endfor %}
 
-            const htmlOpcion = `
-                <div class="option-row">
-                    <input type="radio" name="${nameRadio}" class="form-check-input check-correcta mt-0" style="cursor: pointer;" title="Marcar como respuesta correcta">
-                    <input type="text" class="form-control form-control-sm border-0 input-opcion" placeholder="Texto de la opción..." required>
-                    <button type="button" class="btn btn-sm text-danger" onclick="this.parentElement.remove()">
-                        <i class="bi bi-x-circle"></i>
-                    </button>
-                </div>
-            `;
-            contenedorOpciones.insertAdjacentHTML('beforeend', htmlOpcion);
-        }
-    </script>
+                        <div class="seccion-tipo mt-4" data-tipos="arduino">
+                            <div class="campo mb-0">
+                                <label for="{{ form.codigo.id_for_label }}"><i class="bi bi-code-slash"></i> Código base de Arduino</label>
+                                {{ form.codigo }}
+                            </div>
+                        </div>
+                        <div class="seccion-tipo mt-4" data-tipos="link video">
+                            <div class="campo mb-0 {% if form.link.errors %}con-error{% endif %}">
+                                <label for="{{ form.link.id_for_label }}" data-etiqueta-link><i class="bi bi-link-45deg"></i> Enlace</label>
+                                {{ form.link }}
+                                {% for e in form.link.errors %}<div class="error">{{ e }}</div>{% endfor %}
+                                <div class="ayuda" data-ayuda-link>Para video, pega el enlace de YouTube: se mostrará dentro de la misión.</div>
+                            </div>
+                        </div>
+                        <div class="seccion-tipo mt-4" data-tipos="cuestionario">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="etiqueta-campo mb-0"><i class="bi bi-ui-checks"></i> Preguntas del cuestionario</span>
+                                <span class="text-muted-p" style="font-size:.8rem" data-resumen-quiz></span>
+                            </div>
+                            <div data-preguntas></div>
+                            <div class="d-flex gap-2 flex-wrap">
+                                <button type="button" class="p-btn sm" data-agregar-pregunta><i class="bi bi-plus-lg"></i> Opción múltiple</button>
+                                <button type="button" class="p-btn sm" data-agregar-vf><i class="bi bi-toggles"></i> Verdadero / Falso</button>
+                            </div>
+                            <div class="ayuda mt-2" style="font-size:.78rem;color:var(--muted)">Marca el círculo de la respuesta correcta. La calificación es proporcional a los puntos obtenidos.</div>
+                        </div>
+                        <div class="seccion-tipo mt-4" data-tipos="presencial">
+                            <div class="p-badge azul" style="white-space:normal;padding:.6rem .8rem;border-radius:10px;font-weight:500">
+                                <i class="bi bi-info-circle"></i> Los alumnos verán la misión, pero no podrán enviarla. Califícala con "Calificar a todos" cuando la completen en clase.
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="p-card">
+                    <div class="p-card-head"><h3>Imagen de apoyo</h3><span class="sub">Opcional</span></div>
+                    <div class="p-card-body">
+                        {% if mision.imagen %}<img src="{{ mision.imagen.url }}" alt="" style="max-height:140px;border-radius:10px;border:1px solid var(--border)" class="mb-3 d-block">{% endif %}
+                        {{ form.imagen }}
+                    </div>
+                </section>
+            </div>
+
+            <div class="col-lg-4">
+                <section class="p-card sticky-lateral">
+                    <div class="p-card-head"><h3>Botín y publicación</h3></div>
+                    <div class="p-card-body">
+                        <div class="row gx-2">
+                            <div class="col-6"><div class="campo"><label for="{{ form.xp_recompensa.id_for_label }}"><i class="bi bi-lightning-charge text-primary"></i> XP</label>{{ form.xp_recompensa }}</div></div>
+                            <div class="col-6"><div class="campo"><label for="{{ form.monedas_recompensa.id_for_label }}"><i class="bi bi-coin text-warning"></i> Monedas</label>{{ form.monedas_recompensa }}</div></div>
+                            <div class="col-6"><div class="campo"><label for="{{ form.orden.id_for_label }}">Orden</label>{{ form.orden }}</div></div>
+                            <div class="col-6"><div class="campo"><label for="{{ form.fecha_limite.id_for_label }}">Fecha límite</label>{{ form.fecha_limite }}</div></div>
+                        </div>
+                        <p class="text-muted-p" style="font-size:.78rem;margin-top:-.4rem">Las monedas se dan proporcionales a la calificación. La XP siempre es completa.</p>
+                        <div class="campo-check">{{ form.es_jefe }}<div><label for="{{ form.es_jefe.id_for_label }}">Misión jefe 👾</label><div class="text-muted-p" style="font-size:.76rem">Se ve más grande y especial en el mapa.</div></div></div>
+                        <div class="campo-check mb-0">{{ form.activa }}<div><label for="{{ form.activa.id_for_label }}">Visible para los alumnos</label><div class="text-muted-p" style="font-size:.76rem">Desactívala para guardarla como borrador.</div></div></div>
+                    </div>
+                </section>
+            </div>
+        </div>
+        {{ preguntas|json_script:"preguntas-data" }}
+    </div>
+
+    <div class="modal-footer">
+        {% if modal %}
+            <button type="button" class="p-btn fantasma" data-bs-dismiss="modal">Cancelar</button>
+        {% else %}
+            <a href="{% if mision %}{% url 'clase_detalle' mision.clase_id %}{% else %}{% url 'clases_lista' %}{% endif %}" class="p-btn fantasma">Cancelar</a>
+        {% endif %}
+        <button type="submit" class="p-btn primario"><i class="bi bi-check2"></i> Guardar misión</button>
+    </div>
+</form>
 {% endblock %}

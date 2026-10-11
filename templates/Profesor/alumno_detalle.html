@@ -1,0 +1,150 @@
+{% extends 'Profesor/baseProfesor.html' %}
+{% load nextlevel %}
+{% block title %}{{ alumno.nombre }} {{ alumno.apellido }}{% endblock %}
+{% block migas %}<a href="{% url 'alumnos_lista' %}">Alumnos</a><i class="bi bi-chevron-right"></i><span class="actual">{{ alumno.nombre }} {{ alumno.apellido }}</span>{% endblock %}
+
+{% block content %}
+{% with rango=alumno.rango %}
+<div class="page-head">
+    <div class="d-flex align-items-center gap-3">
+        <img src="{{ alumno|avatar_url }}" alt="" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:1px solid var(--border)">
+        <div>
+            <h1>{{ alumno.nombre }} {{ alumno.apellido }} {% if not alumno.activo %}<span class="p-badge">Inactivo</span>{% endif %}</h1>
+            <p>{{ rango.emoji }} {{ rango.nombre }} · Nivel {{ alumno.nivel }} · PIN <code>{{ alumno.pin }}</code> · {% for c in alumno.clases.all %}{{ c.nombre }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
+        </div>
+    </div>
+    <div class="acciones">
+        <a href="{% url 'credenciales' %}?ids={{ alumno.id }}" class="p-btn"><i class="bi bi-printer"></i> Credencial</a>
+        <a data-modal href="{% url 'editar_alumno' alumno.id %}" class="p-btn"><i class="bi bi-pencil"></i> Editar</a>
+        <form method="post" action="{% url 'eliminar' 'alumno' alumno.id %}" data-confirmar="Se borrará todo su progreso, compras e historial. Si solo dejó la clase, mejor desactívalo." data-titulo="¿Eliminar a {{ alumno.nombre }}?" data-boton="Eliminar" data-peligro>
+            {% csrf_token %}<button class="p-btn peligro icono" title="Eliminar alumno"><i class="bi bi-trash"></i></button>
+        </form>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-6 col-lg-3"><div class="p-card kpi"><span class="etiqueta"><i class="bi bi-lightning-charge ico-azul"></i> XP total</span><span class="valor">{{ alumno.xp_total }}</span><span class="nota">{{ alumno.xp_faltante }} para nivel {{ alumno.nivel|add:1 }}</span></div></div>
+    <div class="col-6 col-lg-3"><div class="p-card kpi"><span class="etiqueta"><i class="bi bi-coin ico-ambar"></i> Monedas</span><span class="valor">{{ alumno.monedas }}</span><span class="nota">{{ stats.monedas }} ganadas en total</span></div></div>
+    <div class="col-6 col-lg-3"><div class="p-card kpi"><span class="etiqueta"><i class="bi bi-flag ico-verde"></i> Misiones</span><span class="valor">{{ stats.misiones }}</span><span class="nota">⭐ {{ stats.estrellas }} estrellas · {{ stats.perfectos }} dieces</span></div></div>
+    <div class="col-6 col-lg-3"><div class="p-card kpi"><span class="etiqueta"><i class="bi bi-fire ico-rojo"></i> Racha</span><span class="valor">{{ alumno.racha_actual }} días</span><span class="nota">Mejor: {{ alumno.racha_maxima }} · {{ stats.logros }} logros</span></div></div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-8">
+        {% for ac in avance_clases %}
+            <section class="p-card mb-3">
+                <div class="p-card-head">
+                    <h2>{{ ac.clase.icono }} {{ ac.clase.nombre }}</h2>
+                    <span class="sub">{{ ac.ruta.aprobadas }}/{{ ac.ruta.total }} misiones · {{ ac.ruta.pct }}%</span>
+                    <div class="derecha" style="width:160px"><div class="progreso w-100"><span style="width: {{ ac.ruta.pct }}%"></span></div></div>
+                </div>
+                <div class="p-card-body">
+                    <div class="row g-2">
+                        {% for m in ac.ruta.mundos %}
+                            <div class="col-sm-6 col-xl-4">
+                                <div class="d-flex align-items-center gap-2 p-2" style="border:1px solid var(--border);border-radius:10px">
+                                    <span class="muestra {{ m.tema }}" style="width:34px;height:34px;border-radius:9px;display:grid;place-items:center">{{ m.tema_info.emoji }}</span>
+                                    <div class="min-w-0 flex-grow-1">
+                                        <div class="text-truncate fw-semibold" style="font-size:.85rem">{{ m.nombre }}</div>
+                                        <div class="progreso mt-1"><span style="width: {{ m.pct }}%"></span></div>
+                                    </div>
+                                    <span class="tnum text-muted-p" style="font-size:.76rem">{{ m.aprobadas }}/{{ m.total }}</span>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </section>
+        {% endfor %}
+
+        <section class="p-card mb-3">
+            <div class="p-card-head"><h2>Entregas recientes</h2></div>
+            <div class="p-table-wrap">
+                <table class="p-table">
+                    <thead><tr><th>Misión</th><th>Estado</th><th class="num">Calificación</th><th>Fecha</th></tr></thead>
+                    <tbody>
+                    {% for p in progresos %}
+                        <tr>
+                            <td><a data-modal="xl" href="{% url 'calificar_mision' p.mision.id %}" class="text-decoration-none fw-semibold" style="color:var(--text)">{{ p.mision.nombre }}</a><div class="text-muted-p" style="font-size:.76rem">{{ p.mision.clase.nombre }} · {{ p.mision.get_tipo_display }}</div></td>
+                            <td>{% if p.estado == 'aprobado' %}<span class="p-badge verde">Aprobada</span>{% elif p.estado == 'pendiente' %}<span class="p-badge ambar">Por revisar</span>{% else %}<span class="p-badge rojo">Devuelta</span>{% endif %}</td>
+                            <td class="num">{% if p.estado == 'aprobado' %}<span class="celda {{ p.puntuacion|nivel_calif }}">{{ p.puntuacion|calif10 }}</span>{% else %}—{% endif %}</td>
+                            <td class="text-muted-p" style="font-size:.8rem">{{ p.fecha|date:"d M Y" }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="4"><div class="vacio-p">Sin entregas todavía.</div></td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="p-card">
+            <div class="p-card-head"><h2>Historial de monedas y XP</h2></div>
+            <div class="p-card-body sin-pad">
+                {% for m in movimientos %}
+                    <div class="feed-item">
+                        <div class="min-w-0"><div class="t">{{ m.descripcion }}</div><div class="f">{{ m.get_tipo_display }} · {{ m.fecha|date:"d M Y, H:i" }}</div></div>
+                        <span class="v">
+                            {% if m.monedas %}<span class="{% if m.monedas > 0 %}pos{% else %}neg{% endif %}">{% if m.monedas > 0 %}+{% endif %}{{ m.monedas }} monedas</span>{% endif %}
+                            {% if m.xp %}<div class="{% if m.xp > 0 %}pos{% else %}neg{% endif %}">{% if m.xp > 0 %}+{% endif %}{{ m.xp }} XP</div>{% endif %}
+                        </span>
+                    </div>
+                {% empty %}
+                    <div class="vacio-p">Sin movimientos registrados.</div>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+
+    <div class="col-lg-4">
+        <section class="p-card mb-3">
+            <div class="p-card-head"><h2>Dar o quitar recompensas</h2></div>
+            <form method="post" action="{% url 'alumno_ajuste' alumno.id %}" class="p-card-body">
+                {% csrf_token %}
+                <div class="row gx-2">
+                    <div class="col-6"><div class="campo"><label for="aj-monedas">Monedas</label><input type="number" id="aj-monedas" name="monedas" class="p-input" placeholder="+10 o -5"></div></div>
+                    <div class="col-6"><div class="campo"><label for="aj-xp">XP</label><input type="number" id="aj-xp" name="xp" class="p-input" placeholder="+20"></div></div>
+                </div>
+                <div class="campo"><label for="aj-motivo">Motivo</label><input type="text" id="aj-motivo" name="motivo" class="p-input" placeholder="Ej. Ayudó a un compañero"></div>
+                <button class="p-btn primario w-100"><i class="bi bi-check2"></i> Aplicar</button>
+                <p class="text-muted-p mt-2 mb-0" style="font-size:.76rem">El alumno recibe una notificación. Las monedas nunca bajan de 0.</p>
+            </form>
+        </section>
+
+        <section class="p-card mb-3">
+            <div class="p-card-head"><h2>Logros</h2><span class="sub">{{ logros|length }}</span></div>
+            <div class="p-card-body">
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                    {% for la in logros %}<span class="p-badge" title="{{ la.logro.descripcion }} · {{ la.fecha|date:'d M Y' }}" style="font-size:.8rem">{{ la.logro.icono }} {{ la.logro.nombre }}</span>{% empty %}<span class="text-muted-p" style="font-size:.85rem">Aún no tiene logros.</span>{% endfor %}
+                </div>
+                {% if logros_disponibles %}
+                    <form method="post" action="{% url 'otorgar_logro' %}" class="d-flex gap-2">
+                        {% csrf_token %}
+                        <input type="hidden" name="alumnos" value="{{ alumno.id }}">
+                        <input type="hidden" name="next" value="{{ request.path }}">
+                        <select name="logro" class="p-input" aria-label="Logro a otorgar">
+                            {% for l in logros_disponibles %}<option value="{{ l.id }}">{{ l.icono }} {{ l.nombre }}</option>{% endfor %}
+                        </select>
+                        <button class="p-btn" title="Otorgar logro"><i class="bi bi-award"></i></button>
+                    </form>
+                {% endif %}
+            </div>
+        </section>
+
+        <section class="p-card">
+            <div class="p-card-head"><h2>Compras</h2></div>
+            <div class="p-card-body sin-pad">
+                {% for c in compras %}
+                    <div class="feed-item">
+                        <div class="min-w-0"><div class="t">{{ c.articulo.nombre }}</div><div class="f">{{ c.fecha_compra|date:"d M Y" }} · {{ c.costo_pagado }} monedas</div></div>
+                        <span class="v">{% if c.estado == 'pendiente' %}<span class="p-badge ambar">Por entregar</span>{% elif c.estado == 'entregado' %}<span class="p-badge verde">Entregado</span>{% else %}<span class="p-badge">Cancelado</span>{% endif %}</span>
+                    </div>
+                {% empty %}
+                    <div class="vacio-p">Sin compras.</div>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+</div>
+{% endwith %}
+{% endblock %}

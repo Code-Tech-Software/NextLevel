@@ -1,0 +1,83 @@
+{% extends 'Profesor/baseProfesor.html' %}
+{% load nextlevel %}
+{% block title %}Logros{% endblock %}
+{% block titulo_pagina %}Logros{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1>Logros e insignias</h1>
+        <p>Se desbloquean automáticamente cuando el alumno cumple la condición. Los de tipo “manual” los otorgas tú.</p>
+    </div>
+    <div class="acciones">
+        <button type="button" class="p-btn" data-bs-toggle="modal" data-bs-target="#modal-otorgar"><i class="bi bi-gift"></i> Otorgar logro</button>
+        <a data-modal href="{% url 'alta_logro' %}" class="p-btn primario"><i class="bi bi-plus-lg"></i> Nuevo logro</a>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-xl-8">
+        <div class="row g-3">
+            {% for l in logros %}
+                <div class="col-md-6">
+                    <div class="p-card logro-tile {{ l.rareza }} {% if not l.activo %}opacity-50{% endif %}">
+                        <span class="disco">{{ l.icono }}</span>
+                        <div class="min-w-0 flex-grow-1">
+                            <div class="d-flex align-items-center gap-2"><span class="fw-semibold">{{ l.nombre }}</span><span class="p-badge {% if l.rareza == 'legendario' %}ambar{% elif l.rareza == 'epico' %}violeta{% elif l.rareza == 'raro' %}azul{% endif %}">{{ l.get_rareza_display }}</span></div>
+                            <div class="text-2" style="font-size:.82rem">{{ l.descripcion }}</div>
+                            <div class="text-muted-p mt-1" style="font-size:.76rem">
+                                {% if l.condicion == 'manual' %}Otorgado por el profesor{% else %}{{ l.get_condicion_display }}: {{ l.valor }}{% endif %}
+                                {% if l.recompensa_monedas or l.recompensa_xp %} · Premio: {% if l.recompensa_monedas %}{{ l.recompensa_monedas }} monedas{% endif %}{% if l.recompensa_monedas and l.recompensa_xp %} + {% endif %}{% if l.recompensa_xp %}{{ l.recompensa_xp }} XP{% endif %}{% endif %}
+                            </div>
+                            <div class="text-muted-p" style="font-size:.76rem"><i class="bi bi-people"></i> {{ l.total }} alumno{{ l.total|pluralize }}</div>
+                        </div>
+                        <div class="dropdown">
+                            <button class="p-btn xs icono fantasma" data-bs-toggle="dropdown" aria-label="Opciones"><i class="bi bi-three-dots"></i></button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a data-modal class="dropdown-item" href="{% url 'editar_logro' l.id %}"><i class="bi bi-pencil"></i> Editar</a></li>
+                                <li><form method="post" action="{% url 'alternar_activo' 'logro' l.id %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}"><button class="dropdown-item">{% if l.activo %}<i class="bi bi-eye-slash"></i> Desactivar{% else %}<i class="bi bi-eye"></i> Activar{% endif %}</button></form></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><form method="post" action="{% url 'eliminar' 'logro' l.id %}" data-confirmar="Los alumnos que lo tienen lo perderán." data-titulo="¿Eliminar «{{ l.nombre }}»?" data-boton="Eliminar" data-peligro>{% csrf_token %}<button class="dropdown-item text-danger"><i class="bi bi-trash"></i> Eliminar</button></form></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            {% empty %}
+                <div class="col-12"><div class="p-card vacio-p"><i class="bi bi-award"></i>No hay logros configurados.</div></div>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="col-xl-4">
+        <section class="p-card">
+            <div class="p-card-head"><h2>Desbloqueados recientemente</h2></div>
+            <div class="p-card-body sin-pad">
+                {% for la in recientes %}
+                    <div class="feed-item">
+                        <span class="ico">{{ la.logro.icono }}</span>
+                        <div class="min-w-0"><div class="t"><b>{{ la.alumno.nombre }}</b> · {{ la.logro.nombre }}</div><div class="f">hace {{ la.fecha|timesince }}</div></div>
+                    </div>
+                {% empty %}
+                    <div class="vacio-p">Aún nadie ha desbloqueado logros.</div>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+</div>
+
+<div class="modal fade" id="modal-otorgar" tabindex="-1" aria-labelledby="titulo-otorgar" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+        <form method="post" action="{% url 'otorgar_logro' %}" class="modal-content">
+            {% csrf_token %}
+            <div class="modal-header"><h5 class="modal-title" id="titulo-otorgar">Otorgar un logro</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>
+            <div class="modal-body">
+                <div class="campo"><label for="{{ form_otorgar.logro.id_for_label }}">Logro</label>{{ form_otorgar.logro }}</div>
+                <div class="campo mb-0">
+                    <label class="d-flex justify-content-between align-items-center">Alumnos <input type="search" class="p-input" style="height:32px;width:200px;font-weight:400" placeholder="Filtrar…" data-buscar="#lista-otorgar" data-filas="div.nl-choice-list > div"></label>
+                    <div id="lista-otorgar">{{ form_otorgar.alumnos }}</div>
+                </div>
+            </div>
+            <div class="modal-footer"><button type="button" class="p-btn fantasma" data-bs-dismiss="modal">Cancelar</button><button class="p-btn primario"><i class="bi bi-award"></i> Otorgar</button></div>
+        </form>
+    </div>
+</div>
+{% endblock %}

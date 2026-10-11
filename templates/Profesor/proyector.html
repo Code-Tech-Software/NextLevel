@@ -1,0 +1,150 @@
+{% extends 'Alumnos/base_publica.html' %}
+{% load static nextlevel %}
+{% block title %}Proyector · {{ clase.nombre }}{% endblock %}
+
+{% block extra_css %}
+<meta http-equiv="refresh" content="60">
+<style>
+    body.juego { padding: 0; background: linear-gradient(135deg, #142c45, #1e3a5f 60%, #0f766e); color: #fff; min-height: 100vh; }
+    .proy { padding: 2rem clamp(1rem, 3vw, 3rem); }
+    .proy-cabeza { display: flex; align-items: center; gap: 1.25rem; margin-bottom: 1.5rem; }
+    .proy-cabeza .e { font-size: 4rem; line-height: 1; }
+    .proy-cabeza h1 { font-size: clamp(2rem, 4vw, 3.2rem); margin: 0; line-height: 1; }
+    .proy-cabeza .s { font-weight: 800; opacity: .75; font-size: 1.2rem; }
+    .proy-cabeza .reloj { margin-left: auto; font-family: var(--fuente-titulo); font-size: 2.6rem; opacity: .9; }
+    .panel-proy { background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .14); border-radius: 28px; padding: 1.5rem; height: 100%; }
+    .panel-proy h2 { font-size: 1.5rem; margin-bottom: 1rem; color: #fff; }
+    .proy .podio-lugar .n { color: #fff; font-size: 1.2rem; }
+    .proy .podio-lugar .pts { color: #fde047; font-size: 1.2rem; }
+    .proy .podio-lugar .avatar { --tam: 96px; }
+    .proy .podio-lugar.p1 .avatar { --tam: 128px; }
+    .proy .podio { margin-top: 3rem; }
+    .fila-proy { display: flex; align-items: center; gap: 1rem; padding: .6rem .9rem; border-radius: 18px; background: rgba(255, 255, 255, .06); margin-bottom: .5rem; font-size: 1.15rem; }
+    .fila-proy .pos { font-family: var(--fuente-titulo); width: 36px; text-align: center; opacity: .7; font-size: 1.4rem; }
+    .fila-proy .avatar { --tam: 48px; }
+    .fila-proy .pts { margin-left: auto; font-family: var(--fuente-titulo); color: #fde047; }
+    .mundo-proy { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }
+    .mundo-proy .e { font-size: 2.4rem; width: 64px; height: 64px; border-radius: 18px; display: grid; place-items: center; background: linear-gradient(160deg, var(--tf1), var(--tf2)); }
+    .mundo-proy .n { font-weight: 900; font-size: 1.15rem; }
+    .mundo-proy .barra { height: 18px; background: rgba(255, 255, 255, .15); }
+    .btn-pantalla { position: fixed; right: 1rem; bottom: 1rem; }
+</style>
+{% endblock %}
+
+{% block cuerpo %}
+<div class="proy">
+    <div class="proy-cabeza">
+        <span class="e">{{ clase.icono|default:'🚀' }}</span>
+        <div>
+            <h1>{{ clase.nombre }}</h1>
+            <div class="s">🏆 Salón de la Fama · {{ clase.grado }} {{ clase.grupo }}</div>
+        </div>
+        <div class="reloj" id="reloj">--:--</div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-xl-7">
+            <div class="panel-proy">
+                <h2>⭐ Los mejores de la semana</h2>
+                {% if podio %}
+                    <div class="podio">
+                        {% for pos in "213" %}
+                            {% for a in podio %}
+                                {% if forloop.counter|stringformat:"s" == pos %}
+                                    <div class="podio-lugar p{{ pos }}">
+                                        <div class="avatar-wrap">
+                                            {% if pos == '1' %}<span class="corona">👑</span>{% endif %}
+                                            <img src="{{ a|avatar_url }}" alt="" class="avatar anillo-{{ a.rango.color }}">
+                                            <span class="nivel-badge">{{ a.nivel }}</span>
+                                        </div>
+                                        <div class="n">{{ a.nombre }}</div>
+                                        <div class="pts">{{ a.puntos }} XP</div>
+                                        <div class="podio-bloque">{{ pos }}</div>
+                                    </div>
+                                {% endif %}
+                            {% endfor %}
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                <div class="mt-4">
+                    {% for a in semana %}
+                        <div class="fila-proy">
+                            <span class="pos">{{ a.posicion }}</span>
+                            <img src="{{ a|avatar_url }}" alt="" class="avatar anillo-{{ a.rango.color }}">
+                            <span class="fw-black">{{ a.nombre }} {{ a.apellido|slice:":1" }}.</span>
+                            <span class="pts">{{ a.puntos }} XP</span>
+                        </div>
+                    {% empty %}
+                        {% if not podio %}<div class="text-center py-5" style="font-size:1.3rem;opacity:.8">🌱 ¡La semana apenas empieza! Completa misiones para aparecer aquí.</div>{% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-5 d-flex flex-column gap-4">
+            {% for meta in metas %}
+                <div class="panel-proy" style="{% if meta.completada_en %}background:linear-gradient(135deg,#f59e0b,#ea580c);border-color:transparent{% else %}background:linear-gradient(135deg,rgba(109,40,217,.65),rgba(37,99,235,.55));border-color:transparent{% endif %}">
+                    <div class="d-flex align-items-center gap-3">
+                        <span style="font-size:3rem;line-height:1">{{ meta.icono }}</span>
+                        <div class="flex-grow-1">
+                            <div style="font-weight:900;opacity:.8;text-transform:uppercase;letter-spacing:1px;font-size:.85rem">{% if meta.completada_en %}🎉 ¡Meta cumplida!{% else %}Meta del grupo{% endif %}</div>
+                            <div style="font-family:var(--fuente-titulo);font-size:1.7rem;line-height:1.1">{{ meta.titulo }}</div>
+                        </div>
+                        <div style="font-family:var(--fuente-titulo);font-size:2rem">{{ meta.valor }}<span style="opacity:.6;font-size:1.2rem">/{{ meta.objetivo }}</span></div>
+                    </div>
+                    <div class="barra oro mt-3" style="height:22px;background:rgba(255,255,255,.2)"><span style="width: {{ meta.pct }}%"></span></div>
+                    {% if meta.recompensa %}<div class="mt-2 fw-black" style="font-size:1.1rem">Premio: {{ meta.recompensa }}</div>{% endif %}
+                </div>
+            {% endfor %}
+            {% if equipos %}
+                <div class="panel-proy">
+                    <h2>🛡️ Equipos</h2>
+                    {% for e in equipos %}
+                        <div class="mundo-proy">
+                            <span class="e" style="background:linear-gradient(150deg, {{ e.color|color_clase:0 }}, {{ e.color|color_clase:1 }})">{{ e.emoji }}</span>
+                            <div class="flex-grow-1">
+                                <div class="d-flex justify-content-between"><span class="n">{% if e.posicion == 1 %}🥇 {% endif %}{{ e.nombre }}</span><span class="fw-black" style="color:#fde047">{{ e.total }} pts</span></div>
+                                <div class="barra mt-1"><span style="width: {{ e.pct }}%;background:linear-gradient(90deg, {{ e.color|color_clase:0 }}, {{ e.color|color_clase:1 }})"></span></div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+            <div class="panel-proy">
+                <h2>🌍 Avance del grupo</h2>
+                {% for m in mundos %}
+                    <div class="mundo-proy tema-{{ m.mundo.tema }}">
+                        <span class="e">{{ m.tema.emoji }}</span>
+                        <div class="flex-grow-1">
+                            <div class="d-flex justify-content-between"><span class="n">{{ m.mundo.nombre }}</span><span class="fw-black">{{ m.pct }}%</span></div>
+                            <div class="barra tema mt-1"><span style="width: {{ m.pct }}%"></span></div>
+                        </div>
+                    </div>
+                {% empty %}
+                    <div style="opacity:.75">Aún no hay mundos.</div>
+                {% endfor %}
+            </div>
+            <div class="panel-proy">
+                <h2>🏅 Logros recientes</h2>
+                {% for la in logros %}
+                    <div class="fila-proy">
+                        <span style="font-size:2rem">{{ la.logro.icono }}</span>
+                        <span><b>{{ la.alumno.nombre }}</b> desbloqueó <b>{{ la.logro.nombre }}</b></span>
+                    </div>
+                {% empty %}
+                    <div style="opacity:.75">Todavía no hay logros esta temporada.</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+<button type="button" class="g-btn blanco chico btn-pantalla" onclick="document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()"><i class="bi bi-arrows-fullscreen"></i> Pantalla completa</button>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const reloj = document.getElementById('reloj');
+    const pintarReloj = () => { reloj.textContent = new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }); };
+    pintarReloj();
+    setInterval(pintarReloj, 10000);
+</script>
+{% endblock %}

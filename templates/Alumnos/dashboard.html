@@ -1,248 +1,227 @@
 {% extends 'Alumnos/base.html' %}
-{% load static %}
-{% block title %}Ruta de Aprendizaje - {{ alumno.nombre }}{% endblock %}
-
-{% block extra_css %}
-    <style>
-        .ruta-container {
-            position: relative;
-            padding-bottom: 5rem;
-        }
-
-        .nivel-titulo {
-            background: var(--primary-color);
-            color: white;
-            padding: 8px 24px;
-            border-radius: 20px;
-            font-weight: 900;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            font-size: 0.9rem;
-            box-shadow: 0 4px 15px rgba(67, 97, 238, 0.3);
-            display: inline-block;
-            margin: 2rem 0 1.5rem 0;
-            z-index: 2;
-            position: relative;
-        }
-        
-        .watermark-bg {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 85vw; /* Ocupa el 85% del ancho de la pantalla */
-            max-width: 800px; /* Tope máximo para pantallas gigantes */
-            opacity: 0.06; /* Ajusta este valor (ej. 0.08) si la quieres más oscura */
-            z-index: -1; /* Detrás de todo */
-            pointer-events: none; /* Fundamental para que no estorbe los clics */
-            user-select: none; /* Evita que se pueda seleccionar arrastrando */
-        }
-
-
-        .mision-wrapper {
-            position: relative;
-            z-index: 2;
-            transition: transform 0.3s ease;
-        }
-
-        .mision-wrapper:hover {
-            transform: translateY(-5px);
-        }
-
-        .mision-circulo {
-            width: 85px;
-            height: 85px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2.5rem;
-            margin: 0 auto;
-            border: 6px solid white;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
-            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-
-        /* Estados de las misiones */
-        .aprobada {
-            background: linear-gradient(135deg, #10b981, #059669);
-            color: white;
-            box-shadow: 0 8px 0 #047857, 0 15px 20px rgba(16, 185, 129, 0.4);
-            cursor: pointer;
-        }
-
-        .desbloqueada {
-            background: linear-gradient(135deg, #f72585, #b5179e);
-            color: white;
-            cursor: pointer;
-            box-shadow: 0 8px 0 #7209b7, 0 15px 20px rgba(247, 37, 133, 0.4);
-            animation: pulse 2s infinite;
-        }
-
-        .bloqueada {
-            background: var(--locked-color);
-            color: var(--locked-icon);
-            cursor: not-allowed;
-            box-shadow: inset 0 4px 6px rgba(0, 0, 0, 0.05);
-            border-color: #f8fafc;
-        }
-
-        @keyframes pulse {
-            0% {
-                box-shadow: 0 8px 0 #7209b7, 0 0 0 0 rgba(247, 37, 133, 0.7);
-            }
-            70% {
-                box-shadow: 0 8px 0 #7209b7, 0 0 0 20px rgba(247, 37, 133, 0);
-            }
-            100% {
-                box-shadow: 0 8px 0 #7209b7, 0 0 0 0 rgba(247, 37, 133, 0);
-            }
-        }
-
-        /* Líneas de conexión */
-        .linea-conexion {
-            width: 12px;
-            height: 60px;
-            margin: -5px auto;
-            border-radius: 10px;
-            background-color: var(--locked-color);
-            position: relative;
-            z-index: 1;
-        }
-
-        .linea-activa {
-            background: linear-gradient(to bottom, #10b981, #f72585);
-        }
-
-        .mision-nombre {
-            font-weight: 800;
-            color: #334155;
-            margin-top: 15px;
-            font-size: 1.1rem;
-            text-shadow: 1px 1px 0px white;
-        }
-
-
-        /* =========================================
-           BOTÓN FLOTANTE GAMIFICADO 3D (TONO NEUTRO)
-           ========================================= */
-        .btn-calificaciones-flotante {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            z-index: 1000;
-
-            font-weight: 900;
-            font-size: 1.1rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            border-radius: 20px;
-            padding: 16px 32px;
-            border: none;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            background: #64748b;
-            color: white;
-            box-shadow: 0 8px 0 #334155, 0 15px 20px rgba(100, 116, 139, 0.3);
-            transition: all 0.1s;
-        }
-
-        /* Estado al pasar el cursor (Se hunde un poquito) */
-        .btn-calificaciones-flotante:hover {
-            color: white;
-
-            transform: translateY(2px);
-            box-shadow: 0 6px 0 #334155, 0 10px 15px rgba(100, 116, 139, 0.3);
-        }
-
-        /* Estado al hacer clic (Se hunde por completo) */
-        .btn-calificaciones-flotante:active {
-            transform: translateY(8px);
-            box-shadow: 0 0px 0 #334155;
-        }
-
-        .icono-trofeo {
-            font-size: 1.4rem;
-        }
-
-        /* Ajustes para pantallas de celular */
-        @media (max-width: 768px) {
-            .btn-calificaciones-flotante {
-                bottom: 20px;
-                right: 20px;
-                padding: 12px 24px;
-                font-size: 0.95rem;
-                border-radius: 16px;
-                box-shadow: 0 6px 0 #334155, 0 10px 15px rgba(100, 116, 139, 0.3);
-            }
-
-            .btn-calificaciones-flotante:hover {
-                transform: translateY(2px);
-                box-shadow: 0 4px 0 #334155, 0 8px 10px rgba(100, 116, 139, 0.3);
-            }
-
-            .btn-calificaciones-flotante:active {
-                transform: translateY(6px);
-                box-shadow: 0 0px 0 #334155;
-            }
-        }
-
-
-    </style>
-{% endblock %}
+{% load nextlevel %}
+{% block title %}Mapa · {{ alumno.nombre }}{% endblock %}
 
 {% block content %}
-    <img src="{% static 'img/logoSC.svg' %}" alt="" class="watermark-bg">
-    
-    <div class="container mt-4 text-center ruta-container">
-        <h2 class="mb-5 fw-black text-dark" style="font-weight: 900; font-size: 2.5rem;">
-            {{ clase.nombre }}
-        </h2>
-
-        <div class="d-flex flex-column align-items-center">
-            {% for item in misiones_ruta %}
-
-                {% ifchanged item.mision.nivel %}
-                    <div class="nivel-titulo">
-                        <i class="bi bi-flag-fill me-2"></i> {{ item.mision.nivel.nombre }}
+{% with rango=alumno.rango %}
+<div class="contenedor">
+    <div class="row g-4">
+        <!-- ===== Columna principal ===== -->
+        <div class="col-xl-8">
+            <section class="heroe">
+                <div class="estrellitas"></div>
+                <div class="heroe-contenido">
+                    <div class="avatar-wrap">
+                        <img src="{{ alumno|avatar_url }}" alt="" class="avatar anillo-{{ rango.color }}">
+                        <span class="nivel-badge">{{ alumno.nivel }}</span>
                     </div>
-                {% endifchanged %}
-
-                <div class="mision-wrapper text-center">
-                    {% if item.estado == 'aprobado' %}
-                        <a href="{% url 'ver_mision' clase.id item.mision.id %}" class="text-decoration-none">
-                            <div class="mision-circulo aprobada" title="{{ item.mision.nombre }}">
-                                <i class="bi bi-star-fill"></i>
-                            </div>
-                        </a>
-                    {% elif item.desbloqueada %}
-                        <a href="{% url 'ver_mision' clase.id item.mision.id %}" class="text-decoration-none">
-                            <div class="mision-circulo desbloqueada" title="{{ item.mision.nombre }}">
-                                <i class="bi bi-play-fill ms-1"></i>
-                            </div>
-                        </a>
-                    {% else %}
-                        <div class="mision-circulo bloqueada" title="Bloqueada">
-                            <i class="bi bi-lock-fill"></i>
+                    <div>
+                        <div class="heroe-saludo">¡Hola de nuevo! 👋</div>
+                        <div class="heroe-nombre">{{ alumno.nombre }}</div>
+                        <div class="heroe-rango">{{ rango.emoji }} {{ rango.nombre }}</div>
+                    </div>
+                    <div class="heroe-xp">
+                        <div class="etiquetas">
+                            <span><i class="bi bi-lightning-charge-fill text-warning"></i> Nivel {{ alumno.nivel }}</span>
+                            <span>{{ alumno.xp_nivel_actual }} / {{ alumno.xp_siguiente_nivel }} XP</span>
                         </div>
-                    {% endif %}
-
-                    <h5 class="mision-nombre">{{ item.mision.nombre }}</h5>
+                        <div class="barra oro"><span style="width:0" data-ancho="{{ alumno.progreso_nivel }}"></span></div>
+                        <div class="mt-2" style="font-size:.8rem;font-weight:800;opacity:.8">
+                            Te faltan <b>{{ alumno.xp_faltante }} XP</b> para el nivel {{ alumno.nivel|add:1 }}
+                        </div>
+                    </div>
                 </div>
+                <div class="heroe-stats">
+                    <div class="heroe-stat"><div class="v">🔥 {{ alumno.racha_actual }}</div><div class="l">Días de racha</div></div>
+                    <div class="heroe-stat"><div class="v">⭐ {{ ruta.estrellas }}</div><div class="l">Estrellas</div></div>
+                    <div class="heroe-stat"><div class="v">🏆 {{ ruta.aprobadas }}<small style="font-size:.9rem;opacity:.7">/{{ ruta.total }}</small></div><div class="l">Misiones</div></div>
+                </div>
+            </section>
 
-                {% if not forloop.last %}
-                    <div class="linea-conexion {% if item.estado == 'aprobado' %}linea-activa{% endif %}"></div>
+            <div class="mt-4">
+                {% if ruta.actual %}
+                    <a href="{% url 'ver_mision' clase.id ruta.actual.mision.id %}" class="continuar">
+                        <span class="icono-grande">{{ ruta.actual.info.emoji }}</span>
+                        <span class="min-w-0">
+                            <span class="kicker d-block">
+                                {% if ruta.actual.estado == 'pendiente' %}⏳ En revisión del profe
+                                {% elif ruta.actual.estado == 'rechazado' %}🔧 Necesita correcciones
+                                {% else %}▶ Continúa tu aventura{% endif %}
+                            </span>
+                            <span class="nombre d-block">{{ ruta.actual.mision.nombre }}</span>
+                            <span style="font-size:.82rem;font-weight:800;opacity:.85">
+                                {% if ruta.actual.mision.nivel.mundo %}{{ ruta.actual.mision.nivel.mundo.nombre }} · {% endif %}{{ ruta.actual.mision.nivel.nombre }}
+                            </span>
+                        </span>
+                        <i class="bi bi-chevron-right flecha"></i>
+                    </a>
+                {% elif ruta.total %}
+                    <div class="g-card text-center" style="background:linear-gradient(135deg,#fef9c3,#fde68a);border-color:#fde047;box-shadow:0 6px 0 #facc15">
+                        <div style="font-size:3rem">🏆</div>
+                        <h3 class="mb-1" style="color:#713f12">¡Completaste todas las misiones!</h3>
+                        <p class="mb-0 fw-bold" style="color:#92400e">Eres una leyenda. Tu profe pronto abrirá nuevos mundos.</p>
+                    </div>
+                {% else %}
+                    <div class="g-card vacio-juego">
+                        <span class="e">🛠️</span>
+                        <h3 class="text-dark">Tu profe está construyendo el mapa</h3>
+                        <p class="mb-0">¡Muy pronto aparecerán tus primeras misiones!</p>
+                    </div>
                 {% endif %}
+            </div>
 
+            {% for meta in metas %}
+                <section class="meta-grupo {% if meta.completada_en %}lograda{% endif %} mt-4">
+                    <div class="meta-icono">{{ meta.icono }}</div>
+                    <div class="min-w-0 flex-grow-1">
+                        <div class="kicker">{% if meta.completada_en %}🎉 ¡Meta del grupo cumplida!{% else %}🎯 Meta de todo el grupo{% endif %}</div>
+                        <div class="titulo">{{ meta.titulo }}</div>
+                        {% if meta.descripcion %}<div class="desc">{{ meta.descripcion }}</div>{% endif %}
+                        <div class="barra oro mt-2"><span style="width:0" data-ancho="{{ meta.pct }}"></span></div>
+                        <div class="pie">
+                            <span>{% if meta.completada_en %}¡Lo lograron entre todos!{% else %}{{ meta.valor }} de {{ meta.objetivo }} · ¡faltan {{ meta.faltan }}!{% endif %}</span>
+                            {% if meta.dias_restantes is not None and not meta.completada_en %}<span>⏰ {% if meta.dias_restantes > 0 %}{{ meta.dias_restantes }} día{{ meta.dias_restantes|pluralize }}{% else %}¡Último día!{% endif %}</span>{% endif %}
+                        </div>
+                        {% if meta.recompensa or meta.monedas_recompensa %}
+                            <div class="premio">Premio: {{ meta.recompensa }}{% if meta.recompensa and meta.monedas_recompensa %} · {% endif %}{% if meta.monedas_recompensa %}+{{ meta.monedas_recompensa }} monedas para todos{% endif %}</div>
+                        {% endif %}
+                    </div>
+                </section>
             {% endfor %}
+
+            {% if ruta.mundos %}
+                <h2 class="seccion-titulo">
+                    <span>🌍</span> Mundos
+                    <span class="chip azul ms-auto">{{ ruta.pct }}% completado</span>
+                </h2>
+                <div class="mundos-grid">
+                    {% for m in ruta.mundos %}
+                        <a href="{% url 'ver_mundo' clase.id m.mundo.id|default:0 %}"
+                           class="mundo-card tema-{{ m.tema }} estado-{{ m.estado }}">
+                            <div class="decos" aria-hidden="true">{% for d in m.tema_info.decos|slice:":4" %}<span>{{ d }}</span>{% endfor %}</div>
+                            {% if m.cofres_disponibles %}<span class="cofre-aviso" title="¡Tienes cofres por abrir!">🎁</span>{% endif %}
+                            <span class="estado">
+                                {% if m.estado == 'completado' %}⭐ Completado
+                                {% elif m.estado == 'actual' %}▶ Aquí estás
+                                {% elif m.estado == 'bloqueado' %}🔒 Bloqueado
+                                {% else %}🛠️ En construcción{% endif %}
+                            </span>
+                            {% if m.estado == 'bloqueado' %}<span class="candado">🔒</span>{% endif %}
+                            <div class="isla">
+                                <span class="anillo-progreso" style="--pct: {{ m.pct }}"></span>
+                                {{ m.tema_info.emoji }}
+                            </div>
+                            <div class="cuerpo">
+                                <div class="numero">Mundo {{ m.numero }}</div>
+                                <div class="nombre">{{ m.nombre }}</div>
+                                <div class="meta">
+                                    <span>🏁 {{ m.aprobadas }}/{{ m.total }}</span>
+                                    <span>⭐ {{ m.estrellas }}/{{ m.estrellas_max }}</span>
+                                </div>
+                            </div>
+                        </a>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- ===== Columna lateral ===== -->
+        <div class="col-xl-4">
+            {% if mi_equipo %}
+                <section class="equipo-mio mb-4" style="--c1: {{ mi_equipo.color|color_clase:0 }}; --c2: {{ mi_equipo.color|color_clase:1 }}">
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="escudo">{{ mi_equipo.emoji }}</span>
+                        <div class="min-w-0">
+                            <div class="kicker">Tu equipo</div>
+                            <div class="nombre text-truncate">{{ mi_equipo.nombre }}</div>
+                            <div class="lugar">{% if mi_equipo.posicion == 1 %}🥇 ¡Primer lugar!{% else %}Lugar #{{ mi_equipo.posicion }} de {{ equipos|length }}{% endif %}</div>
+                        </div>
+                        <div class="pts ms-auto"><b>{{ mi_equipo.total }}</b><span>puntos</span></div>
+                    </div>
+                    <div class="tabla-equipos">
+                        {% for e in equipos %}
+                            <div class="fila {% if e.id == mi_equipo.id %}mio{% endif %}">
+                                <span class="e">{{ e.emoji }}</span>
+                                <div class="flex-grow-1 min-w-0">
+                                    <div class="d-flex justify-content-between"><span class="n text-truncate">{{ e.nombre }}</span><span class="p">{{ e.total }}</span></div>
+                                    <div class="mini-barra"><span style="width: {{ e.pct }}%"></span></div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    <a href="{% url 'ranking' clase.id %}?periodo=equipos" class="ver-mas">Ver ranking de equipos <i class="bi bi-chevron-right"></i></a>
+                </section>
+            {% endif %}
+            <section class="g-card">
+                <div class="g-card-titulo">
+                    <span>📅</span> Misiones del día
+                    <span class="extra reloj-diarias" data-cuenta-regresiva="{{ segundos_reinicio }}" title="Tiempo para nuevas misiones">
+                        <i class="bi bi-clock-history"></i> <span class="tiempo">--:--:--</span>
+                    </span>
+                </div>
+                {% for d in diarias %}
+                    <div class="diaria {% if d.reclamada %}reclamada{% elif d.completada %}completa{% endif %}">
+                        <div class="ico">{{ d.mision.icono }}</div>
+                        <div class="info">
+                            <div class="t">{{ d.mision.titulo }}</div>
+                            {% if d.mision.descripcion %}<div class="d">{{ d.mision.descripcion }}</div>{% endif %}
+                            {% if not d.reclamada %}
+                                <div class="barra {% if d.completada %}oro{% else %}verde{% endif %} delgada"><span style="width:0" data-ancho="{{ d.pct }}"></span></div>
+                            {% endif %}
+                            <div class="pie">
+                                <span class="premio">
+                                    <i class="bi bi-coin" style="color:var(--moneda)"></i> {{ d.mision.recompensa_monedas }}
+                                    {% if d.mision.recompensa_xp %}· <i class="bi bi-lightning-charge-fill" style="color:var(--azul)"></i> {{ d.mision.recompensa_xp }} XP{% endif %}
+                                </span>
+                                {% if d.reclamada %}
+                                    <span class="chip verde"><i class="bi bi-check-circle-fill"></i> Reclamada</span>
+                                {% elif d.completada %}
+                                    <button type="button" class="g-btn oro chico btn-reclamar" data-url="{% url 'reclamar_diaria' clase.id d.mision.id %}">🎁 Reclamar</button>
+                                {% else %}
+                                    <span class="chip">{{ d.valor }}/{{ d.mision.meta }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                {% empty %}
+                    <div class="vacio-juego py-3"><span class="e" style="font-size:2.4rem">😴</span>Hoy no hay misiones del día.</div>
+                {% endfor %}
+            </section>
+
+            <section class="g-card mt-4">
+                <div class="g-card-titulo"><span>🏅</span> Top de la semana <a href="{% url 'ranking' clase.id %}" class="extra text-decoration-none">Ver todo <i class="bi bi-chevron-right"></i></a></div>
+                <div class="mini-podio">
+                    {% for a in podio %}
+                        <div class="fila {% if a.id == alumno.id %}yo{% endif %}">
+                            <span class="medalla">{% if forloop.counter == 1 %}🥇{% elif forloop.counter == 2 %}🥈{% else %}🥉{% endif %}</span>
+                            <img src="{{ a|avatar_url }}" alt="" class="avatar anillo-{{ a.rango.color }}">
+                            <span class="n">{{ a.nombre }}</span>
+                            <span class="p">{{ a.puntos }} XP</span>
+                        </div>
+                    {% empty %}
+                        <div class="vacio-juego py-2">¡Sé el primero en el ranking!</div>
+                    {% endfor %}
+                </div>
+                {% if mi_posicion %}
+                    <div class="text-center mt-3 fw-black texto-suave" style="font-size:.9rem">
+                        Tu lugar esta semana: <span style="color:var(--azul)">#{{ mi_posicion }}</span> de {{ total_jugadores }}
+                    </div>
+                {% endif %}
+            </section>
+
+            <section class="g-card mt-4">
+                <div class="g-card-titulo"><span>🏆</span> Mis logros <a href="{% url 'mi_progreso' clase.id %}#logros" class="extra text-decoration-none">Vitrina <i class="bi bi-chevron-right"></i></a></div>
+                {% for la in logros_recientes %}
+                    <div class="logro-mini">
+                        <span class="ico">{{ la.logro.icono }}</span>
+                        <div><div class="t">{{ la.logro.nombre }}</div><div class="f">hace {{ la.fecha|timesince }}</div></div>
+                    </div>
+                {% empty %}
+                    <div class="vacio-juego py-2"><span class="e" style="font-size:2.2rem">🎯</span>Completa misiones para ganar tus primeras insignias.</div>
+                {% endfor %}
+            </section>
         </div>
     </div>
-
-    <a href="{% url 'mi_progreso' clase.id %}" class="btn-calificaciones-flotante" title="Ver mi progreso y calificaciones">
-        <i class="bi bi-trophy-fill icono-trofeo"></i>
-        <span>Mi Progreso</span>
-    </a>
-
+</div>
+{% endwith %}
 {% endblock %}
