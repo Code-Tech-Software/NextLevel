@@ -60,11 +60,19 @@ class ClaseForm(EstiloMixin, forms.ModelForm):
     class Meta:
         model = Clase
         fields = ['nombre', 'grado', 'grupo', 'anio', 'icono', 'color', 'descripcion', 'activa']
-        labels = {'anio': 'Año escolar', 'icono': 'Ícono (emoji)', 'descripcion': 'Descripción'}
+        labels = {'anio': 'Año escolar', 'icono': 'Ícono (emoji)', 'descripcion': 'Descripción',
+                  'activa': 'Visible en el lobby'}
         widgets = {
+            'nombre': forms.TextInput(attrs={'placeholder': 'Ej. Robótica'}),
+            'grado': forms.TextInput(attrs={'placeholder': 'Ej. 4°'}),
+            'grupo': forms.TextInput(attrs={'placeholder': 'Ej. A'}),
             'descripcion': forms.Textarea(attrs={'rows': 2, 'placeholder': 'Opcional: de qué trata la clase'}),
             'icono': forms.TextInput(attrs={'maxlength': 10, 'placeholder': '🚀'}),
+            'color': forms.RadioSelect(),
         }
+
+    def clean_grupo(self):
+        return (self.cleaned_data.get('grupo') or '').strip().upper()
 
 
 class AlumnoForm(EstiloMixin, forms.ModelForm):
@@ -72,9 +80,12 @@ class AlumnoForm(EstiloMixin, forms.ModelForm):
         model = Alumno
         fields = ['nombre', 'apellido', 'clases', 'avatar', 'pin', 'activo']
         widgets = {
+            'nombre': forms.TextInput(attrs={'placeholder': 'Ej. Ana', 'autocomplete': 'off'}),
+            'apellido': forms.TextInput(attrs={'placeholder': 'Ej. López Pérez', 'autocomplete': 'off'}),
             'clases': forms.CheckboxSelectMultiple(),
             'avatar': ArchivoImagen(),
-            'pin': forms.TextInput(attrs={'placeholder': '0000', 'maxlength': '4', 'inputmode': 'numeric'}),
+            'pin': forms.TextInput(attrs={'placeholder': '0000', 'maxlength': '4', 'inputmode': 'numeric',
+                                          'autocomplete': 'off', 'pattern': '[0-9]{4}'}),
         }
         labels = {
             'clases': 'Clases a las que pertenece',
@@ -83,6 +94,10 @@ class AlumnoForm(EstiloMixin, forms.ModelForm):
         }
         help_texts = {'avatar': 'Opcional. Si no subes uno, se le asigna un robot automático.'}
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['clases'].error_messages['required'] = 'Elige al menos una clase.'
+
     def clean_pin(self):
         pin = (self.cleaned_data.get('pin') or '').strip()
         if not (len(pin) == 4 and pin.isdigit()):
@@ -90,27 +105,58 @@ class AlumnoForm(EstiloMixin, forms.ModelForm):
         return pin
 
 
+def separar_nombre(linea):
+    """'Ana López Pérez' → ('Ana', 'López Pérez'); 'López Pérez, Ana Sofía' → ('Ana Sofía', 'López Pérez')."""
+    linea = ' '.join(linea.replace('\t', ' ').split())
+    if ',' in linea:
+        apellido, nombre = (parte.strip() for parte in linea.split(',', 1))
+        if nombre:
+            return nombre[:100], apellido[:100]
+        linea = apellido
+    partes = linea.split(' ')
+    return partes[0][:100], ' '.join(partes[1:])[:100]
+
+
 class AltaMasivaForm(EstiloMixin, forms.Form):
-    clase = forms.ModelChoiceField(queryset=Clase.objects.all(), label='Clase')
+    clase = forms.ModelChoiceField(queryset=Clase.objects.order_by('-activa', 'grado', 'grupo'), label='Clase',
+                                   error_messages={'required': 'Elige la clase de estos alumnos.'})
     nombres = forms.CharField(
         label='Lista de alumnos',
-        widget=forms.Textarea(attrs={'rows': 10, 'placeholder': 'Un alumno por renglón:\nNombre Apellido\nAna López\nCarlos Pérez Ruiz'}),
-        help_text='Escribe un alumno por renglón. La primera palabra es el nombre y el resto el apellido.',
+        widget=forms.Textarea(attrs={'rows': 9, 'spellcheck': 'false',
+                                     'placeholder': 'Un alumno por renglón:\nAna López\nCarlos Pérez Ruiz\nGarcía Torres, María José'}),
+        error_messages={'required': 'Pega al menos un nombre.'},
     )
     pin_aleatorio = forms.BooleanField(
         label='Generar un PIN aleatorio para cada alumno', required=False, initial=True,
     )
 
+    def clean_nombres(self):
+        lineas = [l for l in self.cleaned_data['nombres'].splitlines() if l.strip()]
+        if not lineas:
+            raise forms.ValidationError('Pega al menos un nombre.')
+        return '\n'.join(lineas)
+
 
 class MundoForm(EstiloMixin, forms.ModelForm):
     class Meta:
         model = Mundo
-        fields = ['clase', 'nombre', 'tema', 'descripcion', 'orden']
+        fields = ['clase', 'nombre', 'tema', 'descripcion']
         widgets = {
             'tema': forms.RadioSelect(),
+            'nombre': forms.TextInput(attrs={'placeholder': 'Ej. Bosque de los Circuitos'}),
             'descripcion': forms.Textarea(attrs={'rows': 2, 'placeholder': 'Una frase épica para presentar el mundo'}),
         }
-        labels = {'orden': 'Orden en el mapa', 'tema': 'Tema visual'}
+        labels = {'tema': 'Tema visual'}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['clase'].queryset = Clase.objects.order_by('-activa', 'grado', 'grupo')
+        self.fields['clase'].empty_label = 'Selecciona una clase…'
+
+    def save(self, commit=True):
+        if not self.instance.pk:
+            self.instance.orden = 9999  # La vista lo acomoda en la posición elegida
+        return super().save(commit)
 
 
 class NivelForm(EstiloMixin, forms.ModelForm):
@@ -118,8 +164,9 @@ class NivelForm(EstiloMixin, forms.ModelForm):
 
     class Meta:
         model = Nivel
-        fields = ['mundo', 'nombre', 'orden', 'recompensa_cofre']
-        labels = {'recompensa_cofre': 'Monedas del cofre 🎁', 'orden': 'Orden dentro del mundo'}
+        fields = ['mundo', 'nombre', 'recompensa_cofre']
+        labels = {'recompensa_cofre': 'Monedas del cofre 🎁'}
+        widgets = {'nombre': forms.TextInput(attrs={'placeholder': 'Ej. Nivel 1 · Primeros circuitos'})}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -131,8 +178,16 @@ class NivelForm(EstiloMixin, forms.ModelForm):
         except Mundo.DoesNotExist:
             raise forms.ValidationError('Selecciona un mundo válido.')
 
+    def clean_recompensa_cofre(self):
+        monedas = self.cleaned_data.get('recompensa_cofre')
+        if monedas is None or monedas < 1:
+            raise forms.ValidationError('El cofre debe tener al menos 1 moneda.')
+        return monedas
+
     def save(self, commit=True):
         self.instance.clase = self.cleaned_data['mundo'].clase
+        if not self.instance.pk:
+            self.instance.orden = 9999  # La vista lo acomoda en la posición elegida
         return super().save(commit)
 
 
@@ -309,9 +364,23 @@ class OtorgarLogroForm(EstiloMixin, forms.Form):
 class EquipoForm(EstiloMixin, forms.ModelForm):
     class Meta:
         model = Equipo
-        fields = ['clase', 'nombre', 'emoji', 'color', 'orden']
-        labels = {'emoji': 'Escudo (emoji)', 'orden': 'Orden'}
-        widgets = {'emoji': forms.TextInput(attrs={'maxlength': 10, 'placeholder': '🐉'})}
+        fields = ['clase', 'nombre', 'emoji', 'color']
+        labels = {'emoji': 'Escudo (emoji)'}
+        widgets = {
+            'nombre': forms.TextInput(attrs={'placeholder': 'Ej. Dragones'}),
+            'emoji': forms.TextInput(attrs={'maxlength': 10, 'placeholder': '🐉'}),
+            'color': forms.RadioSelect(),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['clase'].queryset = Clase.objects.order_by('-activa', 'grado', 'grupo')
+        self.fields['clase'].empty_label = 'Selecciona una clase…'
+
+    def save(self, commit=True):
+        if not self.instance.pk:
+            self.instance.orden = Equipo.objects.filter(clase=self.cleaned_data['clase']).count() + 1
+        return super().save(commit)
 
 
 class MetaGrupoForm(EstiloMixin, forms.ModelForm):
@@ -329,12 +398,58 @@ class MetaGrupoForm(EstiloMixin, forms.ModelForm):
             'descripcion': 'Descripción (opcional)',
             'activa': 'Visible para los alumnos',
         }
-        widgets = {'fecha_limite': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d')}
-        help_texts = {'objetivo': 'Solo cuenta lo que pase a partir de que crees la meta.'}
+        widgets = {
+            'tipo': forms.RadioSelect(),
+            'titulo': forms.TextInput(attrs={'placeholder': 'Ej. ¡Viernes de película!'}),
+            'recompensa': forms.TextInput(attrs={'placeholder': 'Ej. 🍿 Película el viernes'}),
+            'descripcion': forms.TextInput(attrs={'placeholder': 'Ej. Si entre todos completan 30 misiones esta semana…'}),
+            'fecha_limite': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['clase'].queryset = Clase.objects.order_by('-activa', 'grado', 'grupo')
+        self.fields['clase'].empty_label = 'Selecciona una clase…'
+
+    def clean_objetivo(self):
+        objetivo = self.cleaned_data.get('objetivo')
+        if not objetivo:
+            raise forms.ValidationError('El objetivo debe ser mayor que cero.')
+        return objetivo
 
 
 class ComportamientoForm(EstiloMixin, forms.ModelForm):
+    """Las monedas se escriben siempre en positivo; el signo lo da «suma» o «resta»."""
+    polaridad = forms.ChoiceField(choices=[('positivo', 'Suma'), ('negativo', 'Resta')], initial='positivo',
+                                  widget=forms.RadioSelect())
+
     class Meta:
         model = Comportamiento
-        fields = ['nombre', 'icono', 'monedas', 'xp', 'orden', 'activo']
+        fields = ['nombre', 'icono', 'monedas', 'xp', 'activo']
         labels = {'icono': 'Ícono (emoji)', 'xp': 'XP', 'activo': 'Mostrar en el modo clase'}
+        widgets = {'nombre': forms.TextInput(attrs={'placeholder': 'Ej. Participación'}),
+                   'monedas': forms.NumberInput(attrs={'min': 1}), 'xp': forms.NumberInput(attrs={'min': 0})}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance.pk and not self.is_bound:
+            self.initial['polaridad'] = 'positivo' if self.instance.monedas >= 0 else 'negativo'
+            self.initial['monedas'] = abs(self.instance.monedas)
+
+    def clean(self):
+        datos = super().clean()
+        monedas = datos.get('monedas')
+        if monedas is not None:
+            if monedas == 0:
+                self.add_error('monedas', 'Escribe cuántas monedas da o quita.')
+            elif datos.get('polaridad') == 'negativo':
+                datos['monedas'] = -abs(monedas)
+                datos['xp'] = 0  # Los negativos nunca quitan XP
+            else:
+                datos['monedas'] = abs(monedas)
+        return datos
+
+    def save(self, commit=True):
+        if not self.instance.pk:
+            self.instance.orden = 9999  # La vista lo acomoda en la posición elegida
+        return super().save(commit)

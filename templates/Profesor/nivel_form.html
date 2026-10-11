@@ -1,0 +1,122 @@
+{% extends base_plantilla|default:"Profesor/baseProfesor.html" %}
+{% block title %}{% if nivel %}Editar nivel{% else %}Nuevo nivel{% endif %}{% endblock %}
+{% block migas %}<a href="{% url 'clases_lista' %}">Clases</a><i class="bi bi-chevron-right"></i><span class="actual">{% if nivel %}{{ nivel.nombre }}{% else %}Nuevo nivel{% endif %}</span>{% endblock %}
+
+{% block content %}
+<form method="post" action="{{ request.get_full_path }}" class="form-panel ancho" data-form="nivel" data-nivel="{{ nivel.id|default:'' }}" data-mundo-inicial="{{ nivel.mundo_id|default:'' }}" novalidate>
+    {% csrf_token %}
+    {{ mundos|json_script:"mundos-data" }}
+    <div class="modal-header">
+        <span class="icono-form"><i class="bi bi-bar-chart-steps"></i></span>
+        <div class="min-w-0 flex-grow-1">
+            <h2 class="titulo-form">{% if nivel %}Editar «{{ nivel.nombre }}»{% else %}Nuevo nivel{% endif %}</h2>
+            <p class="sub-form">Los niveles son las paradas del camino dentro de un mundo. Al terminar todas sus misiones, el alumno abre un cofre 🎁</p>
+        </div>
+        {% if modal %}<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>{% endif %}
+    </div>
+
+    <div class="modal-body">
+        {% if form.errors %}<div class="aviso-error"><i class="bi bi-exclamation-circle"></i> Revisa los campos marcados en rojo.</div>{% endif %}
+        {% if not mundos %}
+            <div class="aviso-suave mt-0 mb-3"><i class="bi bi-info-circle"></i> Primero necesitas un mundo. Créalo desde <a href="{% url 'clases_lista' %}">Clases</a> → tu clase → <b>Nuevo mundo</b>.</div>
+        {% endif %}
+        <div class="row g-3">
+            <div class="col-lg-8">
+                <!-- Paso 1 -->
+                <section class="p-card paso mb-3">
+                    <div class="paso-cabeza"><span class="paso-num">1</span><div><h3>¿En qué mundo va?</h3><p>Aparecen agrupados por clase.</p></div></div>
+                    <div class="p-card-body pt-0">
+                        <div class="campo mb-0 {% if form.mundo.errors %}con-error{% endif %}">
+                            <label for="{{ form.mundo.id_for_label }}">Mundo <span class="text-danger">*</span></label>
+                            {{ form.mundo }}
+                            {% for e in form.mundo.errors %}<div class="error"><i class="bi bi-exclamation-circle"></i> {{ e }}</div>{% endfor %}
+                            <div class="ayuda" data-ayuda-mundo></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Paso 2 -->
+                <section class="p-card paso mb-3">
+                    <div class="paso-cabeza"><span class="paso-num">2</span><div><h3>Nombre y lugar en el camino</h3><p>Los alumnos avanzan por los niveles en este orden.</p></div></div>
+                    <div class="p-card-body pt-0">
+                        <div class="row gx-3">
+                            <div class="col-md-7">
+                                <div class="campo mb-md-0 {% if form.nombre.errors %}con-error{% endif %}">
+                                    <label for="{{ form.nombre.id_for_label }}" class="d-flex justify-content-between align-items-center">
+                                        <span>Nombre <span class="text-danger">*</span></span>
+                                        <button type="button" class="p-btn xs fantasma" data-sugerir-nombre><i class="bi bi-magic"></i> Sugerir</button>
+                                    </label>
+                                    {{ form.nombre }}
+                                    {% for e in form.nombre.errors %}<div class="error"><i class="bi bi-exclamation-circle"></i> {{ e }}</div>{% endfor %}
+                                </div>
+                            </div>
+                            <div class="col-md-5">
+                                <div class="campo mb-0">
+                                    <label for="sel-posicion-nivel">Lugar en el camino</label>
+                                    <select id="sel-posicion-nivel" name="posicion" class="nl-select" data-posicion data-inicial="{{ request.POST.posicion|default:'' }}"></select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Paso 3 -->
+                <section class="p-card paso">
+                    <div class="paso-cabeza"><span class="paso-num">3</span><div><h3>Cofre del nivel</h3><p>El premio por terminar todas las misiones del nivel.</p></div></div>
+                    <div class="p-card-body pt-0">
+                        <div class="presets" role="group" aria-label="Tamaño del cofre">
+                            <button type="button" class="preset" data-poner="recompensa_cofre" data-valor="10"><span class="e">🪙</span><span class="n">Pequeño</span><span class="v">10 monedas</span></button>
+                            <button type="button" class="preset" data-poner="recompensa_cofre" data-valor="20"><span class="e">🎁</span><span class="n">Normal</span><span class="v">20 monedas</span></button>
+                            <button type="button" class="preset" data-poner="recompensa_cofre" data-valor="40"><span class="e">💰</span><span class="n">Grande</span><span class="v">40 monedas</span></button>
+                            <button type="button" class="preset" data-poner="recompensa_cofre" data-valor="80"><span class="e">👑</span><span class="n">Épico</span><span class="v">80 monedas</span></button>
+                        </div>
+                        <div class="d-flex align-items-center gap-3 flex-wrap mt-3">
+                            <div class="input-unidad {% if form.recompensa_cofre.errors %}con-error{% endif %}">
+                                {{ form.recompensa_cofre }}
+                                <span>monedas base</span>
+                            </div>
+                        </div>
+                        {% for e in form.recompensa_cofre.errors %}<div class="error mt-1" style="color:var(--danger);font-size:.8rem">{{ e }}</div>{% endfor %}
+                        <div class="ayuda-recompensa mt-3" data-ayuda-cofre></div>
+                    </div>
+                </section>
+            </div>
+
+            <div class="col-lg-4">
+                <section class="p-card sticky-lateral vista-previa">
+                    <div class="p-card-head"><h3>Vista previa</h3><span class="sub">El camino del mundo</span></div>
+                    <div class="p-card-body sin-pad">
+                        <div class="camino-previa" data-previa-camino>
+                            <div class="titulo-camino" data-previa-mundo>Elige un mundo</div>
+                            <div class="paradas" data-previa-paradas></div>
+                        </div>
+                        <div class="p-3">
+                            <div class="vp-flujo">
+                                {% if nivel %}
+                                    <div class="t">Este nivel</div>
+                                    <div class="mt-1">Tiene <b>{{ misiones_nivel }}</b> misi{{ misiones_nivel|pluralize:"ón,ones" }}. Si lo cambias de mundo, sus misiones se van con él.</div>
+                                {% else %}
+                                    <div class="t">Después de crearlo</div>
+                                    <ol>
+                                        <li>Agrégale misiones con <b>+ Misión</b>.</li>
+                                        <li>Cuando un alumno termina todas, abre el cofre.</li>
+                                    </ol>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-footer">
+        {% if modal %}
+            <button type="button" class="p-btn fantasma" data-bs-dismiss="modal">Cancelar</button>
+        {% else %}
+            <a href="{% if nivel %}{% url 'clase_detalle' nivel.clase_id %}{% else %}{% url 'clases_lista' %}{% endif %}" class="p-btn fantasma">Cancelar</a>
+        {% endif %}
+        <button type="submit" class="p-btn primario"><i class="bi bi-check2"></i> {% if nivel %}Guardar cambios{% else %}Crear nivel{% endif %}</button>
+    </div>
+</form>
+{% endblock %}

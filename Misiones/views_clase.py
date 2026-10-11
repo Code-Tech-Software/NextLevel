@@ -1,7 +1,8 @@
 """Modo clase (comportamientos con un toque), equipos/casas y metas del grupo."""
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Count, Max, Q
+from django.db import transaction
+from django.db.models import Count, Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -11,7 +12,7 @@ from django.views.decorators.http import require_POST
 from . import gamificacion as juego
 from .forms import ComportamientoForm, EquipoForm, MetaGrupoForm
 from .models import Alumno, Clase, Comportamiento, Equipo, MetaGrupo, PuntosEquipo, RegistroConducta
-from .views_profesor import _formulario, _guardado
+from .views_profesor import _acomodar, _colores, _formulario, _guardado
 
 CASAS_CLASICAS = [
     ('Leones', '🦁', 'ambar'),
@@ -150,19 +151,19 @@ def comportamientos_lista(request):
 @login_required
 def comportamiento_form(request, pk=None):
     comportamiento = get_object_or_404(Comportamiento, pk=pk) if pk else None
-    inicial = {} if comportamiento else {
-        'orden': (Comportamiento.objects.aggregate(m=Max('orden'))['m'] or 0) + 1, 'monedas': 5, 'activo': True,
-    }
+    inicial = {} if comportamiento else {'monedas': 5, 'activo': True, 'polaridad': request.GET.get('tipo', 'positivo')}
     form = ComportamientoForm(request.POST or None, instance=comportamiento, initial=inicial)
     if request.method == 'POST' and form.is_valid():
-        form.save()
-        return _guardado(request, 'Botón guardado.', reverse('comportamientos_lista'))
-    return _formulario(request, 'Profesor/form_generico.html', {
+        with transaction.atomic():
+            guardado = form.save()
+            _acomodar(guardado, Comportamiento.objects.all(), request.POST.get('posicion', 'final'), True)
+        return _guardado(request, f'Botón «{guardado.nombre}» guardado.', reverse('comportamientos_lista'))
+    otros = Comportamiento.objects.exclude(pk=comportamiento.pk) if comportamiento else Comportamiento.objects.all()
+    return _formulario(request, 'Profesor/comportamiento_form.html', {
         'form': form,
-        'titulo': 'Editar botón' if pk else 'Nuevo botón del modo clase',
-        'subtitulo': 'Los positivos dan monedas y XP. Los negativos solo restan monedas (usa un número negativo).',
-        'icono': 'bi-hand-index-thumb',
-        'volver': reverse('comportamientos_lista'),
+        'comportamiento': comportamiento,
+        'otros': [{'id': c.id, 'nombre': c.nombre, 'icono': c.icono, 'positivo': c.positivo} for c in otros],
+        'usos': comportamiento.registroconducta_set.count() if comportamiento else 0,
         'seccion': 'modo_clase',
     })
 
@@ -199,17 +200,23 @@ def equipo_form(request, pk=None):
     if not equipo and request.GET.get('clase', '').isdigit():
         clase = Clase.objects.filter(pk=request.GET['clase']).first()
         if clase:
-            inicial = {'clase': clase, 'orden': clase.equipos.count() + 1}
+            inicial = {'clase': clase}
     form = EquipoForm(request.POST or None, instance=equipo, initial=inicial)
     if request.method == 'POST' and form.is_valid():
         equipo = form.save()
         return _guardado(request, f'Equipo "{equipo.nombre}" guardado.', reverse('equipos_clase', args=[equipo.clase_id]))
-    return _formulario(request, 'Profesor/form_generico.html', {
+    equipos_por_clase = {}
+    for otro in Equipo.objects.exclude(pk=equipo.pk if equipo else None).annotate(n=Count('miembros')):
+        equipos_por_clase.setdefault(otro.clase_id, []).append(
+            {'nombre': otro.nombre, 'emoji': otro.emoji, 'color': otro.color, 'miembros': otro.n})
+    return _formulario(request, 'Profesor/equipo_form.html', {
         'form': form,
-        'titulo': 'Editar equipo' if pk else 'Nuevo equipo',
-        'subtitulo': 'Los equipos suman la XP de sus integrantes y los puntos que tú les des.',
-        'icono': 'bi-shield',
-        'volver': reverse('equipos_lista'),
+        'equipo': equipo,
+        'colores': _colores(),
+        'iconos': ['🛡️', '🦁', '🐉', '🦅', '🐺', '🦈', '🔥', '🤖', '☄️', '🐆', '🦉', '⚡', '🌟', '🚀', '🐙', '🦄', '🐻', '🐍'],
+        'equipos_por_clase': equipos_por_clase,
+        'miembros': equipo.miembros.count() if equipo else 0,
+        'puntos': next((e.total for e in juego.ranking_equipos(equipo.clase) if e.id == equipo.id), 0) if equipo else 0,
         'seccion': 'equipos',
     })
 
@@ -286,12 +293,15 @@ def meta_form(request, pk=None):
         meta = form.save()
         juego.revisar_metas(meta.clase)
         return _guardado(request, f'Meta "{meta.titulo}" guardada.', reverse('metas_lista'))
-    return _formulario(request, 'Profesor/form_generico.html', {
+    return _formulario(request, 'Profesor/meta_form.html', {
         'form': form,
-        'titulo': 'Editar meta del grupo' if pk else 'Nueva meta del grupo',
-        'subtitulo': 'Un reto para toda la clase: cuando entre todos lleguen al objetivo, todos celebran.',
-        'icono': 'bi-bullseye',
-        'volver': reverse('metas_lista'),
+        'meta': meta,
+        'progreso': juego.progreso_meta(meta) if meta else 0,
+        'premios': ['🍿 Película el viernes', '⚽ Recreo extra', '🎵 Música en clase', '🍕 Convivio',
+                    '🎮 Clase de juegos', '🎨 Clase libre'],
+        'alumnos_por_clase': {c.id: c.n for c in Clase.objects.annotate(
+            n=Count('alumnos', filter=Q(alumnos__activo=True), distinct=True))},
+        'hoy': timezone.localdate().isoformat(),
         'seccion': 'metas',
     })
 

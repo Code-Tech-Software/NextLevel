@@ -428,3 +428,73 @@ class EtiquetasTiendaTests(BaseJuego):
         self.assertContains(respuesta, '🤝 El profe lo autoriza')
         self.assertContains(respuesta, '💻 Digital</span>')
         self.assertContains(respuesta, '⚡ Lo recibes al instante')
+
+
+@override_settings(STORAGES=ALMACEN_PRUEBAS)
+class FormulariosGuiadosAdminTests(BaseJuego):
+    def setUp(self):
+        super().setUp()
+        self.client.force_login(User.objects.create_superuser('profe6', 'p@x.com', 'x'))
+        self.modal = {'HTTP_X_MODAL': '1'}
+
+    def test_cada_formulario_guiado_carga_en_la_ventana(self):
+        from .models import Comportamiento, Equipo, MetaGrupo
+        equipo = Equipo.objects.create(clase=self.clase, nombre='Leones', emoji='🦁')
+        meta = MetaGrupo.objects.create(clase=self.clase, titulo='Meta', tipo='manual', objetivo=5)
+        boton = Comportamiento.objects.create(nombre='Celular', icono='📱', monedas=-3)
+        paginas = {
+            '/forja/clase/nueva/': 'clase', f'/profesor/clases/{self.clase.id}/editar/': 'clase',
+            f'/profesor/mundos/nuevo/?clase={self.clase.id}': 'mundo', f'/profesor/mundos/{self.mundo.id}/editar/': 'mundo',
+            f'/forja/nivel/nuevo/?mundo={self.mundo.id}': 'nivel', f'/profesor/niveles/{self.nivel.id}/editar/': 'nivel',
+            '/forja/alumno/nuevo/': 'alumno', f'/profesor/alumnos/{self.alumno.id}/editar/': 'alumno',
+            '/profesor/alumnos/masivo/': 'masiva', '/profesor/equipos/nuevo/': 'equipo',
+            f'/profesor/equipos/{equipo.id}/editar/': 'equipo', '/profesor/metas/nueva/': 'meta',
+            f'/profesor/metas/{meta.id}/editar/': 'meta', '/profesor/comportamientos/nuevo/': 'conducta',
+            f'/profesor/comportamientos/{boton.id}/editar/': 'conducta',
+        }
+        for url, nombre in paginas.items():
+            self.assertContains(self.client.get(url, **self.modal), f'data-form="{nombre}"', msg_prefix=url)
+        # Un botón que resta se edita con la cantidad en positivo y «resta» marcado
+        edicion = self.client.get(f'/profesor/comportamientos/{boton.id}/editar/', **self.modal)
+        self.assertContains(edicion, 'value="negativo" checked')
+        self.assertContains(edicion, 'name="monedas" value="3"')
+
+    def test_nivel_y_mundo_se_acomodan_en_la_posicion_elegida(self):
+        self.client.post('/forja/nivel/nuevo/', {'mundo': self.mundo.id, 'nombre': 'Intro', 'recompensa_cofre': 20,
+                                                 'posicion': 'inicio'})
+        self.assertEqual(list(Nivel.objects.filter(mundo=self.mundo).values_list('nombre', flat=True)), ['Intro', 'Nivel 1'])
+        self.assertEqual(list(Nivel.objects.filter(mundo=self.mundo).values_list('orden', flat=True)), [1, 2])
+
+        self.client.post('/profesor/mundos/nuevo/', {'clase': self.clase.id, 'nombre': 'Océano', 'tema': 'oceano',
+                                                     'posicion': f'despues:{self.mundo.id}'})
+        self.client.post('/profesor/mundos/nuevo/', {'clase': self.clase.id, 'nombre': 'Inicio', 'tema': 'hielo',
+                                                     'posicion': 'inicio'})
+        self.assertEqual(list(Mundo.objects.filter(clase=self.clase).values_list('nombre', flat=True)),
+                         ['Inicio', 'Mundo 1', 'Océano'])
+
+    def test_boton_que_resta_guarda_monedas_negativas_y_sin_xp(self):
+        from .models import Comportamiento
+        self.client.post('/profesor/comportamientos/nuevo/', {'nombre': 'Celular', 'icono': '📱', 'polaridad': 'negativo',
+                                                               'monedas': 3, 'xp': 10, 'activo': 'on'})
+        boton = Comportamiento.objects.get(nombre='Celular')
+        self.assertEqual((boton.monedas, boton.xp), (-3, 0))
+        respuesta = self.client.post('/profesor/comportamientos/nuevo/', {'nombre': 'Nada', 'icono': '⭐',
+                                                                          'polaridad': 'positivo', 'monedas': 0, 'xp': 0})
+        self.assertContains(respuesta, 'Escribe cuántas monedas da o quita')
+
+    def test_alta_masiva_entiende_apellidos_con_coma(self):
+        from .forms import separar_nombre
+        self.assertEqual(separar_nombre('  Ana   López Pérez '), ('Ana', 'López Pérez'))
+        self.assertEqual(separar_nombre('García Torres, María José'), ('María José', 'García Torres'))
+        self.assertEqual(separar_nombre('Luis\tRuiz'), ('Luis', 'Ruiz'))
+        self.client.post('/profesor/alumnos/masivo/', {'clase': self.clase.id, 'nombres': 'García Torres, María José\n\nPedro'})
+        self.assertTrue(Alumno.objects.filter(nombre='María José', apellido='García Torres', clases=self.clase).exists())
+        self.assertTrue(Alumno.objects.filter(nombre='Pedro', apellido='').exists())
+
+    def test_alumno_necesita_una_clase_y_equipo_se_numera_solo(self):
+        from .models import Equipo
+        respuesta = self.client.post('/forja/alumno/nuevo/', {'nombre': 'Sin', 'apellido': 'Clase', 'pin': '4821', 'activo': 'on'})
+        self.assertContains(respuesta, 'Elige al menos una clase')
+        Equipo.objects.create(clase=self.clase, nombre='Leones', emoji='🦁', orden=1)
+        self.client.post('/profesor/equipos/nuevo/', {'clase': self.clase.id, 'nombre': 'Lobos', 'emoji': '🐺', 'color': 'uva'})
+        self.assertEqual(Equipo.objects.get(nombre='Lobos').orden, 2)

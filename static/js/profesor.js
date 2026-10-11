@@ -1185,6 +1185,693 @@
         aplicarTipo(false);
     }
 
+    // ---------- Formularios guiados: piezas compartidas ----------
+    function avisarCambio(form) { form.dispatchEvent(new Event('input', { bubbles: true })); }
+    function leerJSON(form, id, defecto) {
+        try { return JSON.parse($(`#${id}`, form).textContent); } catch (e) { return defecto; }
+    }
+    function plural(n, uno, varios) { return `${n} ${n === 1 ? uno : varios}`; }
+
+    // Botones que escriben un valor en un campo: data-poner="campo" data-valor="..."
+    function enlazarAtajos(form) {
+        form.addEventListener('click', e => {
+            const boton = e.target.closest('[data-poner]');
+            if (!boton || !form.contains(boton)) return;
+            const input = form.querySelector(`[name="${boton.dataset.poner}"]`);
+            if (!input) return;
+            input.value = boton.dataset.valor;
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+    }
+    function marcarAtajos(form) {
+        $$('[data-poner]', form).forEach(b => {
+            const input = form.querySelector(`[name="${b.dataset.poner}"]`);
+            if (input) b.classList.toggle('activo', normalizar(input.value.trim()) === normalizar(b.dataset.valor));
+        });
+    }
+    function marcarPasos(form, estados) {
+        $$('.paso', form).forEach((paso, i) => paso.classList.toggle('completo', estados[i] !== false));
+    }
+    function pintarIconos(contenedor, campo, iconos) {
+        contenedor.innerHTML = iconos.map(i =>
+            `<button type="button" class="icono-op" data-poner="${campo}" data-valor="${i}" aria-label="${i}">${i}</button>`).join('');
+    }
+
+    // «Lugar»: al inicio, después de cada hermano o al final (la vista renumera 1, 2, 3...)
+    function llenarPosicion(select, hermanos, puedeMantener) {
+        const previo = select.value || select.dataset.inicial || '';
+        select.dataset.inicial = '';
+        const opciones = puedeMantener ? [['mantener', 'Dejar donde está']] : [];
+        if (hermanos.length) {
+            opciones.push(['inicio', 'Al inicio']);
+            hermanos.forEach(h => opciones.push([`despues:${h.id}`, `Después de «${h.nombre}»`]));
+            opciones.push(['final', 'Al final']);
+        } else {
+            opciones.push(['final', 'Es el primero']);
+        }
+        select.innerHTML = opciones.map(([valor, texto]) => `<option value="${valor}">${escapar(texto)}</option>`).join('');
+        select.value = opciones.some(([valor]) => valor === previo) ? previo : (puedeMantener ? 'mantener' : 'final');
+    }
+    function ordenConPosicion(hermanos, posicion, actual, indiceOriginal = 0) {
+        const lista = hermanos.slice();
+        let indice = lista.length;
+        if (posicion === 'inicio') indice = 0;
+        else if (posicion === 'mantener') indice = Math.min(indiceOriginal, lista.length);
+        else if (posicion.startsWith('despues:')) {
+            const k = lista.findIndex(h => `despues:${h.id}` === posicion);
+            if (k >= 0) indice = k + 1;
+        }
+        lista.splice(indice, 0, actual);
+        return lista;
+    }
+
+    // ---------- Clase ----------
+    function iniciarFormClase(raiz = document) {
+        const form = $('form[data-form="clase"]', raiz);
+        if (!form || form.dataset.listo) return;
+        form.dataset.listo = '1';
+        const campo = nombre => form.querySelector(`[name="${nombre}"]`);
+        const [nombre, grado, grupo, anio, icono, activa] = ['nombre', 'grado', 'grupo', 'anio', 'icono', 'activa'].map(campo);
+        const existentes = leerJSON(form, 'clases-existentes', []);
+
+        function actualizar() {
+            const color = $('input[name=color]:checked', form);
+            const portal = $('[data-portal]', form);
+            if (color) {
+                portal.style.setProperty('--c1', color.dataset.c1);
+                portal.style.setProperty('--c2', color.dataset.c2);
+            }
+            $('[data-previa-icono]', form).textContent = icono.value.trim() || '🚀';
+            $('[data-previa-grado]', form).textContent = `${grado.value.trim()} ${grupo.value.trim().toUpperCase()}`.trim() || 'Grado y grupo';
+            $('[data-previa-nombre]', form).textContent = nombre.value.trim() || 'Nombre de la clase';
+            $('[data-previa-oculta]', form).classList.toggle('d-none', activa.checked);
+            $('[data-ayuda-activa]', form).textContent = activa.checked
+                ? 'Tus alumnos la ven en el lobby y pueden entrar.'
+                : 'No aparecerá en el lobby. Útil para grupos de años pasados: su progreso se conserva.';
+            const repetida = !!nombre.value.trim() && existentes.some(c =>
+                normalizar(c.nombre) === normalizar(nombre.value.trim()) && normalizar(c.grado) === normalizar(grado.value.trim())
+                && normalizar(c.grupo) === normalizar(grupo.value.trim()) && String(c.anio) === anio.value.trim());
+            $('[data-aviso-duplicado]', form).classList.toggle('d-none', !repetida);
+            marcarAtajos(form);
+            marcarPasos(form, [!!(nombre.value.trim() && grado.value.trim() && grupo.value.trim() && anio.value.trim()),
+                !!(icono.value.trim() && color)]);
+        }
+
+        enlazarAtajos(form);
+        form.addEventListener('input', actualizar);
+        form.addEventListener('change', actualizar);
+        actualizar();
+    }
+
+    // ---------- Mundo ----------
+    function iniciarFormMundo(raiz = document) {
+        const form = $('form[data-form="mundo"]', raiz);
+        if (!form || form.dataset.listo) return;
+        form.dataset.listo = '1';
+        const campo = nombre => form.querySelector(`[name="${nombre}"]`);
+        const selClase = campo('clase');
+        const nombre = campo('nombre');
+        const desc = campo('descripcion');
+        const selPosicion = $('[data-posicion]', form);
+        const temas = leerJSON(form, 'temas-data', {});
+        const porClase = leerJSON(form, 'mundos-clase-data', {});
+        const mundoId = form.dataset.mundo;
+        const claseInicial = form.dataset.claseInicial;
+        const tema = () => $('input[name=tema]:checked', form)?.value || 'bosque';
+        const sugeridos = Object.values(temas).flatMap(t => t.nombres || []);
+        const esSugerido = () => !nombre.value.trim() || sugeridos.includes(nombre.value.trim());
+        let nombreSugerido = !mundoId && esSugerido();
+        let indiceOriginal = 0;
+
+        const hermanos = () => (porClase[selClase.value] || []).filter(m => String(m.id) !== mundoId);
+
+        // Las sugerencias que ya son nombre de otro mundo de la clase no se proponen
+        const usado = n => hermanos().some(m => normalizar(m.nombre) === normalizar(n));
+        function pintarSugerencias() {
+            const nombres = temas[tema()]?.nombres || [];
+            $('[data-sugerencias-nombre]', form).innerHTML = nombres.map(n => usado(n)
+                ? `<button type="button" disabled title="Ya hay un mundo con este nombre">${escapar(n)}</button>`
+                : `<button type="button" data-poner="nombre" data-valor="${escapar(n)}">${escapar(n)}</button>`).join('');
+        }
+        function alCambiarClase() {
+            const lista = porClase[selClase.value] || [];
+            indiceOriginal = Math.max(0, lista.findIndex(m => String(m.id) === mundoId));
+            llenarPosicion(selPosicion, hermanos(), !!mundoId && selClase.value === claseInicial);
+            pintarSugerencias();
+            actualizar();
+        }
+        function alCambiarTema() {
+            pintarSugerencias();
+            const libre = (temas[tema()]?.nombres || []).find(n => !usado(n));
+            if (nombreSugerido && libre) nombre.value = libre;
+            actualizar();
+        }
+        function actualizar() {
+            const info = temas[tema()] || {};
+            $('[data-previa-mundo]', form).className = `mundo-previa tema-${tema()}`;
+            $('[data-previa-isla]', form).textContent = info.emoji || '🌍';
+            $('[data-previa-decos]', form).innerHTML = (info.decos || []).slice(0, 4).map(d => `<span>${d}</span>`).join('');
+            $('[data-previa-nombre]', form).textContent = nombre.value.trim() || 'Nombre del mundo';
+            $('[data-previa-desc]', form).textContent = desc.value.trim();
+            const actual = { id: 'actual', nombre: nombre.value.trim() || 'Nuevo mundo', emoji: info.emoji, actual: true };
+            const orden = selClase.value ? ordenConPosicion(hermanos(), selPosicion.value || 'final', actual, indiceOriginal) : [actual];
+            $('[data-previa-numero]', form).textContent = `Mundo ${orden.indexOf(actual) + 1}`;
+            $('[data-previa-orden]', form).innerHTML = orden.map((m, i) =>
+                `${i ? '<i class="bi bi-chevron-right"></i>' : ''}<span class="${m.actual ? 'actual' : ''}">${m.emoji || '🌍'} ${escapar(m.nombre)}</span>`).join('');
+            marcarAtajos(form);
+            marcarPasos(form, [!!selClase.value, true, !!nombre.value.trim()]);
+        }
+
+        enlazarAtajos(form);
+        selClase.addEventListener('change', alCambiarClase);
+        selPosicion.addEventListener('change', actualizar);
+        $$('input[name=tema]', form).forEach(r => r.addEventListener('change', alCambiarTema));
+        nombre.addEventListener('input', () => { nombreSugerido = esSugerido(); });
+        form.addEventListener('input', actualizar);
+        alCambiarClase();
+    }
+
+    // ---------- Nivel ----------
+    function iniciarFormNivel(raiz = document) {
+        const form = $('form[data-form="nivel"]', raiz);
+        if (!form || form.dataset.listo) return;
+        form.dataset.listo = '1';
+        const campo = nombre => form.querySelector(`[name="${nombre}"]`);
+        const selMundo = campo('mundo');
+        const nombre = campo('nombre');
+        const cofre = campo('recompensa_cofre');
+        const selPosicion = $('[data-posicion]', form);
+        const mundos = leerJSON(form, 'mundos-data', {});
+        const nivelId = form.dataset.nivel;
+        const mundoInicial = form.dataset.mundoInicial;
+        // En niveles nuevos el nombre «Nivel N» sigue a la posición mientras no lo cambies
+        let nombreSugerido = !nivelId && (!nombre.value.trim() || /^Nivel \d+$/.test(nombre.value.trim()));
+        let indiceOriginal = 0;
+
+        const hermanos = () => (mundos[selMundo.value]?.niveles || []).filter(n => String(n.id) !== nivelId);
+
+        function alCambiarMundo() {
+            const mundo = mundos[selMundo.value];
+            const lista = mundo?.niveles || [];
+            indiceOriginal = Math.max(0, lista.findIndex(n => String(n.id) === nivelId));
+            llenarPosicion(selPosicion, hermanos(), !!nivelId && selMundo.value === mundoInicial);
+            $('[data-ayuda-mundo]', form).textContent = mundo
+                ? `${mundo.clase} · ya tiene ${plural(hermanos().length, 'nivel', 'niveles')}` : '';
+            actualizar();
+        }
+        function actualizar() {
+            const mundo = mundos[selMundo.value];
+            const actual = { id: 'actual', nombre: '', actual: true };
+            const lista = ordenConPosicion(hermanos(), selPosicion.value || 'final', actual, indiceOriginal);
+            const numero = lista.indexOf(actual) + 1;
+            if (nombreSugerido) nombre.value = `Nivel ${numero}`;
+            actual.nombre = nombre.value.trim() || 'Nuevo nivel';
+            const base = Math.max(1, parseInt(cofre.value, 10) || 1);
+            const minimo = Math.max(1, Math.floor(base * 0.6));
+            const maximo = Math.floor(base * 1.5) + 1;
+            $('[data-ayuda-cofre]', form).innerHTML = `🎁 Cuando un alumno termina todas las misiones del nivel, abre el cofre y gana <b>entre ${minimo} y ${maximo} monedas</b> al azar. ¡La sorpresa es parte de la diversión!`;
+            $('[data-previa-camino]', form).className = `camino-previa${mundo ? ` tema-${mundo.tema}` : ''}`;
+            $('[data-previa-mundo]', form).textContent = mundo ? `${mundo.emoji} ${mundo.nombre}` : 'Elige un mundo';
+            $('[data-previa-paradas]', form).innerHTML = mundo ? lista.map((n, i) => `
+                ${i ? '<div class="tramo"></div>' : ''}
+                <div class="parada ${n.actual ? 'nueva' : ''}">
+                    <span class="nodo">${i + 1}</span>
+                    <span class="t">${escapar(n.nombre)}</span>
+                    ${n.actual ? `<span class="cofre">🎁 ${minimo}–${maximo}</span>` : ''}
+                </div>`).join('') : '<div class="vacio">El camino aparecerá aquí.</div>';
+            marcarAtajos(form);
+            marcarPasos(form, [!!mundo, !!nombre.value.trim(), cofre.value !== '' && base >= 1]);
+        }
+
+        enlazarAtajos(form);
+        selMundo.addEventListener('change', alCambiarMundo);
+        selPosicion.addEventListener('change', actualizar);
+        nombre.addEventListener('input', e => { if (e.isTrusted) nombreSugerido = false; });
+        $('[data-sugerir-nombre]', form).addEventListener('click', () => { nombreSugerido = true; actualizar(); avisarCambio(form); });
+        form.addEventListener('input', actualizar);
+        alCambiarMundo();
+    }
+
+    // ---------- Alumno ----------
+    const PINES_FACILES = ['1234', '4321', '0123', '2580', '1212', '1122', '9876', '6789', '0987', '1004'];
+    const pinFacil = pin => /^(\d)\1{3}$/.test(pin) || PINES_FACILES.includes(pin);
+    function pinAlAzar() {
+        let pin;
+        do { pin = String(Math.floor(Math.random() * 10000)).padStart(4, '0'); } while (pinFacil(pin));
+        return pin;
+    }
+
+    function iniciarFormAlumno(raiz = document) {
+        const form = $('form[data-form="alumno"]', raiz);
+        if (!form || form.dataset.listo) return;
+        form.dataset.listo = '1';
+        const campo = nombre => form.querySelector(`[name="${nombre}"]`);
+        const nombre = campo('nombre');
+        const apellido = campo('apellido');
+        const pin = campo('pin');
+        const activo = form.querySelector('input[type=checkbox][name="activo"]');
+        const inputAvatar = campo('avatar');
+        const imagenPrevia = $('[data-imagen-previa]', form);
+        const avatarPrevia = $('[data-previa-avatar]', form);
+
+        function actualizar() {
+            const limpio = pin.value.replace(/\D/g, '').slice(0, 4);
+            if (limpio !== pin.value) pin.value = limpio;
+            const faltan = 4 - limpio.length;
+            const ayuda = $('[data-ayuda-pin]', form);
+            ayuda.className = `ayuda mt-2${faltan ? '' : pinFacil(limpio) ? ' alerta' : ' ok'}`;
+            ayuda.textContent = faltan ? `Faltan ${plural(faltan, 'número', 'números')}.`
+                : pinFacil(limpio) ? '⚠️ Es muy fácil de adivinar. Mejor usa uno al azar.' : '✓ Listo. Recuérdaselo o imprime su credencial.';
+            $('[data-previa-pin]', form).textContent = limpio.padEnd(4, '•');
+            $('[data-previa-nombre]', form).textContent = nombre.value.trim() || 'Nombre';
+            $('[data-previa-apellido]', form).textContent = apellido.value.trim() || 'Apellidos';
+            const clases = $$('input[name=clases]:checked', form).map(c => c.dataset.nombre);
+            $('[data-previa-clases]', form).innerHTML = clases.length
+                ? clases.map(c => `<span class="p-badge azul me-1 mb-1">${escapar(c)}</span>`).join('')
+                : '<span class="text-muted-p">Ninguna clase todavía: elige al menos una.</span>';
+            const conFoto = imagenPrevia.getAttribute('src') && !imagenPrevia.classList.contains('d-none');
+            avatarPrevia.src = conFoto ? imagenPrevia.src : avatarPrevia.dataset.robot;
+            if (activo) {
+                $('[data-previa-inactivo]', form).classList.toggle('d-none', activo.checked);
+                $('[data-ayuda-activo]', form).textContent = activo.checked
+                    ? 'Aparece en el lobby y en los rankings.'
+                    : 'Ya no aparece en el lobby ni en los rankings, pero se guarda todo su progreso.';
+            }
+            marcarPasos(form, [!!(nombre.value.trim() && apellido.value.trim()), clases.length > 0, !faltan, true, true]);
+        }
+
+        $('[data-pin-azar]', form).addEventListener('click', () => { pin.value = pinAlAzar(); avisarCambio(form); });
+        inputAvatar?.addEventListener('change', () => {
+            const archivo = inputAvatar.files[0];
+            if (!archivo) return;
+            const lector = new FileReader();
+            lector.onload = e => { imagenPrevia.src = e.target.result; imagenPrevia.classList.remove('d-none'); actualizar(); };
+            lector.readAsDataURL(archivo);
+        });
+        form.querySelector('input[name$="-clear"]')?.addEventListener('change', e => {
+            imagenPrevia.classList.toggle('d-none', e.target.checked);
+            actualizar();
+        });
+        form.addEventListener('input', actualizar);
+        form.addEventListener('change', actualizar);
+        actualizar();
+    }
+
+    // ---------- Alta masiva ----------
+    // Igual que separar_nombre() en forms.py: «Ana López» o «López, Ana Sofía»
+    function separarNombre(linea) {
+        linea = linea.replace(/\t/g, ' ').split(/\s+/).filter(Boolean).join(' ');
+        if (linea.includes(',')) {
+            const [apellido, ...resto] = linea.split(',');
+            const nombre = resto.join(',').trim();
+            if (nombre) return [nombre.slice(0, 100), apellido.trim().slice(0, 100)];
+            linea = apellido.trim();
+        }
+        const partes = linea.split(' ');
+        return [partes[0].slice(0, 100), partes.slice(1).join(' ').slice(0, 100)];
+    }
+
+    function iniciarFormMasiva(raiz = document) {
+        const form = $('form[data-form="masiva"]', raiz);
+        if (!form || form.dataset.listo) return;
+        form.dataset.listo = '1';
+        const texto = form.querySelector('[name="nombres"]');
+        const pinAleatorio = form.querySelector('[name="pin_aleatorio"]');
+        const porClase = leerJSON(form, 'nombres-clase-data', {});
+
+        function actualizar() {
+            const clase = $('input[name=clase]:checked', form);
+            const existentes = new Set((porClase[clase?.value] || []).map(n => normalizar(n.trim())));
+            const vistos = new Set();
+            const avisos = { sinApellido: 0, existe: 0, repetido: 0 };
+            const filas = texto.value.split('\n').filter(l => l.trim()).map(separarNombre).filter(([n]) => n);
+            const html = filas.map(([nombre, apellido], i) => {
+                const clave = normalizar(`${nombre} ${apellido}`.trim());
+                let etiqueta = '';
+                if (existentes.has(clave)) { etiqueta = '<span class="etq">Ya está en la clase</span>'; avisos.existe++; }
+                else if (vistos.has(clave)) { etiqueta = '<span class="etq">Repetido</span>'; avisos.repetido++; }
+                vistos.add(clave);
+                if (!apellido) avisos.sinApellido++;
+                const iniciales = (nombre[0] + (apellido[0] || '')).toUpperCase();
+                return `<div class="fila"><span class="num">${i + 1}</span><span class="ini">${escapar(iniciales)}</span>
+                    <div class="min-w-0"><div class="n text-truncate">${escapar(nombre)}</div>
+                    <div class="a text-truncate ${apellido ? '' : 'falta'}">${apellido ? escapar(apellido) : 'Sin apellido'}</div></div>${etiqueta}</div>`;
+            }).join('');
+            $('[data-previa-lista]', form).innerHTML = html
+                || '<div class="vacia">Pega los nombres a la izquierda y aquí verás cómo se registra cada uno.</div>';
+            $('[data-previa-total]', form).textContent = filas.length ? `Se registrarán ${plural(filas.length, 'alumno', 'alumnos')}` : 'Así quedarán';
+            $('[data-previa-clase]', form).textContent = clase ? `en ${clase.dataset.nombre}` : 'Elige una clase';
+            const lineas = [];
+            if (avisos.sinApellido) lineas.push(`✏️ ${plural(avisos.sinApellido, 'alumno', 'alumnos')} sin apellido: escríbelo en el mismo renglón.`);
+            if (avisos.existe) lineas.push(`👀 ${avisos.existe} ya ${avisos.existe === 1 ? 'está' : 'están'} en esta clase; si los dejas, se registrarán otra vez.`);
+            if (avisos.repetido) lineas.push(`🔁 ${plural(avisos.repetido, 'renglón repetido', 'renglones repetidos')}.`);
+            const cajaAvisos = $('[data-previa-avisos]', form);
+            cajaAvisos.classList.toggle('d-none', !lineas.length);
+            cajaAvisos.innerHTML = lineas.join('<br>');
+            $('[data-ayuda-pin]', form).textContent = pinAleatorio.checked
+                ? 'Cada alumno tendrá un PIN diferente de 4 números (recomendado).'
+                : 'Todos tendrán el PIN 0000. Podrás cambiarlo después desde su perfil.';
+            $('[data-boton-registrar]', form).innerHTML = `<i class="bi bi-check2"></i> ${filas.length ? `Registrar ${plural(filas.length, 'alumno', 'alumnos')}` : 'Registrar alumnos'}`;
+            marcarPasos(form, [!!clase, filas.length > 0, true]);
+        }
+
+        form.addEventListener('input', actualizar);
+        form.addEventListener('change', actualizar);
+        actualizar();
+    }
+
+    // ---------- Equipo ----------
+    const EQUIPOS_SUGERIDOS = [
+        ['Leones', '🦁', 'ambar'], ['Dragones', '🐉', 'coral'], ['Águilas', '🦅', 'cielo'], ['Lobos', '🐺', 'uva'],
+        ['Tiburones', '🦈', 'indigo'], ['Fénix', '🔥', 'rosa'], ['Robots', '🤖', 'esmeralda'], ['Cometas', '☄️', 'cielo'],
+        ['Pumas', '🐆', 'ambar'], ['Búhos', '🦉', 'uva'],
+    ];
+
+    function iniciarFormEquipo(raiz = document) {
+        const form = $('form[data-form="equipo"]', raiz);
+        if (!form || form.dataset.listo) return;
+        form.dataset.listo = '1';
+        const campo = nombre => form.querySelector(`[name="${nombre}"]`);
+        const selClase = campo('clase');
+        const nombre = campo('nombre');
+        const emoji = campo('emoji');
+        const porClase = leerJSON(form, 'equipos-clase-data', {});
+        const colores = Object.fromEntries(leerJSON(form, 'colores-data', []).map(c => [c.valor, c]));
+        let colorElegido = !!nombre.value.trim();
+        const otros = () => porClase[selClase.value] || [];
+
+        function pintarSugeridos() {
+            const usados = new Set(otros().map(e => normalizar(e.nombre)));
+            $('[data-sugeridos]', form).innerHTML = EQUIPOS_SUGERIDOS.map(([n, e, c]) => {
+                const usado = usados.has(normalizar(n));
+                return `<button type="button" class="preset" data-sugerido="${n}" data-emoji="${e}" data-color="${c}" ${usado ? 'disabled title="Ya existe en esta clase"' : ''}>
+                    <span class="e">${e}</span><span class="n">${n}</span>${usado ? '<span class="v">ya existe</span>' : ''}</button>`;
+            }).join('');
+        }
+        function actualizar() {
+            const color = $('input[name=color]:checked', form);
+            const info = color ? colores[color.value] : null;
+            const previa = $('[data-previa-equipo]', form);
+            if (info) { previa.style.setProperty('--c1', info.c1); previa.style.setProperty('--c2', info.c2); }
+            $('[data-previa-escudo]', form).textContent = emoji.value.trim() || '🛡️';
+            $('[data-previa-nombre]', form).textContent = nombre.value.trim() || 'Nombre del equipo';
+            const lista = otros();
+            $('[data-previa-lugar]', form).textContent = !selClase.value ? ''
+                : lista.length ? `Compite contra ${plural(lista.length, 'equipo', 'equipos')}` : '¡El primer equipo de la clase!';
+            const tabla = lista.length ? [...lista, { nombre: nombre.value.trim() || 'Nuevo equipo', emoji: emoji.value.trim() || '🛡️', color: color?.value, mio: true }] : [];
+            $('[data-previa-tabla]', form).innerHTML = tabla.map(e =>
+                `<div class="fila ${e.mio ? 'mio' : ''}"><span class="punto-c" style="--pc:${colores[e.color]?.c1 || '#fff'}"></span><span>${escapar(e.emoji)}</span><span class="n text-truncate">${escapar(e.nombre)}</span></div>`).join('');
+            $$('[data-usado]', form).forEach(s => {
+                const quienes = lista.filter(e => e.color === s.dataset.usado);
+                s.textContent = quienes.length ? `usado por ${quienes.map(e => e.emoji).join(' ')}` : '';
+            });
+            $('[data-ayuda-clase]', form).textContent = !selClase.value ? ''
+                : lista.length ? `Equipos actuales: ${lista.map(e => `${e.emoji} ${e.nombre}`).join(' · ')}` : 'Esta clase aún no tiene equipos.';
+            $$('[data-sugerido]', form).forEach(b => b.classList.toggle('activo', normalizar(b.dataset.sugerido) === normalizar(nombre.value.trim())));
+            marcarAtajos(form);
+            marcarPasos(form, [!!selClase.value, !!(nombre.value.trim() && emoji.value.trim()), !!color]);
+        }
+
+        form.addEventListener('click', e => {
+            const boton = e.target.closest('[data-sugerido]');
+            if (!boton || boton.disabled) return;
+            nombre.value = boton.dataset.sugerido;
+            emoji.value = boton.dataset.emoji;
+            // El color del equipo sugerido solo se pone si aún no elegiste uno
+            const radio = form.querySelector(`input[name=color][value="${boton.dataset.color}"]`);
+            if (!colorElegido && radio) radio.checked = true;
+            avisarCambio(form);
+        });
+        $$('input[name=color]', form).forEach(r => r.addEventListener('change', e => { if (e.isTrusted) colorElegido = true; }));
+        selClase.addEventListener('change', pintarSugeridos);
+        enlazarAtajos(form);
+        form.addEventListener('input', actualizar);
+        form.addEventListener('change', actualizar);
+        pintarSugeridos();
+        actualizar();
+    }
+
+    // ---------- Meta del grupo ----------
+    const decimal = x => (Math.round(x * 10) / 10).toLocaleString('es-MX');
+    const TIPOS_META = {
+        misiones: {
+            unidad: 'misiones', pregunta: '¿Cuántas misiones aprobadas entre todos?', sugerencias: [10, 20, 30, 50],
+            frase: n => `Si entre todos completamos ${n} misiones`, reto: n => `¡Reto de ${n} misiones!`,
+            explica: 'Cuenta cada misión que <b>apruebes</b> a cualquier alumno de la clase. Ideal para que todos avancen en el mapa.',
+            como: 'El avance sube solo cada vez que apruebas una misión.',
+            porAlumno: x => (x < 1 ? 'menos de una misión por alumno' : `unas ${decimal(x)} misiones por alumno`),
+        },
+        xp: {
+            unidad: 'XP', pregunta: '¿Cuánta XP entre todos?', sugerencias: [500, 1000, 2000, 5000],
+            frase: n => `Si entre todos juntamos ${n} XP`, reto: n => `¡Reto de ${n} XP!`,
+            explica: 'Suma toda la XP que gane la clase: misiones, misiones del día, logros y botones del Modo clase.',
+            como: 'El avance sube solo con toda la XP que gane la clase.',
+            porAlumno: x => `unos ${Math.max(1, Math.round(x))} XP por alumno (≈ ${plural(Math.max(1, Math.round(x / 50)), 'misión', 'misiones')})`,
+        },
+        conducta: {
+            unidad: 'veces', pregunta: '¿Cuántos comportamientos positivos?', sugerencias: [20, 50, 100, 200],
+            frase: n => `Si sumamos ${n} buenas acciones`, reto: n => `¡${n} buenas acciones!`,
+            explica: 'Cuenta cada vez que tocas un botón <b>positivo</b> en el Modo clase (participación, ayudar, orden…). Los negativos no restan.',
+            como: 'El avance sube cada vez que usas un botón positivo en el Modo clase.',
+            porAlumno: x => (x < 1 ? 'menos de una por alumno' : `unas ${decimal(x)} veces por alumno`),
+        },
+        manual: {
+            unidad: 'puntos', pregunta: '¿Hasta cuántos puntos?', sugerencias: [5, 10, 20, 30],
+            frase: n => `Si llegamos a ${n} puntos`, reto: n => `¡Reto de ${n} puntos!`,
+            explica: 'Tú decides cuándo avanza con los botones <b>+ / −</b> en Metas o en el Modo clase. Sirve para cualquier reto: traer material, leer libros…',
+            como: 'Tú sumas el avance con + / − en Metas o en el Modo clase.',
+            porAlumno: null,
+        },
+    };
+    const ICONOS_META = ['🎯', '🏆', '🍿', '⚽', '🎵', '🍕', '🎮', '🎨', '🚀', '⭐', '🔥', '💪', '📚', '🌟'];
+    const TITULOS_PREMIO = {
+        '🍿 Película el viernes': '¡Viernes de película!', '⚽ Recreo extra': '¡Recreo extra para todos!',
+        '🎵 Música en clase': '¡Música en clase!', '🍕 Convivio': '¡Gran convivio!',
+        '🎮 Clase de juegos': '¡Clase de juegos!', '🎨 Clase libre': '¡Clase libre!',
+    };
+
+    function iniciarFormMeta(raiz = document) {
+        const form = $('form[data-form="meta"]', raiz);
+        if (!form || form.dataset.listo) return;
+        form.dataset.listo = '1';
+        const campo = nombre => form.querySelector(`[name="${nombre}"]`);
+        const selClase = campo('clase');
+        const objetivo = campo('objetivo');
+        const recompensa = campo('recompensa');
+        const monedas = campo('monedas_recompensa');
+        const titulo = campo('titulo');
+        const icono = campo('icono');
+        const desc = campo('descripcion');
+        const fecha = campo('fecha_limite');
+        const activa = campo('activa');
+        const alumnos = leerJSON(form, 'alumnos-clase-data', {});
+        const editando = !!form.dataset.editando;
+        const progresoGuardado = parseInt(form.dataset.progreso || 0, 10);
+        const tipoInicial = $('input[name=tipo]:checked', form)?.value;
+        const claseInicial = selClase.value;
+        const hoy = new Date(`${form.dataset.hoy}T00:00:00`);
+        const tipo = () => $('input[name=tipo]:checked', form)?.value || 'misiones';
+        const info = () => TIPOS_META[tipo()];
+        const meta = () => Math.max(1, parseInt(objetivo.value, 10) || 1);
+        const sugeridos = { titulo: !editando, icono: !editando, descripcion: !editando || !desc.value.trim() };
+        const ultimo = { titulo: titulo.value, icono: icono.value, descripcion: desc.value };
+
+        function propuesta() {
+            const premio = recompensa.value.trim();
+            const emojiPremio = premio.match(/^\p{Extended_Pictographic}️?/u)?.[0];
+            return {
+                titulo: TITULOS_PREMIO[premio] || info().reto(meta()),
+                icono: emojiPremio || '🎯',
+                descripcion: `${info().frase(meta())}, ${premio ? `ganamos: ${premio}` : '¡lo celebramos!'}`,
+            };
+        }
+        function proponer(forzar = false) {
+            const valores = propuesta();
+            const inputs = { titulo, icono, descripcion: desc };
+            Object.keys(valores).forEach(clave => {
+                if (forzar || sugeridos[clave]) {
+                    inputs[clave].value = valores[clave].slice(0, inputs[clave].maxLength > 0 ? inputs[clave].maxLength : 200);
+                    ultimo[clave] = inputs[clave].value;
+                    sugeridos[clave] = true;
+                }
+            });
+        }
+        function aplicarTipo() {
+            const i = info();
+            const explicacion = $('[data-explicacion-tipo]', form);
+            explicacion.classList.remove('d-none');
+            explicacion.innerHTML = `<span class="e">${$('input[name=tipo]:checked', form)?.nextElementSibling.querySelector('.e').textContent || '🎯'}</span><div>${i.explica}</div>`;
+            $('[data-pregunta-objetivo]', form).textContent = i.pregunta;
+            $('[data-unidad-objetivo]', form).textContent = i.unidad;
+            $('[data-sugerencias-objetivo]', form).innerHTML = i.sugerencias.map(n =>
+                `<button type="button" data-poner="objetivo" data-valor="${n}">${n}</button>`).join('');
+            actualizar();
+        }
+        // Fecha local (AAAA-MM-DD) dentro de N días; toISOString() la pasaría a UTC
+        function enDias(n) {
+            const d = new Date(hoy);
+            d.setDate(d.getDate() + n);
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+        function diasRestantes() {
+            if (!fecha.value) return null;
+            return Math.round((new Date(`${fecha.value}T00:00:00`) - hoy) / 86400000);
+        }
+        function actualizar() {
+            const i = info();
+            const n = meta();
+            proponer();
+            const totalAlumnos = alumnos[selClase.value] || 0;
+            const mismoConteo = editando && tipo() === tipoInicial && selClase.value === claseInicial;
+            const progreso = mismoConteo ? progresoGuardado : 0;
+            const ayuda = [];
+            if (!selClase.value) ayuda.push('Elige la clase para calcular cuánto le toca a cada alumno.');
+            else if (!totalAlumnos) ayuda.push('Esta clase aún no tiene alumnos activos.');
+            else if (i.porAlumno) ayuda.push(`👥 Con ${plural(totalAlumnos, 'alumno', 'alumnos')} son ${i.porAlumno(n / totalAlumnos)}.`);
+            else ayuda.push(`👥 ${plural(totalAlumnos, 'alumno', 'alumnos')} en la clase.`);
+            if (mismoConteo) ayuda.push(`📈 Llevan <b>${progreso} de ${n}</b>.`);
+            $('[data-ayuda-objetivo]', form).innerHTML = ayuda.join('<br>');
+
+            // Plazo
+            const dias = diasRestantes();
+            $$('[data-dias]', form).forEach(b => {
+                const esperado = b.dataset.dias === '' ? '' : enDias(parseInt(b.dataset.dias, 10));
+                b.classList.toggle('activo', fecha.value === esperado);
+            });
+
+            // Vista previa
+            const lograda = progreso >= n;
+            $('[data-previa-meta]', form).classList.toggle('lograda', lograda);
+            $('[data-previa-icono]', form).textContent = icono.value.trim() || '🎯';
+            $('[data-previa-titulo]', form).textContent = titulo.value.trim() || 'Nombre de la meta';
+            $('[data-previa-desc]', form).textContent = desc.value.trim();
+            $('[data-previa-barra]', form).style.width = `${Math.min(100, Math.round(progreso * 100 / n))}%`;
+            $('[data-previa-avance]', form).textContent = lograda ? '¡Lo lograron entre todos!' : `${progreso} de ${n} · ¡faltan ${n - progreso}!`;
+            $('[data-previa-dias]', form).textContent = dias === null || lograda ? '' : dias > 0 ? `⏰ ${plural(dias, 'día', 'días')}` : dias === 0 ? '⏰ ¡Último día!' : '⏰ Ya venció';
+            const m = parseInt(monedas.value, 10) || 0;
+            const premio = recompensa.value.trim();
+            $('[data-previa-premio]', form).textContent = premio || m
+                ? `Premio: ${premio}${premio && m ? ' · ' : ''}${m ? `+${m} monedas para todos` : ''}` : '';
+            $('[data-previa-oculta]', form).classList.toggle('d-none', activa.checked);
+            $('[data-previa-como]', form).textContent = i.como;
+            $('[data-previa-celebra]', form).textContent = `Al llegar al objetivo, toda la clase recibe una notificación de celebración${m ? ` y +${m} monedas cada uno` : ''}.`;
+            $('[data-ayuda-activa]', form).textContent = activa.checked ? 'Aparece en el mapa de cada alumno.' : 'Guárdala oculta y actívala cuando quieras.';
+            marcarAtajos(form);
+            marcarPasos(form, [true, !!selClase.value && !!objetivo.value, !!(premio || m), !!titulo.value.trim(), true]);
+        }
+
+        enlazarAtajos(form);
+        pintarIconos($('[data-iconos-meta]', form), 'icono', ICONOS_META);
+        $$('input[name=tipo]', form).forEach(r => r.addEventListener('change', aplicarTipo));
+        [['titulo', titulo], ['icono', icono], ['descripcion', desc]].forEach(([clave, input]) =>
+            input.addEventListener('input', () => { sugeridos[clave] = input.value === ultimo[clave]; }));
+        $('[data-sugerir-titulo]', form).addEventListener('click', () => { proponer(true); actualizar(); avisarCambio(form); });
+        $$('[data-dias]', form).forEach(b => b.addEventListener('click', () => {
+            fecha.value = b.dataset.dias === '' ? '' : enDias(parseInt(b.dataset.dias, 10));
+            avisarCambio(form);
+        }));
+        form.addEventListener('input', actualizar);
+        form.addEventListener('change', actualizar);
+        aplicarTipo();
+    }
+
+    // ---------- Botón del modo clase ----------
+    const IDEAS_CONDUCTA = {
+        positivo: [['🙋', 'Participación'], ['🤝', 'Ayudó a un compañero'], ['⭐', 'Excelente trabajo'], ['🧹', 'Dejó todo ordenado'],
+            ['⏰', 'Puntualidad'], ['💡', 'Idea creativa'], ['🎧', 'Escuchó con atención'], ['🏅', 'Esfuerzo extra']],
+        negativo: [['📱', 'Uso del celular'], ['🗣️', 'Interrumpir'], ['⌛', 'Llegó tarde'], ['📝', 'Sin tarea'],
+            ['🧃', 'Comer en clase'], ['🙅', 'Falta de respeto']],
+    };
+    const ICONOS_CONDUCTA = {
+        positivo: ['⭐', '🙋', '🤝', '🧹', '⏰', '💡', '🎧', '🏅', '👏', '🔥', '🧠', '💪', '🎯', '🌟'],
+        negativo: ['📱', '🗣️', '⌛', '📝', '🧃', '🙅', '⚠️', '😴', '🔇', '🚫'],
+    };
+
+    function iniciarFormConducta(raiz = document) {
+        const form = $('form[data-form="conducta"]', raiz);
+        if (!form || form.dataset.listo) return;
+        form.dataset.listo = '1';
+        const campo = nombre => form.querySelector(`[name="${nombre}"]`);
+        const nombre = campo('nombre');
+        const icono = campo('icono');
+        const monedas = campo('monedas');
+        const xp = campo('xp');
+        const activo = campo('activo');
+        const selPosicion = $('[data-posicion]', form);
+        const otros = leerJSON(form, 'conductas-data', []);
+        const editando = !!form.dataset.editando;
+        const polaridad = () => $('input[name=polaridad]:checked', form)?.value || 'positivo';
+        const polaridadInicial = polaridad();
+        // Mientras nombre e ícono vengan de una idea, cambian solos al pasar de «suma» a «resta»
+        let deIdea = false;
+
+        function alCambiarPolaridad(cambio) {
+            const p = polaridad();
+            $('[data-ideas]', form).innerHTML = IDEAS_CONDUCTA[p].map(([e, n]) =>
+                `<button type="button" data-idea="${escapar(n)}" data-emoji="${e}">${e} ${escapar(n)}</button>`).join('');
+            pintarIconos($('[data-iconos-conducta]', form), 'icono', ICONOS_CONDUCTA[p]);
+            if (cambio && deIdea) {
+                [icono.value, nombre.value] = IDEAS_CONDUCTA[p][0];
+            }
+            // En el Modo clase los positivos y los negativos van en pestañas separadas
+            const hermanos = otros.filter(o => o.positivo === (p === 'positivo'));
+            llenarPosicion(selPosicion, hermanos, editando && p === polaridadInicial);
+            actualizar();
+        }
+        function actualizar() {
+            const negativo = polaridad() === 'negativo';
+            const cantidad = Math.abs(parseInt(monedas.value, 10) || 0);
+            const puntos = negativo ? 0 : (parseInt(xp.value, 10) || 0);
+            const signo = negativo ? '−' : '+';
+            $('[data-signo]', form).textContent = signo;
+            $('[data-signo]', form).classList.toggle('neg', negativo);
+            $('[data-label-monedas]', form).textContent = negativo ? 'Monedas que quita' : 'Monedas que da';
+            $('[data-bloque-xp]', form).classList.toggle('d-none', negativo);
+            $('[data-sub-valor]', form).textContent = negativo
+                ? 'Que sea un recordatorio, no un castigo: 1 a 3 monedas suele bastar.'
+                : 'Valores pequeños funcionan mejor: se usan muchas veces al día.';
+            const icon = icono.value.trim() || (negativo ? '⚠️' : '⭐');
+            const texto = nombre.value.trim() || 'Nombre';
+            $('[data-previa-boton]', form).className = `mc-conducta ${negativo ? 'neg' : 'pos'}`;
+            $('[data-previa-icono]', form).textContent = icon;
+            $('[data-previa-nombre]', form).textContent = texto;
+            $('[data-previa-valor]', form).innerHTML = `${signo}${cantidad} <i class="bi bi-coin"></i>${puntos ? ` · +${puntos} XP` : ''}`;
+            $('[data-previa-aviso]', form).innerHTML = `<span class="e">${escapar(icon)}</span><div class="min-w-0"><b>Ana López</b> · ${escapar(texto)}
+                <b class="${negativo ? 'neg' : 'pos'}">${signo}${cantidad} 🪙${puntos ? ` +${puntos} XP` : ''}</b>
+                <div style="font-size:.72rem;opacity:.75">Aviso al tocar el botón, con opción de deshacer</div></div>`;
+            $('[data-previa-oculto]', form).classList.toggle('d-none', activo.checked);
+            $('[data-ayuda-activo]', form).textContent = activo.checked ? 'Aparece en el Modo clase.' : 'Queda guardado, pero no aparece en el Modo clase.';
+            $$('[data-idea]', form).forEach(b => b.classList.toggle('activo', b.dataset.idea === nombre.value.trim()));
+            marcarAtajos(form);
+            marcarPasos(form, [true, !!nombre.value.trim(), cantidad > 0, true]);
+        }
+
+        form.addEventListener('click', e => {
+            const boton = e.target.closest('[data-idea]');
+            if (!boton) return;
+            nombre.value = boton.dataset.idea;
+            icono.value = boton.dataset.emoji;
+            deIdea = true;
+            avisarCambio(form);
+        });
+        [nombre, icono].forEach(input => input.addEventListener('input', e => { if (e.isTrusted) deIdea = false; }));
+        $$('input[name=polaridad]', form).forEach(r => r.addEventListener('change', () => alCambiarPolaridad(true)));
+        enlazarAtajos(form);
+        form.addEventListener('input', actualizar);
+        form.addEventListener('change', actualizar);
+        alCambiarPolaridad(false);
+    }
+
+    const INICIADORES = [
+        iniciarFormMision, iniciarFormLogro, iniciarFormDiaria, iniciarFormArticulo, iniciarFormClase, iniciarFormMundo,
+        iniciarFormNivel, iniciarFormAlumno, iniciarFormMasiva, iniciarFormEquipo, iniciarFormMeta, iniciarFormConducta,
+    ];
+    function iniciarFormularios(raiz = document) {
+        INICIADORES.forEach(iniciar => {
+            try { iniciar(raiz); } catch (err) { console.error('Error al preparar el formulario', err); }
+        });
+    }
+
     // En páginas completas (sin modal), la validación del cuestionario corre al enviar
     document.addEventListener('submit', e => {
         const form = e.target;
@@ -1235,14 +1922,9 @@
             const form = $('form', contenido);
             if (!form) return;
             sucio = false;
-            try {
-                iniciarFormMision(contenido);
-                iniciarFormLogro(contenido);
-                iniciarFormDiaria(contenido);
-                iniciarFormArticulo(contenido);
-            } catch (err) {
-                console.error('Error al preparar el formulario', err);
-            }
+            // Los formularios guiados (con vista previa) necesitan la ventana ancha
+            if (form.classList.contains('ancho')) dialogo.classList.replace('modal-lg', 'modal-xl');
+            iniciarFormularios(contenido);
             form.addEventListener('input', () => { sucio = true; });
             form.addEventListener('change', () => { sucio = true; });
             form.addEventListener('submit', enviar);
@@ -1323,10 +2005,7 @@
 
     document.addEventListener('DOMContentLoaded', () => {
         $$('.modal').forEach(m => document.body.appendChild(m));
-        iniciarFormMision();
-        iniciarFormLogro();
-        iniciarFormDiaria();
-        iniciarFormArticulo();
+        iniciarFormularios();
         abrirDesdeUrl();
         iniciarTema();
         iniciarMenu();

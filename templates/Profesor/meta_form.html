@@ -1,0 +1,186 @@
+{% extends base_plantilla|default:"Profesor/baseProfesor.html" %}
+{% block title %}{% if meta %}Editar meta{% else %}Nueva meta del grupo{% endif %}{% endblock %}
+{% block migas %}<a href="{% url 'metas_lista' %}">Metas del grupo</a><i class="bi bi-chevron-right"></i><span class="actual">{% if meta %}{{ meta.titulo }}{% else %}Nueva meta{% endif %}</span>{% endblock %}
+
+{% block content %}
+<form method="post" action="{{ request.get_full_path }}" class="form-panel ancho" data-form="meta" data-progreso="{{ progreso }}" data-hoy="{{ hoy }}" data-editando="{% if meta %}1{% endif %}" novalidate>
+    {% csrf_token %}
+    {{ alumnos_por_clase|json_script:"alumnos-clase-data" }}
+    <div class="modal-header">
+        <span class="icono-form"><i class="bi bi-bullseye"></i></span>
+        <div class="min-w-0 flex-grow-1">
+            <h2 class="titulo-form">{% if meta %}Editar «{{ meta.titulo }}»{% else %}Nueva meta del grupo{% endif %}</h2>
+            <p class="sub-form">Un reto para toda la clase: cuando entre todos llegan al objetivo, todos celebran y ganan el premio.</p>
+        </div>
+        {% if modal %}<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>{% endif %}
+    </div>
+
+    <div class="modal-body">
+        {% if form.errors %}<div class="aviso-error"><i class="bi bi-exclamation-circle"></i> Revisa los campos marcados en rojo.</div>{% endif %}
+        <div class="row g-3">
+            <div class="col-lg-8">
+                <!-- Paso 1 -->
+                <section class="p-card paso mb-3">
+                    <div class="paso-cabeza"><span class="paso-num">1</span><div><h3>¿Qué cuenta para la meta?</h3><p>{% if meta %}Cuenta desde que creaste la meta.{% else %}Solo cuenta lo que pase a partir de hoy.{% endif %}</p></div></div>
+                    <div class="p-card-body pt-0">
+                        <div class="condiciones-grid">
+                            {% for valor, texto in form.fields.tipo.choices %}
+                                <label class="tipo-op">
+                                    <input type="radio" name="tipo" value="{{ valor }}" {% if form.tipo.value == valor %}checked{% endif %}>
+                                    <span class="caja d-block">
+                                        <span class="e d-block">{% if valor == 'misiones' %}🏁{% elif valor == 'xp' %}⚡{% elif valor == 'conducta' %}👍{% else %}✋{% endif %}</span>
+                                        <span class="n d-block">{% if valor == 'misiones' %}Misiones{% elif valor == 'xp' %}XP{% elif valor == 'conducta' %}Buen comportamiento{% else %}Lo marco yo{% endif %}</span>
+                                        <span class="d d-block">{{ texto }}</span>
+                                    </span>
+                                </label>
+                            {% endfor %}
+                        </div>
+                        {% for e in form.tipo.errors %}<div class="error mt-2" style="color:var(--danger);font-size:.8rem">{{ e }}</div>{% endfor %}
+                        <div class="explicacion-tipo d-none" data-explicacion-tipo></div>
+                    </div>
+                </section>
+
+                <!-- Paso 2 -->
+                <section class="p-card paso mb-3">
+                    <div class="paso-cabeza"><span class="paso-num">2</span><div><h3>¿Qué clase y cuánto deben lograr?</h3><p>Cuentan los logros de todos los alumnos de la clase juntos.</p></div></div>
+                    <div class="p-card-body pt-0">
+                        <div class="campo {% if form.clase.errors %}con-error{% endif %}">
+                            <label for="{{ form.clase.id_for_label }}">Clase <span class="text-danger">*</span></label>
+                            {{ form.clase }}
+                            {% for e in form.clase.errors %}<div class="error"><i class="bi bi-exclamation-circle"></i> {{ e }}</div>{% endfor %}
+                        </div>
+                        <label class="etiqueta-campo" for="{{ form.objetivo.id_for_label }}" data-pregunta-objetivo>Objetivo</label>
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <div class="input-unidad {% if form.objetivo.errors %}con-error{% endif %}">
+                                {{ form.objetivo }}
+                                <span data-unidad-objetivo></span>
+                            </div>
+                            <div class="sugerencias" data-sugerencias-objetivo></div>
+                        </div>
+                        {% for e in form.objetivo.errors %}<div class="error mt-1" style="color:var(--danger);font-size:.8rem">{{ e }}</div>{% endfor %}
+                        <div class="ayuda-recompensa mt-3" data-ayuda-objetivo></div>
+                    </div>
+                </section>
+
+                <!-- Paso 3 -->
+                <section class="p-card paso mb-3">
+                    <div class="paso-cabeza"><span class="paso-num">3</span><div><h3>Premio</h3><p>Algo que emocione al grupo. Las monedas son opcionales.</p></div></div>
+                    <div class="p-card-body pt-0">
+                        <div class="campo">
+                            <label for="{{ form.recompensa.id_for_label }}">Premio para el grupo</label>
+                            {{ form.recompensa }}
+                            <div class="sugerencias mt-2">
+                                {% for p in premios %}<button type="button" data-poner="recompensa" data-valor="{{ p }}">{{ p }}</button>{% endfor %}
+                            </div>
+                        </div>
+                        <span class="etiqueta-campo">Monedas para cada alumno</span>
+                        <div class="presets" role="group" aria-label="Monedas para cada alumno">
+                            <button type="button" class="preset" data-poner="monedas_recompensa" data-valor="0"><span class="e">🎉</span><span class="n">Solo el premio</span><span class="v">0 monedas</span></button>
+                            <button type="button" class="preset" data-poner="monedas_recompensa" data-valor="10"><span class="e">🪙</span><span class="n">Un detalle</span><span class="v">+10 c/u</span></button>
+                            <button type="button" class="preset" data-poner="monedas_recompensa" data-valor="25"><span class="e">💰</span><span class="n">Buen botín</span><span class="v">+25 c/u</span></button>
+                            <button type="button" class="preset" data-poner="monedas_recompensa" data-valor="50"><span class="e">👑</span><span class="n">Épico</span><span class="v">+50 c/u</span></button>
+                        </div>
+                        <div class="d-flex align-items-center gap-2 mt-3">
+                            <div class="input-unidad">{{ form.monedas_recompensa }}<span>monedas c/u</span></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Paso 4 -->
+                <section class="p-card paso mb-3">
+                    <div class="paso-cabeza"><span class="paso-num">4</span><div><h3>Nombre e ícono</h3><p>Se proponen solos según el premio; cámbialos si quieres.</p></div></div>
+                    <div class="p-card-body pt-0">
+                        <div class="row gx-3">
+                            <div class="col-md-8">
+                                <div class="campo {% if form.titulo.errors %}con-error{% endif %}">
+                                    <label for="{{ form.titulo.id_for_label }}" class="d-flex justify-content-between align-items-center">
+                                        <span>Nombre de la meta <span class="text-danger">*</span></span>
+                                        <button type="button" class="p-btn xs fantasma" data-sugerir-titulo><i class="bi bi-magic"></i> Sugerir</button>
+                                    </label>
+                                    {{ form.titulo }}
+                                    {% for e in form.titulo.errors %}<div class="error"><i class="bi bi-exclamation-circle"></i> {{ e }}</div>{% endfor %}
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="campo"><label for="{{ form.icono.id_for_label }}">Ícono</label>{{ form.icono }}</div>
+                            </div>
+                        </div>
+                        <div class="iconos-grid" role="group" aria-label="Elegir ícono" data-iconos-meta></div>
+                        <div class="campo mt-3 mb-0">
+                            <label for="{{ form.descripcion.id_for_label }}">Descripción <span class="text-muted-p fw-normal">(se escribe sola si no la cambias)</span></label>
+                            {{ form.descripcion }}
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Paso 5 -->
+                <section class="p-card paso">
+                    <div class="paso-cabeza"><span class="paso-num">5</span><div><h3>¿Hasta cuándo?</h3><p>Una fecha límite le pone emoción; sin fecha, dura hasta que la cumplan.</p></div></div>
+                    <div class="p-card-body pt-0">
+                        <div class="segmento mb-3" role="group" aria-label="Plazo" data-plazos>
+                            <button type="button" data-dias="">Sin fecha</button>
+                            <button type="button" data-dias="7">1 semana</button>
+                            <button type="button" data-dias="14">2 semanas</button>
+                            <button type="button" data-dias="30">1 mes</button>
+                        </div>
+                        <div class="row gx-3 align-items-center">
+                            <div class="col-md-6">
+                                <div class="campo mb-md-0">
+                                    <label for="{{ form.fecha_limite.id_for_label }}">Fecha límite</label>
+                                    {{ form.fecha_limite }}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="campo-check mb-0">
+                                    {{ form.activa }}
+                                    <div>
+                                        <label for="{{ form.activa.id_for_label }}">{{ form.activa.label }}</label>
+                                        <div class="ayuda text-muted-p" style="font-size:.78rem" data-ayuda-activa></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <div class="col-lg-4">
+                <section class="p-card sticky-lateral vista-previa">
+                    <div class="p-card-head"><h3>Vista previa</h3><span class="sub">Así aparece en el mapa de cada alumno</span></div>
+                    <div class="p-card-body">
+                        <div class="meta-previa" data-previa-meta>
+                            <div class="icono" data-previa-icono>🎯</div>
+                            <div class="min-w-0 flex-grow-1">
+                                <div class="kicker">🎯 Meta de todo el grupo</div>
+                                <div class="titulo" data-previa-titulo>Nombre de la meta</div>
+                                <div class="desc" data-previa-desc></div>
+                                <div class="barra"><span data-previa-barra style="width:0"></span></div>
+                                <div class="pie"><span data-previa-avance></span><span data-previa-dias></span></div>
+                                <div class="premio" data-previa-premio></div>
+                            </div>
+                        </div>
+                        <div class="aviso-suave d-none" data-previa-oculta><i class="bi bi-eye-slash"></i> Oculta: los alumnos no la verán hasta que la actives.</div>
+                        <div class="vp-flujo mt-3">
+                            <div class="t">Cómo funciona</div>
+                            <ol>
+                                <li data-previa-como>El avance sube solo.</li>
+                                <li data-previa-celebra>Al llegar al objetivo, toda la clase recibe una notificación de celebración.</li>
+                                <li>Ves el avance en <b>Metas</b> y en el <b>Modo clase</b>.</li>
+                            </ol>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-footer">
+        {% if modal %}
+            <button type="button" class="p-btn fantasma" data-bs-dismiss="modal">Cancelar</button>
+        {% else %}
+            <a href="{% url 'metas_lista' %}" class="p-btn fantasma">Cancelar</a>
+        {% endif %}
+        <button type="submit" class="p-btn primario"><i class="bi bi-check2"></i> {% if meta %}Guardar cambios{% else %}Crear meta{% endif %}</button>
+    </div>
+</form>
+{% endblock %}

@@ -8,7 +8,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db import transaction
-from django.db.models import Count, Max, Q, Sum, Value
+from django.db.models import Count, Q, Sum, Value
 from django.db.models.functions import Coalesce, TruncDate
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -22,12 +22,13 @@ from openpyxl.utils import get_column_letter
 from . import gamificacion as juego
 from .forms import (
     AltaMasivaForm, AlumnoForm, ArticuloTiendaForm, ClaseForm, LogroForm, MisionDiariaForm, MisionForm,
-    MundoForm, NivelForm, OtorgarLogroForm,
+    MundoForm, NivelForm, OtorgarLogroForm, separar_nombre,
 )
 from .models import (
     Alumno, ArticuloTienda, Clase, CompraAlumno, Comportamiento, Equipo, Logro, LogroAlumno, MetaGrupo, Mision,
     MisionDiaria, Movimiento, Mundo, Nivel, OpcionRespuesta, Pregunta, ProgresoMision,
 )
+from .templatetags.nextlevel import COLORES_CLASE, avatar_url
 
 
 def _siguiente(request, por_defecto):
@@ -58,6 +59,39 @@ def _guardado(request, mensaje, destino, navegar=False):
     if _es_modal(request):
         return JsonResponse({'ok': True, 'redirect': destino, 'navegar': navegar})
     return redirect(destino)
+
+
+def _colores():
+    """Los colores de clases y equipos con sus dos tonos, para pintar las muestras."""
+    return [{'valor': valor, 'nombre': nombre, 'c1': COLORES_CLASE[valor][0], 'c2': COLORES_CLASE[valor][1]}
+            for valor, nombre in Clase.COLORES]
+
+
+def _clases_info():
+    """Clases como tarjetas para elegir (ícono, color y cuántos alumnos tienen)."""
+    clases = Clase.objects.annotate(
+        total=Count('alumnos', filter=Q(alumnos__activo=True), distinct=True)
+    ).order_by('-activa', 'grado', 'grupo')
+    return [{'id': c.id, 'nombre': c.nombre, 'icono': c.icono, 'grado': c.grado, 'grupo': c.grupo,
+             'activa': c.activa, 'total': c.total, 'c1': COLORES_CLASE.get(c.color, COLORES_CLASE['indigo'])[0],
+             'c2': COLORES_CLASE.get(c.color, COLORES_CLASE['indigo'])[1]} for c in clases]
+
+
+def _acomodar(objeto, hermanos, posicion, mismo_lugar=False):
+    """Acomoda el objeto entre sus hermanos (al inicio, después de otro o al final) y renumera 1, 2, 3..."""
+    if posicion == 'mantener' and mismo_lugar:
+        return
+    lista = list(hermanos.exclude(pk=objeto.pk).order_by('orden', 'id'))
+    indice = len(lista)
+    if posicion == 'inicio':
+        indice = 0
+    elif posicion.startswith('despues:'):
+        referencia = posicion.split(':', 1)[1]
+        indice = next((i + 1 for i, h in enumerate(lista) if str(h.id) == referencia), len(lista))
+    lista.insert(indice, objeto)
+    for orden, actual in enumerate(lista, start=1):
+        if actual.orden != orden:
+            type(actual).objects.filter(pk=actual.pk).update(orden=orden)
 
 
 def _misiones_ordenadas(clase):
@@ -190,20 +224,29 @@ def clases_lista(request):
     return render(request, 'Profesor/clases.html', {'clases': clases, 'seccion': 'clases'})
 
 
+ICONOS_CLASE = ['🚀', '🤖', '💡', '🔬', '🧪', '🛠️', '⚙️', '💻', '🎮', '🧩', '🎨', '🌍', '📐', '📚', '🎵', '⚽', '🦖', '🌱']
+
+
 @login_required
 def alta_clase(request, pk=None):
     clase = get_object_or_404(Clase, pk=pk) if pk else None
-    form = ClaseForm(request.POST or None, instance=clase,
-                     initial=None if clase else {'anio': timezone.localdate().year})
+    anio = timezone.localdate().year
+    form = ClaseForm(request.POST or None, instance=clase, initial=None if clase else {'anio': anio})
     if request.method == 'POST' and form.is_valid():
         clase = form.save()
         return _guardado(request, f'Clase "{clase.nombre}" guardada.', reverse('clase_detalle', args=[clase.id]))
-    return _formulario(request, 'Profesor/form_generico.html', {
+    otras = Clase.objects.exclude(pk=clase.pk) if clase else Clase.objects.all()
+    return _formulario(request, 'Profesor/clase_form.html', {
         'form': form,
-        'titulo': 'Editar clase' if pk else 'Nueva clase',
-        'subtitulo': 'Las clases agrupan a tus alumnos y sus mundos.',
-        'icono': 'bi-easel2',
-        'volver': reverse('clases_lista'),
+        'clase': clase,
+        'iconos': ICONOS_CLASE,
+        'colores': _colores(),
+        'grados': ['1°', '2°', '3°', '4°', '5°', '6°'],
+        'grupos': ['A', 'B', 'C', 'D'],
+        'anios': [anio - 1, anio, anio + 1],
+        'existentes': [{'nombre': c.nombre, 'grado': c.grado, 'grupo': c.grupo, 'anio': c.anio} for c in otras],
+        'total_alumnos': clase.alumnos.filter(activo=True).count() if clase else 0,
+        'total_mundos': clase.mundos.count() if clase else 0,
         'seccion': 'clases',
     })
 
@@ -251,6 +294,18 @@ def clase_detalle(request, clase_id):
     })
 
 
+NOMBRES_MUNDO = {
+    'bosque': ['Bosque de los Circuitos', 'Selva de los Sensores', 'Bosque Encantado'],
+    'oceano': ['Océano de los Datos', 'Arrecife Robótico', 'Abismo de los Bits'],
+    'desierto': ['Desierto de los Engranes', 'Dunas del Código', 'Oasis Digital'],
+    'volcan': ['Volcán de los Motores', 'Montaña de Fuego', 'Cráter de la Energía'],
+    'hielo': ['Reino de Hielo', 'Glaciar de los Algoritmos', 'Polo Norte Digital'],
+    'espacio': ['Galaxia Arduino', 'Estación Espacial', 'Planeta de los Robots'],
+    'ciudad': ['Ciudad Neón', 'Metrópolis Robótica', 'Ciudad de los Inventos'],
+    'dulces': ['Tierra de Dulces', 'Fábrica de Golosinas', 'Reino de Caramelo'],
+}
+
+
 @login_required
 def mundo_form(request, pk=None):
     mundo = get_object_or_404(Mundo, pk=pk) if pk else None
@@ -258,17 +313,30 @@ def mundo_form(request, pk=None):
     if not mundo and request.GET.get('clase'):
         clase = Clase.objects.filter(pk=request.GET['clase']).first()
         if clase:
-            siguiente = (clase.mundos.aggregate(m=Max('orden'))['m'] or 0) + 1
-            inicial = {'clase': clase, 'orden': siguiente, 'nombre': f'Mundo {siguiente}',
-                       'tema': [t[0] for t in Mundo.TEMAS][(siguiente - 1) % len(Mundo.TEMAS)]}
+            siguiente = clase.mundos.count() + 1
+            tema = [t[0] for t in Mundo.TEMAS][(siguiente - 1) % len(Mundo.TEMAS)]
+            usados = set(clase.mundos.values_list('nombre', flat=True))
+            nombre = next((n for n in NOMBRES_MUNDO[tema] if n not in usados), f'Mundo {siguiente}')
+            inicial = {'clase': clase, 'tema': tema, 'nombre': nombre}
     form = MundoForm(request.POST or None, instance=mundo, initial=inicial)
+    clase_anterior = mundo.clase_id if mundo else None
     if request.method == 'POST' and form.is_valid():
-        mundo = form.save()
+        with transaction.atomic():
+            mundo = form.save()
+            _acomodar(mundo, Mundo.objects.filter(clase=mundo.clase), request.POST.get('posicion', 'final'),
+                      clase_anterior == mundo.clase_id)
         return _guardado(request, f'Mundo "{mundo.nombre}" guardado.', reverse('clase_detalle', args=[mundo.clase_id]))
+    temas = {clave: {**info, 'nombres': NOMBRES_MUNDO.get(clave, [])} for clave, info in juego.TEMA_INFO.items()}
     return _formulario(request, 'Profesor/mundo_form.html', {
         'form': form,
         'mundo': mundo,
         'temas': juego.TEMA_INFO,
+        'temas_json': temas,
+        'mundos_por_clase': {
+            c.id: [{'id': m.id, 'nombre': m.nombre, 'emoji': juego.TEMA_INFO.get(m.tema, {}).get('emoji', '🌍')}
+                   for m in c.mundos.all()]
+            for c in Clase.objects.prefetch_related('mundos')
+        },
         'seccion': 'clases',
     })
 
@@ -280,39 +348,37 @@ def alta_nivel(request, pk=None):
     if not nivel and request.GET.get('mundo'):
         mundo = Mundo.objects.filter(pk=request.GET['mundo']).first()
         if mundo:
-            siguiente = (mundo.niveles.aggregate(m=Max('orden'))['m'] or 0) + 1
-            inicial = {'mundo': mundo.id, 'orden': siguiente, 'nombre': f'Nivel {siguiente}'}
+            inicial = {'mundo': mundo.id, 'nombre': f'Nivel {mundo.niveles.count() + 1}'}
     form = NivelForm(request.POST or None, instance=nivel, initial=inicial)
     if nivel and not request.POST:
         form.initial['mundo'] = nivel.mundo_id
+    mundo_anterior = nivel.mundo_id if nivel else None
     if request.method == 'POST' and form.is_valid():
-        nivel = form.save()
+        with transaction.atomic():
+            nivel = form.save()
+            _acomodar(nivel, Nivel.objects.filter(mundo=nivel.mundo), request.POST.get('posicion', 'final'),
+                      mundo_anterior == nivel.mundo_id)
         return _guardado(request, f'Nivel "{nivel.nombre}" guardado.', reverse('clase_detalle', args=[nivel.clase_id]))
-    return _formulario(request, 'Profesor/form_generico.html', {
+    mundos = {}
+    for mundo in Mundo.objects.select_related('clase').prefetch_related('niveles').annotate(n=Count('niveles')):
+        mundos[mundo.id] = {
+            'nombre': mundo.nombre, 'tema': mundo.tema,
+            'emoji': juego.TEMA_INFO.get(mundo.tema, {}).get('emoji', '🌍'),
+            'clase': f'{mundo.clase.icono} {mundo.clase.nombre} · {mundo.clase.grado} {mundo.clase.grupo}',
+            'niveles': [{'id': n.id, 'nombre': n.nombre} for n in mundo.niveles.all()],
+        }
+    return _formulario(request, 'Profesor/nivel_form.html', {
         'form': form,
-        'titulo': 'Editar nivel' if pk else 'Nuevo nivel',
-        'subtitulo': 'Los niveles agrupan misiones dentro de un mundo. Al completarlos se abre un cofre 🎁',
-        'icono': 'bi-bar-chart-steps',
-        'volver': reverse('clase_detalle', args=[nivel.clase_id]) if nivel else reverse('clases_lista'),
+        'nivel': nivel,
+        'mundos': mundos,
+        'misiones_nivel': nivel.misiones.count() if nivel else 0,
         'seccion': 'clases',
     })
 
 
 def _aplicar_posicion(mision, posicion, nivel_anterior=None):
     """Acomoda la misión dentro de su nivel y renumera el orden 1, 2, 3..."""
-    if posicion == 'mantener' and nivel_anterior == mision.nivel_id:
-        return
-    hermanas = list(Mision.objects.filter(nivel=mision.nivel).exclude(pk=mision.pk).order_by('orden', 'id'))
-    indice = len(hermanas)
-    if posicion == 'inicio':
-        indice = 0
-    elif posicion.startswith('despues:'):
-        referencia = posicion.split(':', 1)[1]
-        indice = next((i + 1 for i, m in enumerate(hermanas) if str(m.id) == referencia), len(hermanas))
-    hermanas.insert(indice, mision)
-    for orden, actual in enumerate(hermanas, start=1):
-        if actual.orden != orden:
-            Mision.objects.filter(pk=actual.pk).update(orden=orden)
+    _acomodar(mision, Mision.objects.filter(nivel=mision.nivel), posicion, nivel_anterior == mision.nivel_id)
 
 
 def _estructura_niveles():
@@ -732,6 +798,17 @@ def exportar_matriz_excel(request, clase_id):
 # ========================
 # ALUMNOS
 # ========================
+PINES_FACILES = {'1234', '4321', '0123', '2580', '1212', '1122', '9876', '6789', '0987', '1004'}
+
+
+def _pin_al_azar():
+    """PIN de 4 dígitos que no sea fácil de adivinar (ni 1111 ni 1234)."""
+    while True:
+        pin = f'{random.randint(0, 9999):04d}'
+        if len(set(pin)) > 1 and pin not in PINES_FACILES:
+            return pin
+
+
 @login_required
 def alumnos_lista(request):
     clase_id = request.GET.get('clase')
@@ -753,7 +830,7 @@ def alumnos_lista(request):
 @login_required
 def alta_alumno(request, pk=None):
     alumno = get_object_or_404(Alumno, pk=pk) if pk else None
-    inicial = {} if alumno else {'pin': f'{random.randint(0, 9999):04d}', 'activo': True}
+    inicial = {} if alumno else {'pin': _pin_al_azar(), 'activo': True}
     if not alumno and request.GET.get('clase'):
         inicial['clases'] = [request.GET['clase']]
     form = AlumnoForm(request.POST or None, request.FILES or None, instance=alumno, initial=inicial)
@@ -761,12 +838,15 @@ def alta_alumno(request, pk=None):
         alumno = form.save()
         return _guardado(request, f'{alumno.nombre} {alumno.apellido} quedó registrado con PIN {alumno.pin}.',
                          reverse('alumno_detalle', args=[alumno.pk]))
-    return _formulario(request, 'Profesor/form_generico.html', {
+    return _formulario(request, 'Profesor/alumno_form.html', {
         'form': form,
-        'titulo': f'Editar a {alumno.nombre}' if alumno else 'Nuevo alumno',
-        'subtitulo': 'Datos de acceso del estudiante. El PIN es su contraseña de 4 dígitos.',
-        'icono': 'bi-person-plus',
-        'volver': reverse('alumno_detalle', args=[alumno.pk]) if alumno else reverse('alumnos_lista'),
+        'alumno': alumno,
+        'clases': _clases_info(),
+        'seleccionadas': {str(v) for v in (form['clases'].value() or [])},
+        'avatar': avatar_url(alumno) if alumno else '',
+        # El robot automático que tendrá (o ya tiene) si no sube foto
+        'robot': avatar_url(Alumno(pk=alumno.pk)) if alumno else avatar_url(Alumno(pk=0)),
+        'tiene_foto': bool(alumno and alumno.avatar),
         'seccion': 'alumnos',
     })
 
@@ -779,25 +859,26 @@ def alta_masiva(request):
         creados = []
         with transaction.atomic():
             for linea in form.cleaned_data['nombres'].splitlines():
-                partes = linea.strip().split()
-                if not partes:
+                nombre, apellido = separar_nombre(linea)
+                if not nombre:
                     continue
                 alumno = Alumno.objects.create(
-                    nombre=partes[0][:100],
-                    apellido=' '.join(partes[1:])[:100],
-                    pin=f'{random.randint(0, 9999):04d}' if form.cleaned_data['pin_aleatorio'] else '0000',
+                    nombre=nombre, apellido=apellido,
+                    pin=_pin_al_azar() if form.cleaned_data['pin_aleatorio'] else '0000',
                 )
                 alumno.clases.add(clase)
                 creados.append(str(alumno.id))
         return _guardado(request, f'Se registraron {len(creados)} alumnos en {clase.nombre}. ¡Imprime sus credenciales!',
                          f"{reverse('credenciales')}?ids={','.join(creados)}", navegar=True)
-    return _formulario(request, 'Profesor/form_generico.html', {
+    nombres_por_clase = {}
+    for alumno in Alumno.objects.filter(activo=True).prefetch_related('clases'):
+        for clase in alumno.clases.all():
+            nombres_por_clase.setdefault(clase.id, []).append(f'{alumno.nombre} {alumno.apellido}')
+    return _formulario(request, 'Profesor/alta_masiva.html', {
         'form': form,
-        'titulo': 'Alta masiva de alumnos',
-        'subtitulo': 'Registra a todo un grupo en segundos pegando la lista de nombres.',
-        'icono': 'bi-people',
-        'volver': reverse('alumnos_lista'),
-        'boton': 'Registrar alumnos',
+        'clases': _clases_info(),
+        'clase_elegida': str(form['clase'].value() or ''),
+        'nombres_por_clase': nombres_por_clase,
         'seccion': 'alumnos',
     })
 

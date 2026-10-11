@@ -83,15 +83,14 @@ WSGI_APPLICATION = 'NextLevel.wsgi.application'
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
 #DATABASES = {
-#  'default': {
-#      'ENGINE': 'django.db.backends.sqlite3',
-#     'NAME': BASE_DIR / 'db.sqlite3',
-# }
+    #'default': {
+   #     'ENGINE': 'django.db.backends.sqlite3',
+  #      'NAME': BASE_DIR / 'db.sqlite3',
+ #   }
 #}
 
-
 DATABASES = {
-   'default': dj_database_url.config(default=os.getenv("DATABASE_URL"))
+    'default': dj_database_url.config(default=os.getenv("DATABASE_URL"))
 }
 
 # Password validation
@@ -115,7 +114,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
 
-LANGUAGE_CODE =  'es-mx'  # Español (México)
+LANGUAGE_CODE = 'es-mx'  # Español (México)
 
 TIME_ZONE = 'America/Mexico_City'
 USE_I18N = True  # Activar internacionalización
@@ -133,9 +132,6 @@ STATICFILES_DIRS = [
 ]
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # recolecta todo lo estatic
 
-
-
-
 STORAGES = {
     "default": {
         "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
@@ -151,10 +147,8 @@ CLOUDINARY_STORAGE = {
     'API_SECRET': os.getenv('CLOUDINARY_API_SECRET'),
 }
 
-
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-
 
 LOGIN_REDIRECT_URL = 'dashboard_profesor'
 LOGIN_URL = 'login'
