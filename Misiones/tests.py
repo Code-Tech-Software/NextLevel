@@ -285,3 +285,146 @@ class ModoClaseTests(BaseJuego):
         self.assertContains(tablero, 'Meta visible')
         self.assertContains(tablero, 'Leones')
         self.assertContains(self.client.get(f'/clase/{self.clase.id}/ranking/?periodo=equipos'), 'tu equipo')
+
+
+class FormulariosGuiadosTests(BaseJuego):
+    def setUp(self):
+        super().setUp()
+        self.client.force_login(User.objects.create_superuser('profe3', 'p@x.com', 'x'))
+
+    def datos_mision(self, **extra):
+        datos = {'nivel': self.nivel.id, 'nombre': 'Nueva', 'descripcion': 'x', 'tipo': 'arduino',
+                 'xp_recompensa': 50, 'monedas_recompensa': 15, 'activa': 'on'}
+        datos.update(extra)
+        return datos
+
+    def orden_nivel(self):
+        return list(self.nivel.misiones.order_by('orden').values_list('nombre', flat=True))
+
+    def test_posicion_dentro_del_nivel(self):
+        self.client.post('/forja/mision/nueva/', self.datos_mision(nombre='Al inicio', posicion='inicio'))
+        self.assertEqual(self.orden_nivel(), ['Al inicio', 'Uno', 'Dos'])
+        self.client.post('/forja/mision/nueva/', self.datos_mision(nombre='En medio', posicion=f'despues:{self.m1.id}'))
+        self.assertEqual(self.orden_nivel(), ['Al inicio', 'Uno', 'En medio', 'Dos'])
+        self.client.post('/forja/mision/nueva/', self.datos_mision(nombre='Final', posicion='final'))
+        self.assertEqual(self.orden_nivel()[-1], 'Final')
+        # Editar sin mover conserva el lugar
+        self.client.post(f'/profesor/misiones/{self.m1.id}/editar/', self.datos_mision(nombre='Uno', posicion='mantener'))
+        self.assertEqual(self.orden_nivel()[1], 'Uno')
+
+    def test_link_y_video_necesitan_enlace(self):
+        for tipo in ('link', 'video'):
+            respuesta = self.client.post('/forja/mision/nueva/', self.datos_mision(nombre=f'Sin enlace {tipo}', tipo=tipo))
+            self.assertContains(respuesta, 'con-error')
+            self.assertFalse(Mision.objects.filter(nombre=f'Sin enlace {tipo}').exists())
+
+    def test_formulario_de_mision_trae_estructura(self):
+        respuesta = self.client.get(f'/forja/mision/nueva/?nivel={self.nivel.id}', HTTP_X_MODAL='1')
+        self.assertContains(respuesta, 'estructura-data')
+        self.assertContains(respuesta, f'data-nivel-inicial="{self.nivel.id}"')
+
+    def test_logro_nuevo_se_entrega_a_quienes_ya_cumplen(self):
+        from .models import Logro, LogroAlumno
+        juego.calificar(ProgresoMision(alumno=self.alumno, mision=self.m1), 100)
+        conteo = self.client.get('/api/logros/cumplen/', {'condicion': 'misiones', 'valor': 1}).json()
+        self.assertEqual(conteo['total'], 1)
+        self.assertEqual(self.client.get('/api/logros/cumplen/', {'condicion': 'misiones', 'valor': 5}).json()['total'], 0)
+
+        self.client.post('/profesor/logros/nuevo/', {
+            'nombre': 'Pionero', 'descripcion': 'Completa tu primera misión', 'icono': '🚀', 'condicion': 'misiones',
+            'valor': 1, 'rareza': 'raro', 'recompensa_monedas': 5, 'recompensa_xp': 0, 'activo': 'on'})
+        logro = Logro.objects.get(nombre='Pionero')
+        self.assertTrue(LogroAlumno.objects.filter(alumno=self.alumno, logro=logro).exists())
+
+    def test_logro_manual_no_se_entrega_solo(self):
+        from .models import Logro, LogroAlumno
+        self.client.post('/profesor/logros/nuevo/', {
+            'nombre': 'Especial', 'descripcion': 'x', 'icono': '🌈', 'condicion': 'manual', 'rareza': 'legendario',
+            'recompensa_monedas': 0, 'recompensa_xp': 0, 'activo': 'on'})
+        logro = Logro.objects.get(nombre='Especial')
+        self.assertEqual(logro.valor, 1)
+        self.assertFalse(LogroAlumno.objects.filter(logro=logro).exists())
+        self.assertContains(self.client.get(f'/profesor/logros/{logro.id}/editar/', HTTP_X_MODAL='1'), 'data-form="logro"')
+
+
+class FormularioDiariaTests(BaseJuego):
+    def setUp(self):
+        super().setUp()
+        self.client.force_login(User.objects.create_superuser('profe4', 'p@x.com', 'x'))
+
+    def test_formulario_guiado_en_modal(self):
+        respuesta = self.client.get('/profesor/diarias/nueva/', HTTP_X_MODAL='1')
+        self.assertContains(respuesta, 'data-form="diaria"')
+        self.assertContains(respuesta, 'Todas las clases')
+
+    def test_objetivos_sin_meta_guardan_uno_y_los_demas_su_meta(self):
+        from .models import MisionDiaria
+        base = {'descripcion': 'x', 'icono': '⭐', 'recompensa_monedas': 5, 'recompensa_xp': 5, 'activa': 'on'}
+        self.client.post('/profesor/diarias/nueva/', {**base, 'titulo': 'Tienda', 'objetivo': 'tienda', 'meta': 9})
+        self.client.post('/profesor/diarias/nueva/', {**base, 'titulo': 'Dos misiones', 'objetivo': 'misiones', 'meta': 2})
+        self.client.post('/profesor/diarias/nueva/', {**base, 'titulo': 'Sin meta', 'objetivo': 'cuestionarios', 'meta': ''})
+        self.assertEqual(MisionDiaria.objects.get(titulo='Tienda').meta, 1)
+        self.assertEqual(MisionDiaria.objects.get(titulo='Dos misiones').meta, 2)
+        self.assertEqual(MisionDiaria.objects.get(titulo='Sin meta').meta, 1)
+
+
+@override_settings(STORAGES={**ALMACEN_PRUEBAS, 'default': {'BACKEND': 'django.core.files.storage.InMemoryStorage'}})
+class FormularioArticuloTests(BaseJuego):
+    def setUp(self):
+        super().setUp()
+        self.client.force_login(User.objects.create_superuser('profe5', 'p@x.com', 'x'))
+
+    def datos(self, **extra):
+        datos = {'nombre': 'Premio', 'tipo': 'fisico', 'descripcion': 'x', 'costo_monedas': 50, 'stock': 10,
+                 'nivel_requerido': 1, 'requiere_validacion': 'on', 'activo': 'on'}
+        datos.update(extra)
+        return datos
+
+    def imagen(self):
+        from io import BytesIO
+
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from PIL import Image
+        buffer = BytesIO()
+        Image.new('RGB', (4, 4), 'teal').save(buffer, 'PNG')
+        return SimpleUploadedFile('avatar.png', buffer.getvalue(), content_type='image/png')
+
+    def test_formulario_guiado_en_modal(self):
+        respuesta = self.client.get('/forja/tienda/nuevo/', HTTP_X_MODAL='1')
+        self.assertContains(respuesta, 'data-form="articulo"')
+        self.assertContains(respuesta, 'monedas-alumnos')
+
+    def test_avatar_necesita_imagen_y_nunca_pasa_por_pedidos(self):
+        respuesta = self.client.post('/forja/tienda/nuevo/', self.datos(nombre='Avatar sin foto', tipo='avatar', stock=''))
+        self.assertContains(respuesta, 'Los avatares necesitan una imagen')
+        self.assertFalse(ArticuloTienda.objects.filter(nombre='Avatar sin foto').exists())
+
+        self.client.post('/forja/tienda/nuevo/', self.datos(nombre='Avatar robot', tipo='avatar', stock='',
+                                                             imagen=self.imagen()))
+        avatar = ArticuloTienda.objects.get(nombre='Avatar robot')
+        self.assertFalse(avatar.requiere_validacion)
+        self.assertIsNone(avatar.stock)
+
+    def test_precio_minimo_y_stock_ilimitado(self):
+        self.client.post('/forja/tienda/nuevo/', self.datos(nombre='Gratis', costo_monedas=0))
+        self.assertFalse(ArticuloTienda.objects.filter(nombre='Gratis').exists())
+        self.client.post('/forja/tienda/nuevo/', self.datos(nombre='Privilegio', tipo='permiso', stock=''))
+        self.assertIsNone(ArticuloTienda.objects.get(nombre='Privilegio').stock)
+
+
+@override_settings(STORAGES=ALMACEN_PRUEBAS)
+class EtiquetasTiendaTests(BaseJuego):
+    def test_cada_tarjeta_dice_que_tipo_de_premio_es_y_como_se_recibe(self):
+        ArticuloTienda.objects.create(nombre='Llavero', descripcion='x', costo_monedas=5, tipo='fisico',
+                                      requiere_validacion=False)
+        ArticuloTienda.objects.create(nombre='Comodín', descripcion='x', costo_monedas=5, tipo='permiso')
+        ArticuloTienda.objects.create(nombre='Fondo', descripcion='x', costo_monedas=5, tipo='otro',
+                                      requiere_validacion=False)
+        self.entrar()
+        respuesta = self.client.get(f'/clase/{self.clase.id}/tienda/')
+        # Un físico siempre lo entrega el profe, aunque no requiera validación
+        self.assertContains(respuesta, '🎁 Físico</span>')
+        self.assertContains(respuesta, '🤝 Te lo entrega el profe')
+        self.assertContains(respuesta, '🤝 El profe lo autoriza')
+        self.assertContains(respuesta, '💻 Digital</span>')
+        self.assertContains(respuesta, '⚡ Lo recibes al instante')

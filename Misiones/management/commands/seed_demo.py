@@ -68,7 +68,7 @@ ARTICULOS = [
     ('Elige tu lugar por un día', 'permiso', 'Siéntate donde quieras durante una clase.', 60, None, None, 1, False),
     ('5 minutos extra de recreo', 'permiso', 'Úsalo con permiso del profe.', 90, None, 2, 1, False),
     ('Comodín de tarea', 'permiso', 'Cambia una tarea por otra actividad.', 250, None, 1, 3, True),
-    ('DJ de la clase', 'otro', 'Elige la música de fondo mientras trabajamos.', 75, None, None, 1, False),
+    ('DJ de la clase', 'permiso', 'Elige la música de fondo mientras trabajamos.', 75, None, None, 1, False),
 ]
 
 

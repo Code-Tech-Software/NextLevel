@@ -10,7 +10,7 @@
     </div>
     <div class="acciones">
         <a href="{% url 'pedidos' %}" class="p-btn"><i class="bi bi-box-seam"></i> Ver pedidos</a>
-        <a data-modal href="{% url 'alta_articulo' %}" class="p-btn primario"><i class="bi bi-plus-lg"></i> Nuevo artículo</a>
+        <a data-modal="xl" href="{% url 'alta_articulo' %}" class="p-btn primario"><i class="bi bi-plus-lg"></i> Nuevo artículo</a>
     </div>
 </div>
 
@@ -55,7 +55,7 @@
                     <td><input type="checkbox" class="nl-switch" {% if a.activo %}checked{% endif %} data-alternar-url="{% url 'alternar_activo' 'articulo' a.id %}" aria-label="Visible en la tienda"></td>
                     <td>
                         <div class="acciones-fila">
-                            <a data-modal href="{% url 'editar_articulo' a.id %}" class="p-btn xs icono fantasma" title="Editar"><i class="bi bi-pencil"></i></a>
+                            <a data-modal="xl" href="{% url 'editar_articulo' a.id %}" class="p-btn xs icono fantasma" title="Editar"><i class="bi bi-pencil"></i></a>
                             <div class="dropdown">
                                 <button class="p-btn xs icono fantasma" data-bs-toggle="dropdown" aria-label="Más opciones"><i class="bi bi-three-dots"></i></button>
                                 <ul class="dropdown-menu dropdown-menu-end">
@@ -69,7 +69,7 @@
                     </td>
                 </tr>
             {% empty %}
-                <tr><td colspan="8"><div class="vacio-p"><i class="bi bi-shop"></i><h3>La tienda está vacía</h3><a data-modal href="{% url 'alta_articulo' %}" class="p-btn primario mt-2">Agregar el primer artículo</a></div></td></tr>
+                <tr><td colspan="8"><div class="vacio-p"><i class="bi bi-shop"></i><h3>La tienda está vacía</h3><a data-modal="xl" href="{% url 'alta_articulo' %}" class="p-btn primario mt-2">Agregar el primer artículo</a></div></td></tr>
             {% endfor %}
             </tbody>
         </table>

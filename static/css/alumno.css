@@ -792,7 +792,7 @@ a.nodo:active { transform: translateY(8px); box-shadow: 0 0 0 var(--n2); }
 .mini-podio { display: flex; flex-direction: column; gap: .5rem; }
 .mini-podio .fila { display: flex; align-items: center; gap: .7rem; padding: .5rem .6rem; border-radius: 16px; background: #f8fafc; }
 .mini-podio .fila.yo { background: #eff6ff; border: 2px solid #bfdbfe; }
-.mini-podio .medalla { font-size: 1.4rem; width: 30px; text-align: center; }
+.mini-podio .medalla-podio { font-size: 1.4rem; line-height: 1; min-width: 34px; text-align: center; flex-shrink: 0; }
 .mini-podio .avatar { --tam: 38px; }
 .mini-podio .n { font-weight: 900; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mini-podio .p { font-family: var(--fuente-titulo); font-weight: 700; color: var(--azul); white-space: nowrap; }
@@ -1205,3 +1205,12 @@ a.nodo:active { transform: translateY(8px); box-shadow: 0 0 0 var(--n2); }
 .equipo-ranking .barra > span { background: linear-gradient(90deg, var(--c1), var(--c2)); }
 .equipo-ranking .miembros { display: flex; flex-wrap: wrap; gap: 3px; margin-top: .5rem; }
 .equipo-ranking .miembros img { width: 26px; height: 26px; border-radius: 50%; background: #e0f2fe; border: 2px solid #fff; box-shadow: 0 0 0 1px var(--borde); }
+
+/* ---------- Tipo de producto en la tienda ---------- */
+.tipo-prod { display: flex; flex-wrap: wrap; gap: .35rem; margin-bottom: .5rem; }
+.chip-tipo { font-size: .7rem; font-weight: 900; padding: .22rem .6rem; border-radius: 999px; text-transform: uppercase; letter-spacing: .3px; }
+.chip-tipo.fisico { background: #fef3c7; color: #92400e; }
+.chip-tipo.privilegio { background: #dcfce7; color: #166534; }
+.chip-tipo.digital { background: #dbeafe; color: #1d4ed8; }
+.chip-entrega { font-size: .7rem; font-weight: 800; padding: .22rem .6rem; border-radius: 999px; background: #f1f5f9; color: var(--texto-suave); }
+.swal-tipo { display: inline-block; margin-top: 10px; font-size: .85rem; font-weight: 800; background: #f1f5f9; color: #334155; border-radius: 999px; padding: .3rem .8rem; }

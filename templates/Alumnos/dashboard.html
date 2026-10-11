@@ -193,7 +193,7 @@
                 <div class="mini-podio">
                     {% for a in podio %}
                         <div class="fila {% if a.id == alumno.id %}yo{% endif %}">
-                            <span class="medalla">{% if forloop.counter == 1 %}🥇{% elif forloop.counter == 2 %}🥈{% else %}🥉{% endif %}</span>
+                            <span class="medalla-podio">{% if forloop.counter == 1 %}🥇{% elif forloop.counter == 2 %}🥈{% else %}🥉{% endif %}</span>
                             <img src="{{ a|avatar_url }}" alt="" class="avatar anillo-{{ a.rango.color }}">
                             <span class="n">{{ a.nombre }}</span>
                             <span class="p">{{ a.puntos }} XP</span>

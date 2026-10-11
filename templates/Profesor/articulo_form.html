@@ -1,0 +1,202 @@
+{% extends base_plantilla|default:"Profesor/baseProfesor.html" %}
+{% block title %}{% if articulo %}Editar artículo{% else %}Nuevo artículo{% endif %}{% endblock %}
+{% block migas %}<a href="{% url 'tienda_admin' %}">Tienda</a><i class="bi bi-chevron-right"></i><span class="actual">{% if articulo %}{{ articulo.nombre }}{% else %}Nuevo artículo{% endif %}</span>{% endblock %}
+
+{% block content %}
+<form method="post" enctype="multipart/form-data" action="{{ request.get_full_path }}" class="form-panel ancho" data-form="articulo" novalidate>
+    {% csrf_token %}
+    <div class="modal-header">
+        <span class="icono-form"><i class="bi bi-bag-plus"></i></span>
+        <div class="min-w-0 flex-grow-1">
+            <h2 class="titulo-form">{% if articulo %}Editar «{{ articulo.nombre }}»{% else %}Nuevo artículo{% endif %}</h2>
+            <p class="sub-form">Lo que tus alumnos pueden comprar con sus monedas.</p>
+        </div>
+        {% if modal %}<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>{% endif %}
+    </div>
+
+    <div class="modal-body">
+        {% if form.errors %}<div class="aviso-error"><i class="bi bi-exclamation-circle"></i> Revisa los campos marcados en rojo.</div>{% endif %}
+        <div class="row g-3">
+            <div class="col-lg-8">
+                <!-- Paso 1 -->
+                <section class="p-card paso mb-3">
+                    <div class="paso-cabeza"><span class="paso-num">1</span><div><h3>¿Qué tipo de premio es?</h3><p>Al elegirlo se ajustan solos el stock y la entrega.</p></div></div>
+                    <div class="p-card-body pt-0">
+                        <div class="tipos-grid" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr))">
+                            {% for valor, emoji, titulo, desc in tipos %}
+                                <label class="tipo-op">
+                                    <input type="radio" name="tipo" value="{{ valor }}" {% if form.tipo.value == valor %}checked{% endif %}>
+                                    <span class="caja d-block">
+                                        <span class="e d-block">{{ emoji }}</span>
+                                        <span class="n d-block">{{ titulo }}</span>
+                                        <span class="d d-block">{{ desc }}</span>
+                                    </span>
+                                </label>
+                            {% endfor %}
+                        </div>
+                        {% for e in form.tipo.errors %}<div class="error mt-2" style="color:var(--danger);font-size:.8rem">{{ e }}</div>{% endfor %}
+                        <div class="explicacion-tipo d-none" data-explicacion-tipo></div>
+                    </div>
+                </section>
+
+                <!-- Paso 2 -->
+                <section class="p-card paso mb-3">
+                    <div class="paso-cabeza"><span class="paso-num">2</span><div><h3>Nombre, descripción e imagen</h3><p>Una buena foto hace que el premio se antoje.</p></div></div>
+                    <div class="p-card-body pt-0">
+                        <div class="campo {% if form.nombre.errors %}con-error{% endif %}">
+                            <label for="{{ form.nombre.id_for_label }}">Nombre <span class="text-danger">*</span></label>
+                            {{ form.nombre }}
+                            {% for e in form.nombre.errors %}<div class="error">{{ e }}</div>{% endfor %}
+                        </div>
+                        <div class="campo {% if form.descripcion.errors %}con-error{% endif %}">
+                            <label for="{{ form.descripcion.id_for_label }}">Descripción <span class="text-danger">*</span></label>
+                            {{ form.descripcion }}
+                            {% for e in form.descripcion.errors %}<div class="error">{{ e }}</div>{% endfor %}
+                        </div>
+                        <div class="campo mb-0 {% if form.imagen.errors %}con-error{% endif %}">
+                            <label data-label-imagen>Foto del premio <span class="text-muted-p fw-normal">(opcional)</span></label>
+                            <div class="imagen-campo">
+                                <img data-imagen-previa {% if articulo.imagen %}src="{{ articulo.imagen.url }}"{% else %}class="d-none"{% endif %} alt="">
+                                <div class="min-w-0 flex-grow-1">{{ form.imagen }}</div>
+                            </div>
+                            {% for e in form.imagen.errors %}<div class="error">{{ e }}</div>{% endfor %}
+                            <div class="ayuda" data-ayuda-imagen></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Paso 3 -->
+                <section class="p-card paso mb-3">
+                    <div class="paso-cabeza"><span class="paso-num">3</span><div><h3>Precio</h3><p>Piensa cuántas misiones debería completar un alumno para ganarlo.</p></div></div>
+                    <div class="p-card-body pt-0">
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <div class="input-unidad {% if form.costo_monedas.errors %}con-error{% endif %}">
+                                {{ form.costo_monedas }}
+                                <span>monedas</span>
+                            </div>
+                            <div class="sugerencias" data-sugerencias-precio>
+                                <button type="button" data-precio="25">25</button>
+                                <button type="button" data-precio="50">50</button>
+                                <button type="button" data-precio="100">100</button>
+                                <button type="button" data-precio="200">200</button>
+                                <button type="button" data-precio="500">500</button>
+                            </div>
+                        </div>
+                        {% for e in form.costo_monedas.errors %}<div class="error mt-1" style="color:var(--danger);font-size:.8rem">{{ e }}</div>{% endfor %}
+                        <div class="ayuda-recompensa mt-3" data-ayuda-precio></div>
+                    </div>
+                </section>
+
+                <!-- Paso 4 -->
+                <section class="p-card paso mb-3">
+                    <div class="paso-cabeza"><span class="paso-num">4</span><div><h3>Disponibilidad</h3><p>Cuántos hay, cuántos puede comprar cada alumno y desde qué nivel.</p></div></div>
+                    <div class="p-card-body pt-0">
+                        <div class="row gx-3">
+                            <div class="col-md-6">
+                                <span class="etiqueta-campo">¿Cuántas piezas hay?</span>
+                                <div class="segmento" role="group" aria-label="Stock">
+                                    <button type="button" data-modo-stock="ilimitado">♾️ Ilimitado</button>
+                                    <button type="button" data-modo-stock="limitado">📦 Cantidad limitada</button>
+                                </div>
+                                <div class="input-unidad mt-2" data-bloque-stock>
+                                    {{ form.stock }}
+                                    <span>piezas</span>
+                                </div>
+                                {% for e in form.stock.errors %}<div class="error mt-1" style="color:var(--danger);font-size:.8rem">{{ e }}</div>{% endfor %}
+                                <div class="ayuda mt-1" data-ayuda-stock></div>
+                            </div>
+                            <div class="col-md-6 mt-3 mt-md-0">
+                                <span class="etiqueta-campo">¿Cuántas puede comprar cada alumno?</span>
+                                <div class="segmento" role="group" aria-label="Límite por alumno">
+                                    <button type="button" data-modo-limite="libre">Sin límite</button>
+                                    <button type="button" data-modo-limite="limitado">Con límite</button>
+                                </div>
+                                <div class="input-unidad mt-2" data-bloque-limite>
+                                    {{ form.limite_por_alumno }}
+                                    <span>por alumno</span>
+                                </div>
+                                <div class="ayuda mt-1" data-ayuda-limite></div>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <span class="etiqueta-campo">¿Desde qué nivel se puede comprar?</span>
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <div class="input-unidad">
+                                    <span style="border-left:0;border-right:1px solid var(--border)">Nivel</span>
+                                    {{ form.nivel_requerido }}
+                                </div>
+                                <div class="sugerencias" data-sugerencias-nivel>
+                                    <button type="button" data-nivel="1">Todos</button>
+                                    <button type="button" data-nivel="3">3</button>
+                                    <button type="button" data-nivel="5">5</button>
+                                    <button type="button" data-nivel="8">8</button>
+                                    <button type="button" data-nivel="12">12</button>
+                                </div>
+                            </div>
+                            <div class="ayuda mt-1" data-ayuda-nivel></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Paso 5 -->
+                <section class="p-card paso">
+                    <div class="paso-cabeza"><span class="paso-num">5</span><div><h3>Entrega y visibilidad</h3><p>Qué pasa cuando un alumno lo compra.</p></div></div>
+                    <div class="p-card-body pt-0">
+                        <div class="campo-check" data-bloque-entrega>
+                            {{ form.requiere_validacion }}
+                            <div>
+                                <label for="{{ form.requiere_validacion.id_for_label }}">Lo entrego yo</label>
+                                <div class="text-muted-p" style="font-size:.78rem" data-ayuda-entrega></div>
+                            </div>
+                        </div>
+                        <div class="row gx-3">
+                            <div class="col-md-6"><div class="campo-check">{{ form.destacado }}<div><label for="{{ form.destacado.id_for_label }}">🌟 Destacar en la vitrina</label><div class="text-muted-p" style="font-size:.76rem">Aparece primero y con borde dorado.</div></div></div></div>
+                            <div class="col-md-6"><div class="campo-check mb-0">{{ form.activo }}<div><label for="{{ form.activo.id_for_label }}">Visible en la tienda</label><div class="text-muted-p" style="font-size:.76rem">Apágalo para ocultarlo sin borrarlo.</div></div></div></div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <div class="col-lg-4">
+                <section class="p-card sticky-lateral vista-previa">
+                    <div class="p-card-head"><h3>Vista previa</h3><span class="sub">Así se ve en la tienda del alumno</span></div>
+                    <div class="p-card-body">
+                        <article class="producto-previa" data-producto>
+                            <div class="vitrina">
+                                <img data-previa-imagen class="d-none" alt="">
+                                <span class="emoji-prod" data-previa-emoji>🎁</span>
+                                <div class="etiquetas" data-previa-etiquetas></div>
+                                <span class="precio"><i class="bi bi-coin"></i> <span data-previa-precio>0</span></span>
+                                <div class="sello-agotado d-none" data-previa-agotado><span>AGOTADO</span></div>
+                            </div>
+                            <div class="cuerpo">
+                                <div class="tipo-prod" data-previa-tipo></div>
+                                <div class="nombre" data-previa-nombre>Nombre del premio</div>
+                                <div class="desc" data-previa-desc>Descripción</div>
+                                <div class="stock" data-previa-stock></div>
+                                <div class="boton-comprar" data-previa-boton><i class="bi bi-bag-check-fill"></i> Comprar</div>
+                            </div>
+                        </article>
+                        <div class="vp-flujo mt-3">
+                            <div class="t">Al comprarlo</div>
+                            <div data-previa-flujo></div>
+                        </div>
+                        <div class="d-none mt-2" data-previa-oculto><span class="p-badge"><i class="bi bi-eye-slash"></i> Oculto: los alumnos no lo verán</span></div>
+                    </div>
+                </section>
+            </div>
+        </div>
+        {{ monedas_alumnos|json_script:"monedas-alumnos" }}
+        {{ rangos|json_script:"rangos-data" }}
+    </div>
+
+    <div class="modal-footer">
+        {% if modal %}
+            <button type="button" class="p-btn fantasma" data-bs-dismiss="modal">Cancelar</button>
+        {% else %}
+            <a href="{% url 'tienda_admin' %}" class="p-btn fantasma">Cancelar</a>
+        {% endif %}
+        <button type="submit" class="p-btn primario"><i class="bi bi-check2"></i> Guardar artículo</button>
+    </div>
+</form>
+{% endblock %}

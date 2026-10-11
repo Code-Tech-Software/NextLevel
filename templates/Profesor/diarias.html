@@ -8,7 +8,7 @@
         <h1>Misiones del día</h1>
         <p>Cada día se eligen {{ por_dia }} misiones al azar de este catálogo (siempre incluye la de entrar a la plataforma). Se renuevan a medianoche.</p>
     </div>
-    <div class="acciones"><a data-modal href="{% url 'alta_diaria' %}" class="p-btn primario"><i class="bi bi-plus-lg"></i> Nueva misión del día</a></div>
+    <div class="acciones"><a data-modal="xl" href="{% url 'alta_diaria' %}" class="p-btn primario"><i class="bi bi-plus-lg"></i> Nueva misión del día</a></div>
 </div>
 
 <div class="row g-3">
@@ -29,7 +29,7 @@
                             <td><input type="checkbox" class="nl-switch" {% if d.activa %}checked{% endif %} data-alternar-url="{% url 'alternar_activo' 'diaria' d.id %}" aria-label="Activa"></td>
                             <td>
                                 <div class="acciones-fila">
-                                    <a data-modal href="{% url 'editar_diaria' d.id %}" class="p-btn xs icono fantasma" title="Editar"><i class="bi bi-pencil"></i></a>
+                                    <a data-modal="xl" href="{% url 'editar_diaria' d.id %}" class="p-btn xs icono fantasma" title="Editar"><i class="bi bi-pencil"></i></a>
                                     <form method="post" action="{% url 'eliminar' 'diaria' d.id %}" data-confirmar="Se borrará también su progreso." data-titulo="¿Eliminar «{{ d.titulo }}»?" data-boton="Eliminar" data-peligro>{% csrf_token %}<button class="p-btn xs icono fantasma" title="Eliminar"><i class="bi bi-trash"></i></button></form>
                                 </div>
                             </td>

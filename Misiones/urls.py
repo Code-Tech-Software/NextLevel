@@ -82,6 +82,7 @@ urlpatterns = [
     path('profesor/logros/nuevo/', profe.logro_form, name='alta_logro'),
     path('profesor/logros/<int:pk>/editar/', profe.logro_form, name='editar_logro'),
     path('profesor/logros/otorgar/', profe.otorgar_logro, name='otorgar_logro'),
+    path('api/logros/cumplen/', profe.api_logro_cumplen, name='api_logro_cumplen'),
 
     # ===== Modo clase, equipos y metas =====
     path('profesor/modo-clase/', aula.modo_clase, name='modo_clase_inicio'),

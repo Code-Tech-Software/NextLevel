@@ -2,10 +2,19 @@
 from collections import OrderedDict
 
 from django import forms
+from django.db.models import Max
 
 from .models import (
     Alumno, ArticuloTienda, Clase, Comportamiento, Equipo, Logro, MetaGrupo, Mision, MisionDiaria, Mundo, Nivel,
 )
+
+
+class ArchivoImagen(forms.ClearableFileInput):
+    """Subida de imagen sin el texto técnico de Django; la miniatura la muestra el formulario."""
+    template_name = 'widgets/archivo.html'
+
+    def __init__(self, attrs=None):
+        super().__init__(attrs={'accept': 'image/*', **(attrs or {})})
 
 
 class EstiloMixin:
@@ -64,7 +73,7 @@ class AlumnoForm(EstiloMixin, forms.ModelForm):
         fields = ['nombre', 'apellido', 'clases', 'avatar', 'pin', 'activo']
         widgets = {
             'clases': forms.CheckboxSelectMultiple(),
-            'avatar': forms.ClearableFileInput(),
+            'avatar': ArchivoImagen(),
             'pin': forms.TextInput(attrs={'placeholder': '0000', 'maxlength': '4', 'inputmode': 'numeric'}),
         }
         labels = {
@@ -133,11 +142,11 @@ class MisionForm(EstiloMixin, forms.ModelForm):
     class Meta:
         model = Mision
         fields = ['nivel', 'nombre', 'descripcion', 'tipo', 'imagen', 'codigo', 'link', 'xp_recompensa',
-                  'monedas_recompensa', 'orden', 'es_jefe', 'activa', 'fecha_limite']
+                  'monedas_recompensa', 'es_jefe', 'activa', 'fecha_limite']
         widgets = {
             'descripcion': forms.Textarea(attrs={'rows': 4, 'placeholder': 'Explica la misión a tus alumnos...'}),
             'tipo': forms.Select(attrs={'id': 'selector_tipo_mision'}),
-            'imagen': forms.ClearableFileInput(),
+            'imagen': ArchivoImagen(),
             'codigo': forms.Textarea(attrs={'rows': 8, 'placeholder': 'Pega aquí el código base de Arduino...',
                                             'class': 'nl-input nl-code', 'spellcheck': 'false'}),
             'link': forms.URLInput(attrs={'placeholder': 'https://...'}),
@@ -146,7 +155,6 @@ class MisionForm(EstiloMixin, forms.ModelForm):
         labels = {
             'xp_recompensa': 'XP',
             'monedas_recompensa': 'Monedas',
-            'orden': 'Orden',
             'es_jefe': 'Misión jefe (batalla final)',
             'activa': 'Visible para los alumnos',
             'fecha_limite': 'Fecha límite (opcional)',
@@ -168,7 +176,9 @@ class MisionForm(EstiloMixin, forms.ModelForm):
     def clean(self):
         datos = super().clean()
         if datos.get('tipo') == 'video' and not datos.get('link'):
-            self.add_error('link', 'Las misiones de video necesitan el enlace del video.')
+            self.add_error('link', 'Pega el enlace del video de YouTube.')
+        if datos.get('tipo') == 'link' and not datos.get('link'):
+            self.add_error('link', 'Pega el enlace de la página que deben visitar.')
         return datos
 
     def save(self, commit=True):
@@ -182,33 +192,72 @@ class ArticuloTiendaForm(EstiloMixin, forms.ModelForm):
         fields = ['nombre', 'tipo', 'descripcion', 'costo_monedas', 'imagen', 'stock', 'limite_por_alumno',
                   'nivel_requerido', 'requiere_validacion', 'destacado', 'activo']
         widgets = {
+            'tipo': forms.RadioSelect(),
             'descripcion': forms.Textarea(attrs={'rows': 3}),
-            'imagen': forms.ClearableFileInput(),
-            'stock': forms.NumberInput(attrs={'placeholder': 'Ilimitado', 'min': 0}),
-            'limite_por_alumno': forms.NumberInput(attrs={'placeholder': 'Sin límite', 'min': 1}),
+            'imagen': ArchivoImagen(),
+            'costo_monedas': forms.NumberInput(attrs={'min': 1}),
+            'stock': forms.NumberInput(attrs={'min': 0}),
+            'limite_por_alumno': forms.NumberInput(attrs={'min': 1}),
+            'nivel_requerido': forms.NumberInput(attrs={'min': 1}),
         }
         labels = {
-            'costo_monedas': 'Precio (monedas)',
-            'limite_por_alumno': 'Límite por alumno',
+            'tipo': '¿Qué tipo de premio es?',
+            'costo_monedas': 'Precio',
+            'limite_por_alumno': 'Máximo por alumno',
             'nivel_requerido': 'Nivel mínimo',
-            'requiere_validacion': 'El profe debe entregarlo (premio físico o privilegio)',
+            'requiere_validacion': 'Lo entrego yo',
             'destacado': 'Destacar en la vitrina',
             'activo': 'Visible en la tienda',
         }
 
+    def clean(self):
+        datos = super().clean()
+        imagen = datos.get('imagen')
+        if datos.get('tipo') == 'avatar' and not imagen and not (self.instance.pk and self.instance.imagen and imagen is not False):
+            self.add_error('imagen', 'Los avatares necesitan una imagen: es lo que verá el alumno en su perfil.')
+        if datos.get('costo_monedas') is not None and datos['costo_monedas'] < 1:
+            self.add_error('costo_monedas', 'El precio debe ser de al menos 1 moneda.')
+        if datos.get('tipo') == 'avatar':
+            datos['requiere_validacion'] = False  # los avatares se equipan solos al comprarlos
+        return datos
+
 
 class MisionDiariaForm(EstiloMixin, forms.ModelForm):
+    # Objetivos que se cumplen con una sola acción y no necesitan cantidad
+    OBJETIVOS_SIN_META = ('login', 'tienda')
+
     class Meta:
         model = MisionDiaria
         fields = ['titulo', 'descripcion', 'icono', 'objetivo', 'meta', 'recompensa_monedas', 'recompensa_xp',
                   'clase', 'activa']
+        widgets = {
+            'objetivo': forms.RadioSelect(),
+            'meta': forms.NumberInput(attrs={'min': 1}),
+            'icono': forms.TextInput(attrs={'maxlength': 10}),
+            'recompensa_monedas': forms.NumberInput(attrs={'min': 0}),
+            'recompensa_xp': forms.NumberInput(attrs={'min': 0}),
+        }
         labels = {
-            'icono': 'Ícono (emoji)',
+            'titulo': 'Nombre',
+            'icono': 'Ícono',
+            'objetivo': '¿Qué deben hacer hoy?',
             'meta': 'Meta',
             'recompensa_monedas': 'Monedas',
             'recompensa_xp': 'XP',
-            'clase': 'Solo para la clase',
+            'clase': '¿Para quién?',
+            'activa': 'Activa (puede salir en el sorteo de cada día)',
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['meta'].required = False
+        self.fields['clase'].empty_label = 'Todas las clases'
+
+    def clean(self):
+        datos = super().clean()
+        if datos.get('objetivo') in self.OBJETIVOS_SIN_META or not datos.get('meta'):
+            datos['meta'] = 1
+        return datos
 
 
 class LogroForm(EstiloMixin, forms.ModelForm):
@@ -216,13 +265,37 @@ class LogroForm(EstiloMixin, forms.ModelForm):
         model = Logro
         fields = ['nombre', 'descripcion', 'icono', 'condicion', 'valor', 'rareza', 'recompensa_monedas',
                   'recompensa_xp', 'orden', 'activo']
-        labels = {
-            'icono': 'Ícono (emoji)',
-            'condicion': 'Se desbloquea al…',
-            'valor': 'Cantidad necesaria',
-            'recompensa_monedas': 'Premio en monedas',
-            'recompensa_xp': 'Premio en XP',
+        widgets = {
+            'condicion': forms.RadioSelect(),
+            'rareza': forms.RadioSelect(),
+            'valor': forms.NumberInput(attrs={'min': 1}),
+            'icono': forms.TextInput(attrs={'maxlength': 10}),
+            'recompensa_monedas': forms.NumberInput(attrs={'min': 0}),
+            'recompensa_xp': forms.NumberInput(attrs={'min': 0}),
         }
+        labels = {
+            'icono': 'Ícono',
+            'condicion': '¿Cómo se gana?',
+            'valor': 'Meta',
+            'recompensa_monedas': 'Monedas',
+            'recompensa_xp': 'XP',
+            'activo': 'Activo (los alumnos pueden ganarlo)',
+            'orden': 'Orden en la vitrina',
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['valor'].required = False
+        self.fields['orden'].required = False
+
+    def clean_valor(self):
+        return self.cleaned_data.get('valor') or 1
+
+    def clean_orden(self):
+        orden = self.cleaned_data.get('orden')
+        if orden:
+            return orden
+        return self.instance.orden if self.instance.pk else (Logro.objects.aggregate(m=Max('orden'))['m'] or 0) + 1
 
 
 class OtorgarLogroForm(EstiloMixin, forms.Form):

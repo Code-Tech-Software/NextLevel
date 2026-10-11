@@ -11,7 +11,7 @@
     </div>
     <div class="acciones">
         <button type="button" class="p-btn" data-bs-toggle="modal" data-bs-target="#modal-otorgar"><i class="bi bi-gift"></i> Otorgar logro</button>
-        <a data-modal href="{% url 'alta_logro' %}" class="p-btn primario"><i class="bi bi-plus-lg"></i> Nuevo logro</a>
+        <a data-modal="xl" href="{% url 'alta_logro' %}" class="p-btn primario"><i class="bi bi-plus-lg"></i> Nuevo logro</a>
     </div>
 </div>
 
@@ -34,7 +34,7 @@
                         <div class="dropdown">
                             <button class="p-btn xs icono fantasma" data-bs-toggle="dropdown" aria-label="Opciones"><i class="bi bi-three-dots"></i></button>
                             <ul class="dropdown-menu dropdown-menu-end">
-                                <li><a data-modal class="dropdown-item" href="{% url 'editar_logro' l.id %}"><i class="bi bi-pencil"></i> Editar</a></li>
+                                <li><a data-modal="xl" class="dropdown-item" href="{% url 'editar_logro' l.id %}"><i class="bi bi-pencil"></i> Editar</a></li>
                                 <li><form method="post" action="{% url 'alternar_activo' 'logro' l.id %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}"><button class="dropdown-item">{% if l.activo %}<i class="bi bi-eye-slash"></i> Desactivar{% else %}<i class="bi bi-eye"></i> Activar{% endif %}</button></form></li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li><form method="post" action="{% url 'eliminar' 'logro' l.id %}" data-confirmar="Los alumnos que lo tienen lo perderán." data-titulo="¿Eliminar «{{ l.nombre }}»?" data-boton="Eliminar" data-peligro>{% csrf_token %}<button class="dropdown-item text-danger"><i class="bi bi-trash"></i> Eliminar</button></form></li>

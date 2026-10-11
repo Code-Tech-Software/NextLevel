@@ -179,3 +179,27 @@ def nivel_calif(puntuacion):
     if valor >= 6:
         return 'c'
     return 'd'
+
+
+TIPOS_PRODUCTO = {
+    'fisico': ('🎁', 'Físico', 'fisico'),
+    'permiso': ('🎟️', 'Privilegio en clase', 'privilegio'),
+    'avatar': ('💻', 'Digital · Avatar', 'digital'),
+    'otro': ('💻', 'Digital', 'digital'),
+}
+
+
+@register.filter
+def info_articulo(articulo):
+    """Qué tipo de premio es y cómo lo recibe el alumno, para que no haya confusiones en la tienda."""
+    emoji, texto, clase = TIPOS_PRODUCTO.get(articulo.tipo, TIPOS_PRODUCTO['otro'])
+    if articulo.tipo == 'avatar':
+        entrega = ('✨', 'Se equipa al instante')
+    elif articulo.tipo == 'fisico':
+        # Un objeto físico siempre pasa por las manos del profe, aunque no requiera validación
+        entrega = ('🤝', 'Te lo entrega el profe')
+    elif articulo.requiere_validacion:
+        entrega = ('🤝', 'El profe lo autoriza') if articulo.tipo == 'permiso' else ('🤝', 'El profe lo activa')
+    else:
+        entrega = ('⚡', 'Lo recibes al instante')
+    return {'emoji': emoji, 'texto': texto, 'clase': clase, 'entrega_emoji': entrega[0], 'entrega': entrega[1]}

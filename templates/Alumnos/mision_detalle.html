@@ -67,7 +67,7 @@
 
             {% if mision.tipo == 'video' and mision.link|youtube_embed %}
                 <div class="video-marco mt-4">
-                    <iframe src="{{ mision.link|youtube_embed }}" title="Video de la misión" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe>
+                    <iframe src="{{ mision.link|youtube_embed }}" title="Video de la misión" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen loading="lazy"></iframe>
                 </div>
             {% elif mision.link %}
                 <a href="{{ mision.link }}" target="_blank" rel="noopener" class="enlace-grande mt-4">

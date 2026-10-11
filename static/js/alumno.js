@@ -317,7 +317,8 @@
                 title: `¿Comprar ${form.dataset.nombre}?`,
                 html: `${imagen ? `<img src="${escapar(imagen)}" alt="" style="max-height:120px;max-width:70%;object-fit:contain;margin-bottom:12px">` : ''}
                        <div>Te costará <b style="color:#d97706;font-size:1.3rem">${escapar(form.dataset.costo)} 💰</b></div>
-                       <div style="font-size:.9rem;margin-top:6px">Te quedarán ${escapar(form.dataset.restante)} monedas</div>`,
+                       <div style="font-size:.9rem;margin-top:6px">Te quedarán ${escapar(form.dataset.restante)} monedas</div>
+                       <div class="swal-tipo">${escapar(form.dataset.tipo)} · ${escapar(form.dataset.entrega)}</div>`,
                 showCancelButton: true,
                 reverseButtons: true,
                 buttonsStyling: false,

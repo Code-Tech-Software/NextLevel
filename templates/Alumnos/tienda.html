@@ -42,7 +42,12 @@
                         <span class="precio"><i class="bi bi-coin ico"></i> {{ articulo.costo_monedas }}</span>
                         {% if articulo.agotado %}<div class="sello-agotado"><span>AGOTADO</span></div>{% endif %}
                     </div>
+                    {% with info=articulo|info_articulo %}
                     <div class="cuerpo">
+                        <div class="tipo-prod">
+                            <span class="chip-tipo {{ info.clase }}">{{ info.emoji }} {{ info.texto }}</span>
+                            <span class="chip-entrega">{{ info.entrega_emoji }} {{ info.entrega }}</span>
+                        </div>
                         <div class="nombre">{{ articulo.nombre }}</div>
                         <div class="desc">{{ articulo.descripcion }}</div>
 
@@ -57,6 +62,7 @@
                             <form action="{% url 'comprar_articulo' clase.id articulo.id %}" method="POST" class="form-compra mt-auto"
                                   data-nombre="{{ articulo.nombre }}" data-costo="{{ articulo.costo_monedas }}"
                                   data-restante="{{ alumno.monedas|restar:articulo.costo_monedas }}"
+                                  data-tipo="{{ info.emoji }} {{ info.texto }}" data-entrega="{{ info.entrega_emoji }} {{ info.entrega }}"
                                   data-imagen="{% if articulo.imagen %}{{ articulo.imagen.url }}{% endif %}">
                                 {% csrf_token %}
                                 <button type="submit" class="g-btn ancho"><i class="bi bi-bag-check-fill"></i> Comprar</button>
@@ -75,6 +81,7 @@
                             </div>
                         {% endif %}
                     </div>
+                    {% endwith %}
                 </article>
             </div>
         {% empty %}
@@ -91,13 +98,14 @@
     <h2 class="seccion-titulo" id="mochila">🎒 Mi mochila</h2>
     <section class="g-card">
         {% for compra in mis_compras %}
+            {% with info=compra.articulo|info_articulo %}
             <div class="mochila-item">
                 <span class="mini">
-                    {% if compra.articulo.imagen %}<img src="{{ compra.articulo.imagen.url }}" alt="" loading="lazy">{% else %}🎁{% endif %}
+                    {% if compra.articulo.imagen %}<img src="{{ compra.articulo.imagen.url }}" alt="" loading="lazy">{% else %}{{ info.emoji }}{% endif %}
                 </span>
                 <div class="min-w-0 flex-grow-1">
                     <div class="n text-truncate">{{ compra.articulo.nombre }}</div>
-                    <div class="f"><i class="bi bi-calendar-event"></i> {{ compra.fecha_compra|date:"d M Y" }} · <i class="bi bi-coin"></i> {{ compra.costo_pagado }}</div>
+                    <div class="f">{{ info.emoji }} {{ info.texto }} · <i class="bi bi-calendar-event"></i> {{ compra.fecha_compra|date:"d M Y" }} · <i class="bi bi-coin"></i> {{ compra.costo_pagado }}</div>
                 </div>
                 {% if compra.estado == 'pendiente' %}
                     <span class="chip oro"><i class="bi bi-hourglass-split"></i> Por recibir</span>
@@ -107,6 +115,7 @@
                     <span class="chip verde"><i class="bi bi-check-circle-fill"></i> {% if compra.articulo.tipo == 'avatar' %}Desbloqueado{% else %}Recibido{% endif %}</span>
                 {% endif %}
             </div>
+            {% endwith %}
         {% empty %}
             <div class="vacio-juego">
                 <span class="e">🧺</span>

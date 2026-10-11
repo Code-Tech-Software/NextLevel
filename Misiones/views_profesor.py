@@ -298,6 +298,44 @@ def alta_nivel(request, pk=None):
     })
 
 
+def _aplicar_posicion(mision, posicion, nivel_anterior=None):
+    """Acomoda la misión dentro de su nivel y renumera el orden 1, 2, 3..."""
+    if posicion == 'mantener' and nivel_anterior == mision.nivel_id:
+        return
+    hermanas = list(Mision.objects.filter(nivel=mision.nivel).exclude(pk=mision.pk).order_by('orden', 'id'))
+    indice = len(hermanas)
+    if posicion == 'inicio':
+        indice = 0
+    elif posicion.startswith('despues:'):
+        referencia = posicion.split(':', 1)[1]
+        indice = next((i + 1 for i, m in enumerate(hermanas) if str(m.id) == referencia), len(hermanas))
+    hermanas.insert(indice, mision)
+    for orden, actual in enumerate(hermanas, start=1):
+        if actual.orden != orden:
+            Mision.objects.filter(pk=actual.pk).update(orden=orden)
+
+
+def _estructura_niveles():
+    """Clases → mundos → niveles → misiones para elegir dónde va una misión."""
+    clases = []
+    for clase in Clase.objects.order_by('-activa', 'grado', 'grupo').prefetch_related(
+            'mundos__niveles__misiones', 'niveles__misiones'):
+        def nivel_json(nivel):
+            misiones = sorted(nivel.misiones.all(), key=lambda m: (m.orden, m.id))
+            return {'id': nivel.id, 'nombre': nivel.nombre,
+                    'misiones': [{'id': m.id, 'nombre': m.nombre} for m in misiones]}
+        mundos = [{
+            'id': mundo.id, 'nombre': mundo.nombre, 'emoji': juego.TEMA_INFO.get(mundo.tema, {}).get('emoji', '🌍'),
+            'niveles': [nivel_json(n) for n in mundo.niveles.all()],
+        } for mundo in clase.mundos.all()]
+        sueltos = [n for n in clase.niveles.all() if n.mundo_id is None]
+        if sueltos:
+            mundos.append({'id': 0, 'nombre': 'Niveles sin mundo', 'emoji': '⚠️', 'niveles': [nivel_json(n) for n in sueltos]})
+        clases.append({'id': clase.id, 'nombre': f'{clase.icono} {clase.nombre} · {clase.grado} {clase.grupo}',
+                       'mundos': mundos})
+    return clases
+
+
 def _guardar_preguntas(mision, datos):
     """Crea, actualiza o borra preguntas del cuestionario según el JSON del constructor."""
     existentes = {p.id: p for p in mision.preguntas.prefetch_related('opciones')}
@@ -340,16 +378,20 @@ def alta_mision(request, pk=None):
     if not mision and request.GET.get('nivel'):
         nivel = Nivel.objects.filter(pk=request.GET['nivel']).first()
         if nivel:
-            inicial = {'nivel': nivel.id, 'orden': (nivel.misiones.aggregate(m=Max('orden'))['m'] or 0) + 1}
+            inicial = {'nivel': nivel.id}
+    if not mision:
+        inicial.update({'xp_recompensa': 50, 'monedas_recompensa': 15, 'activa': True})
     form = MisionForm(request.POST or None, request.FILES or None, instance=mision, initial=inicial)
     if mision and not request.POST:
         form.initial['nivel'] = mision.nivel_id
 
     error_cuestionario = ''
+    nivel_anterior = mision.nivel_id if mision else None
     if request.method == 'POST' and form.is_valid():
         try:
             with transaction.atomic():
                 guardada = form.save()
+                _aplicar_posicion(guardada, request.POST.get('posicion', 'final'), nivel_anterior)
                 if guardada.tipo == 'cuestionario':
                     _guardar_preguntas(guardada, json.loads(request.POST.get('preguntas_json') or '[]'))
             return _guardado(request, f'Misión "{guardada.nombre}" guardada.',
@@ -376,6 +418,8 @@ def alta_mision(request, pk=None):
         'mision': mision,
         'preguntas': preguntas,
         'tipos': juego.TIPO_INFO,
+        'estructura': _estructura_niveles(),
+        'posicion': request.POST.get('posicion', 'mantener' if mision else 'final'),
         'error_cuestionario': error_cuestionario,
         'seccion': 'clases',
     })
@@ -406,6 +450,46 @@ def duplicar_mision(request, pk):
     editar = reverse('editar_mision', args=[copia.pk])
     return redirect(f"{reverse('clase_detalle', args=[copia.clase_id])}?abrir={editar}")
 
+
+CONDICIONES_INFO = [
+    # (valor, emoji, título corto, ejemplo)
+    ('misiones', '🏁', 'Completar misiones', 'Ej. completa 10 misiones'),
+    ('xp', '⚡', 'Juntar XP', 'Ej. llega a 1,000 XP'),
+    ('nivel', '📈', 'Subir de nivel', 'Ej. llega al nivel 5'),
+    ('racha', '🔥', 'Racha de días', 'Ej. entra 7 días seguidos'),
+    ('perfectos', '💯', 'Sacar 10', 'Ej. 10 en 3 cuestionarios'),
+    ('jefes', '👾', 'Vencer jefes', 'Ej. derrota 2 jefes'),
+    ('mundos', '🌍', 'Completar mundos', 'Ej. termina un mundo'),
+    ('diarias', '📅', 'Misiones del día', 'Ej. reclama 10 diarias'),
+    ('monedas', '💰', 'Ganar monedas', 'Ej. gana 500 monedas'),
+    ('compras', '🛒', 'Comprar en la tienda', 'Ej. haz 3 compras'),
+    ('manual', '🎁', 'Lo das tú', 'Reconocimiento especial'),
+]
+
+TIPOS_ARTICULO = [
+    # (valor, emoji, título corto, descripción)
+    ('fisico', '🎁', 'Premio físico', 'Algo que entregas en mano'),
+    ('permiso', '🎟️', 'Privilegio en clase', 'Un permiso o beneficio'),
+    ('avatar', '🤖', 'Avatar', 'Imagen para su perfil'),
+    ('otro', '💎', 'Otro digital', 'Algo dentro de la plataforma'),
+]
+
+OBJETIVOS_DIARIA = [
+    # (valor, emoji, título corto, cómo se cuenta)
+    ('login', '👋', 'Entrar', 'Se cumple al abrir su mapa'),
+    ('misiones', '🗺️', 'Completar misiones', 'Misiones del mapa enviadas'),
+    ('cuestionarios', '🧠', 'Responder cuestionarios', 'Cuestionarios terminados'),
+    ('perfecto', '💯', 'Sacar 10', 'Cuestionarios sin errores'),
+    ('xp', '🔋', 'Ganar XP', 'Toda la XP del día'),
+    ('evidencias', '🛠️', 'Enviar trabajos', 'Entregas para revisión'),
+    ('tienda', '🛍️', 'Visitar la tienda', 'Solo entrar, sin comprar'),
+]
+
+ICONOS_DIARIA = ['👋', '🗺️', '⚡', '🧠', '💯', '🔋', '🛠️', '🛍️', '⭐', '🔥', '🎯', '🚀', '🤖', '💡', '📚', '🏃',
+                 '🌞', '🎮', '🧩', '✏️', '🎨', '🔬', '🏆', '🍀']
+
+ICONOS_LOGRO = ['🏅', '🏆', '⭐', '🌟', '✨', '🔥', '💯', '🧠', '🎓', '🚀', '🤖', '💡', '⚙️', '🛠️', '🎯', '👑',
+                '💎', '🐉', '🦄', '🌈', '🎨', '📚', '🧭', '⚡', '💰', '🎁', '👣', '🦸', '🏰', '🛡️', '🐢', '🦉']
 
 MODELOS_ELIMINABLES = {
     'clase': (Clase, 'clases_lista'),
@@ -808,16 +892,18 @@ def tienda_admin(request):
 @login_required
 def alta_articulo(request, pk=None):
     articulo = get_object_or_404(ArticuloTienda, pk=pk) if pk else None
-    form = ArticuloTiendaForm(request.POST or None, request.FILES or None, instance=articulo)
+    inicial = {} if articulo else {'tipo': 'fisico', 'costo_monedas': 50, 'stock': 10, 'nivel_requerido': 1,
+                                   'requiere_validacion': True, 'activo': True}
+    form = ArticuloTiendaForm(request.POST or None, request.FILES or None, instance=articulo, initial=inicial)
     if request.method == 'POST' and form.is_valid():
         articulo = form.save()
         return _guardado(request, f'"{articulo.nombre}" guardado en la tienda.', reverse('tienda_admin'))
-    return _formulario(request, 'Profesor/form_generico.html', {
+    return _formulario(request, 'Profesor/articulo_form.html', {
         'form': form,
-        'titulo': 'Editar artículo' if pk else 'Nuevo artículo',
-        'subtitulo': 'Premios físicos con stock, privilegios en clase o avatares digitales.',
-        'icono': 'bi-bag-plus',
-        'volver': reverse('tienda_admin'),
+        'articulo': articulo,
+        'tipos': TIPOS_ARTICULO,
+        'monedas_alumnos': list(Alumno.objects.filter(activo=True).values_list('monedas', flat=True)),
+        'rangos': juego.info_rangos(),
         'seccion': 'tienda',
     })
 
@@ -995,16 +1081,19 @@ def diarias_lista(request):
 @login_required
 def diaria_form(request, pk=None):
     diaria = get_object_or_404(MisionDiaria, pk=pk) if pk else None
-    form = MisionDiariaForm(request.POST or None, instance=diaria)
+    inicial = {} if diaria else {'objetivo': 'misiones', 'meta': 2, 'recompensa_monedas': 15, 'recompensa_xp': 15,
+                                 'icono': '🗺️', 'activa': True}
+    form = MisionDiariaForm(request.POST or None, instance=diaria, initial=inicial)
     if request.method == 'POST' and form.is_valid():
-        form.save()
-        return _guardado(request, 'Misión del día guardada.', reverse('diarias_lista'))
-    return _formulario(request, 'Profesor/form_generico.html', {
+        diaria = form.save()
+        return _guardado(request, f'Misión del día "{diaria.titulo}" guardada.', reverse('diarias_lista'))
+    return _formulario(request, 'Profesor/diaria_form.html', {
         'form': form,
-        'titulo': 'Editar misión del día' if pk else 'Nueva misión del día',
-        'subtitulo': f'Cada día se eligen {juego.DIARIAS_POR_DIA} al azar del catálogo (siempre incluye la de entrar).',
-        'icono': 'bi-calendar-check',
-        'volver': reverse('diarias_lista'),
+        'diaria': diaria,
+        'objetivos': OBJETIVOS_DIARIA,
+        'iconos': ICONOS_DIARIA,
+        'por_dia': juego.DIARIAS_POR_DIA,
+        'activas': MisionDiaria.objects.filter(activa=True).count(),
         'seccion': 'diarias',
     })
 
@@ -1023,18 +1112,31 @@ def logros_lista(request):
 @login_required
 def logro_form(request, pk=None):
     logro = get_object_or_404(Logro, pk=pk) if pk else None
-    form = LogroForm(request.POST or None, instance=logro)
+    inicial = {} if logro else {'condicion': 'misiones', 'valor': 5, 'rareza': 'comun', 'icono': '🏅',
+                                 'recompensa_monedas': 10, 'recompensa_xp': 0, 'activo': True}
+    form = LogroForm(request.POST or None, instance=logro, initial=inicial)
     if request.method == 'POST' and form.is_valid():
-        form.save()
-        return _guardado(request, 'Logro guardado.', reverse('logros_lista'))
-    return _formulario(request, 'Profesor/form_generico.html', {
+        logro = form.save()
+        entregados = juego.entregar_logro_a_quienes_cumplen(logro)
+        mensaje = f'Logro "{logro.nombre}" guardado.'
+        if entregados:
+            mensaje += (' 1 alumno ya lo desbloqueó al instante. 🎉' if entregados == 1
+                        else f' {entregados} alumnos ya lo desbloquearon al instante. 🎉')
+        return _guardado(request, mensaje, reverse('logros_lista'))
+    return _formulario(request, 'Profesor/logro_form.html', {
         'form': form,
-        'titulo': 'Editar logro' if pk else 'Nuevo logro',
-        'subtitulo': 'Los logros se desbloquean solos cuando el alumno cumple la condición.',
-        'icono': 'bi-award',
-        'volver': reverse('logros_lista'),
+        'logro': logro,
+        'condiciones': CONDICIONES_INFO,
+        'iconos': ICONOS_LOGRO,
+        'total_alumnos': Alumno.objects.filter(activo=True).count(),
         'seccion': 'logros',
     })
+
+
+@login_required
+def api_logro_cumplen(request):
+    condicion = request.GET.get('condicion', '')
+    return JsonResponse({'total': len(juego.alumnos_que_cumplen(condicion, request.GET.get('valor')))})
 
 
 # ========================

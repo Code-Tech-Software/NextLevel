@@ -10,13 +10,13 @@ from collections import OrderedDict, defaultdict
 from datetime import timedelta
 
 from django.db import transaction
-from django.db.models import Q, Sum, Value
+from django.db.models import Count, F, Q, Sum, Value
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 
 from .models import (
     Alumno, ArticuloTienda, CofreAbierto, CompraAlumno, Logro, LogroAlumno, Mision, MisionDiaria,
-    Movimiento, Notificacion, ProgresoDiario, ProgresoMision, PuntosEquipo, RegistroConducta, calcular_nivel, RANGOS,
+    Movimiento, Notificacion, ProgresoDiario, ProgresoMision, PuntosEquipo, RegistroConducta, calcular_nivel, xp_para_nivel, RANGOS,
 )
 
 DIARIAS_POR_DIA = 3
@@ -260,6 +260,56 @@ def verificar_logros(alumno):
     for logro in pendientes:
         if stats.get(logro.condicion, 0) >= logro.valor:
             otorgar_logro(alumno, logro)
+
+
+def alumnos_que_cumplen(condicion, valor):
+    """Ids de los alumnos activos que ya cumplen la condición de un logro (consultas agrupadas)."""
+    activos = Alumno.objects.filter(activo=True)
+    try:
+        valor = max(int(valor), 0)
+    except (TypeError, ValueError):
+        valor = 0
+    if condicion == 'manual':
+        return []
+    if valor == 0:
+        return list(activos.values_list('id', flat=True))
+    if condicion == 'xp':
+        return list(activos.filter(xp_total__gte=valor).values_list('id', flat=True))
+    if condicion == 'nivel':
+        return list(activos.filter(xp_total__gte=xp_para_nivel(valor)).values_list('id', flat=True))
+    if condicion == 'racha':
+        return list(activos.filter(racha_maxima__gte=valor).values_list('id', flat=True))
+    if condicion == 'monedas':
+        return list(activos.annotate(
+            gastado=Coalesce(Sum('compras__costo_pagado', filter=~Q(compras__estado='cancelado')), Value(0)),
+        ).annotate(total=F('monedas') + F('gastado')).filter(total__gte=valor).values_list('id', flat=True))
+    if condicion == 'mundos':
+        return [alumno.id for alumno in activos if mundos_completados(alumno) >= valor]
+
+    aprobados = ProgresoMision.objects.filter(estado='aprobado', alumno__activo=True)
+    origenes = {
+        'misiones': aprobados,
+        'perfectos': aprobados.filter(mision__tipo='cuestionario', puntuacion__gte=100),
+        'jefes': aprobados.filter(mision__es_jefe=True),
+        'compras': CompraAlumno.objects.filter(alumno__activo=True).exclude(estado='cancelado'),
+        'diarias': ProgresoDiario.objects.filter(alumno__activo=True, reclamada=True),
+    }
+    if condicion not in origenes:
+        return []
+    return list(origenes[condicion].values('alumno_id').annotate(total=Count('id'))
+                .filter(total__gte=valor).values_list('alumno_id', flat=True))
+
+
+def entregar_logro_a_quienes_cumplen(logro):
+    """Al crear o editar un logro automático, se entrega a quienes ya cumplen la condición."""
+    if not logro.activo or logro.condicion == 'manual':
+        return 0
+    ya_tienen = set(LogroAlumno.objects.filter(logro=logro).values_list('alumno_id', flat=True))
+    nuevos = 0
+    for alumno in Alumno.objects.filter(id__in=alumnos_que_cumplen(logro.condicion, logro.valor)).exclude(id__in=ya_tienen):
+        if otorgar_logro(alumno, logro):
+            nuevos += 1
+    return nuevos
 
 
 def progreso_logros(alumno):
@@ -728,5 +778,6 @@ __all__ = [
     'rechazar', 'comprar', 'entregar_compra', 'cancelar_compra', 'ajustar_monedas', 'ranking_clase',
     'calcular_nivel', 'info_rangos', 'equipo_de', 'sumar_puntos_equipo', 'dar_puntos_equipo', 'ranking_equipos',
     'asignar_equipo', 'repartir_equipos', 'registrar_conducta', 'deshacer_conducta', 'progreso_meta',
-    'completar_meta', 'revisar_metas', 'metas_visibles',
+    'completar_meta', 'revisar_metas', 'metas_visibles', 'alumnos_que_cumplen',
+    'entregar_logro_a_quienes_cumplen',
 ]

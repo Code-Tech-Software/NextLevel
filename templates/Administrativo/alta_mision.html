@@ -7,7 +7,8 @@
 {% endblock %}
 
 {% block content %}
-<form method="post" enctype="multipart/form-data" action="{{ request.get_full_path }}" class="form-panel ancho" data-form="mision" novalidate>
+<form method="post" enctype="multipart/form-data" action="{{ request.get_full_path }}" class="form-panel ancho" data-form="mision" novalidate
+      data-mision="{{ mision.id|default:'' }}" data-nivel-inicial="{{ form.nivel.value|default:'' }}" data-posicion-inicial="{{ posicion }}">
     {% csrf_token %}
     <input type="hidden" name="preguntas_json" value="[]">
     {% if request.GET.next %}<input type="hidden" name="next" value="{{ request.GET.next }}">{% endif %}
@@ -16,7 +17,7 @@
         <span class="icono-form"><i class="bi bi-flag"></i></span>
         <div class="min-w-0 flex-grow-1">
             <h2 class="titulo-form">{% if mision %}Editar «{{ mision.nombre }}»{% else %}Nueva misión{% endif %}</h2>
-            <p class="sub-form">Diseña el reto, elige cómo se entrega y define el botín.</p>
+            <p class="sub-form">Sigue los pasos: la vista previa de la derecha te muestra cómo la verán tus alumnos.</p>
         </div>
         {% if mision %}<a href="{% url 'calificar_mision' mision.id %}" class="p-btn sm d-none d-sm-inline-flex" data-modal="xl"><i class="bi bi-check2-square"></i> Calificar</a>{% endif %}
         {% if modal %}<button type="button" class="btn-close ms-2" data-bs-dismiss="modal" aria-label="Cerrar"></button>{% endif %}
@@ -29,31 +30,10 @@
 
         <div class="row g-3">
             <div class="col-lg-8">
-                <section class="p-card mb-3">
-                    <div class="p-card-head"><h3>Información</h3></div>
-                    <div class="p-card-body">
-                        <div class="campo {% if form.nivel.errors %}con-error{% endif %}">
-                            <label for="{{ form.nivel.id_for_label }}">Nivel donde aparece <span class="text-danger">*</span></label>
-                            {{ form.nivel }}
-                            {% for e in form.nivel.errors %}<div class="error">{{ e }}</div>{% endfor %}
-                            <div class="ayuda">Agrupado por clase y mundo.</div>
-                        </div>
-                        <div class="campo {% if form.nombre.errors %}con-error{% endif %}">
-                            <label for="{{ form.nombre.id_for_label }}">Nombre de la misión <span class="text-danger">*</span></label>
-                            {{ form.nombre }}
-                            {% for e in form.nombre.errors %}<div class="error">{{ e }}</div>{% endfor %}
-                        </div>
-                        <div class="campo mb-0 {% if form.descripcion.errors %}con-error{% endif %}">
-                            <label for="{{ form.descripcion.id_for_label }}">Instrucciones <span class="text-danger">*</span></label>
-                            {{ form.descripcion }}
-                            {% for e in form.descripcion.errors %}<div class="error">{{ e }}</div>{% endfor %}
-                        </div>
-                    </div>
-                </section>
-
-                <section class="p-card mb-3">
-                    <div class="p-card-head"><h3>Tipo de misión</h3><span class="sub">¿Cómo la completa el alumno?</span></div>
-                    <div class="p-card-body">
+                <!-- Paso 1 -->
+                <section class="p-card paso mb-3">
+                    <div class="paso-cabeza"><span class="paso-num">1</span><div><h3>¿Qué tipo de misión es?</h3><p>Define cómo la completa el alumno y quién la califica.</p></div></div>
+                    <div class="p-card-body pt-0">
                         <div class="tipos-grid">
                             {% for valor, etiqueta in form.fields.tipo.choices %}{% if valor %}
                                 {% with info=tipos|get_item:valor %}
@@ -63,7 +43,7 @@
                                         <span class="e d-block">{{ info.emoji }}</span>
                                         <span class="n d-block">{{ etiqueta }}</span>
                                         <span class="d d-block">
-                                            {% if valor == 'arduino' %}Código base y revisión del profe{% elif valor == 'cuestionario' %}Se califica automáticamente{% elif valor == 'link' %}Enlace externo con revisión{% elif valor == 'video' %}YouTube, se aprueba al verlo{% elif valor == 'evidencia' %}El alumno sube una foto{% elif valor == 'texto' %}El alumno escribe su respuesta{% else %}Tú la calificas en clase{% endif %}
+                                            {% if valor == 'arduino' %}Circuito con código base{% elif valor == 'cuestionario' %}Se califica solo{% elif valor == 'link' %}Actividad en una página{% elif valor == 'video' %}Ver un video de YouTube{% elif valor == 'evidencia' %}Subir foto del trabajo{% elif valor == 'texto' %}Escribir una respuesta{% else %}Se hace en el salón{% endif %}
                                         </span>
                                     </span>
                                 </label>
@@ -71,68 +51,157 @@
                             {% endif %}{% endfor %}
                         </div>
                         {% for e in form.tipo.errors %}<div class="error mt-2" style="color:var(--danger);font-size:.8rem">{{ e }}</div>{% endfor %}
+                        <div class="explicacion-tipo d-none" data-explicacion-tipo></div>
+                    </div>
+                </section>
 
-                        <div class="seccion-tipo mt-4" data-tipos="arduino">
-                            <div class="campo mb-0">
-                                <label for="{{ form.codigo.id_for_label }}"><i class="bi bi-code-slash"></i> Código base de Arduino</label>
+                <!-- Paso 2 -->
+                <section class="p-card paso mb-3">
+                    <div class="paso-cabeza"><span class="paso-num">2</span><div><h3>¿Dónde aparece en el mapa?</h3><p>Elige la clase, el mundo y el nivel, y en qué lugar del camino va.</p></div></div>
+                    <div class="p-card-body pt-0">
+                        <div class="row gx-3">
+                            <div class="col-md-4"><div class="campo"><label for="sel-clase">Clase</label><select id="sel-clase" class="nl-select" data-sel-clase></select></div></div>
+                            <div class="col-md-4"><div class="campo"><label for="sel-mundo">Mundo</label><select id="sel-mundo" class="nl-select" data-sel-mundo></select></div></div>
+                            <div class="col-md-4">
+                                <div class="campo {% if form.nivel.errors %}con-error{% endif %}">
+                                    <label for="sel-nivel">Nivel <span class="text-danger">*</span></label>
+                                    <select id="sel-nivel" name="nivel" class="nl-select" data-sel-nivel required></select>
+                                    {% for e in form.nivel.errors %}<div class="error">{{ e }}</div>{% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="campo mb-0" data-bloque-posicion>
+                            <label for="sel-posicion">Posición dentro del nivel</label>
+                            <select id="sel-posicion" name="posicion" class="nl-select" data-sel-posicion></select>
+                            <div class="ayuda" data-ayuda-posicion></div>
+                        </div>
+                        <div class="aviso-suave d-none" data-sin-niveles>
+                            <i class="bi bi-info-circle"></i> <span data-sin-niveles-texto></span>
+                            <a href="{% url 'alta_nivel' %}" data-modal data-crear-nivel class="fw-semibold ms-1">Crear un nivel</a>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Paso 3 -->
+                <section class="p-card paso mb-3">
+                    <div class="paso-cabeza"><span class="paso-num">3</span><div><h3>Contenido</h3><p data-sub-contenido>Lo que el alumno verá al abrir la misión.</p></div></div>
+                    <div class="p-card-body pt-0">
+                        <div class="campo {% if form.nombre.errors %}con-error{% endif %}">
+                            <label for="{{ form.nombre.id_for_label }}">Nombre de la misión <span class="text-danger">*</span></label>
+                            {{ form.nombre }}
+                            {% for e in form.nombre.errors %}<div class="error">{{ e }}</div>{% endfor %}
+                        </div>
+                        <div class="campo {% if form.descripcion.errors %}con-error{% endif %}">
+                            <label for="{{ form.descripcion.id_for_label }}"><span data-label-instrucciones>Instrucciones</span> <span class="text-danger">*</span></label>
+                            {{ form.descripcion }}
+                            {% for e in form.descripcion.errors %}<div class="error">{{ e }}</div>{% endfor %}
+                        </div>
+
+                        <div class="seccion-tipo" data-tipos="arduino">
+                            <div class="campo">
+                                <label for="{{ form.codigo.id_for_label }}"><i class="bi bi-code-slash"></i> Código base <span class="text-muted-p fw-normal">(opcional · el alumno lo podrá copiar)</span></label>
                                 {{ form.codigo }}
                             </div>
                         </div>
-                        <div class="seccion-tipo mt-4" data-tipos="link video">
-                            <div class="campo mb-0 {% if form.link.errors %}con-error{% endif %}">
-                                <label for="{{ form.link.id_for_label }}" data-etiqueta-link><i class="bi bi-link-45deg"></i> Enlace</label>
+                        <div class="seccion-tipo" data-tipos="link video">
+                            <div class="campo {% if form.link.errors %}con-error{% endif %}">
+                                <label for="{{ form.link.id_for_label }}" data-etiqueta-link>Enlace</label>
                                 {{ form.link }}
                                 {% for e in form.link.errors %}<div class="error">{{ e }}</div>{% endfor %}
-                                <div class="ayuda" data-ayuda-link>Para video, pega el enlace de YouTube: se mostrará dentro de la misión.</div>
+                                <div class="ayuda" data-ayuda-link></div>
+                            </div>
+                            <div class="video-previa d-none" data-video-previa></div>
+                        </div>
+                        <div class="seccion-tipo" data-tipos="cuestionario">
+                            <div class="campo">
+                                <div class="d-flex align-items-center justify-content-between mb-2">
+                                    <span class="etiqueta-campo mb-0"><i class="bi bi-ui-checks"></i> Preguntas</span>
+                                    <span class="text-muted-p" style="font-size:.8rem" data-resumen-quiz></span>
+                                </div>
+                                <div data-preguntas></div>
+                                <div class="d-flex gap-2 flex-wrap">
+                                    <button type="button" class="p-btn sm" data-agregar-pregunta><i class="bi bi-plus-lg"></i> Opción múltiple</button>
+                                    <button type="button" class="p-btn sm" data-agregar-vf><i class="bi bi-toggles"></i> Verdadero / Falso</button>
+                                </div>
+                                <div class="ayuda mt-2">Marca el círculo de la respuesta correcta. La calificación es proporcional a los puntos que obtenga.</div>
                             </div>
                         </div>
-                        <div class="seccion-tipo mt-4" data-tipos="cuestionario">
-                            <div class="d-flex align-items-center justify-content-between mb-2">
-                                <span class="etiqueta-campo mb-0"><i class="bi bi-ui-checks"></i> Preguntas del cuestionario</span>
-                                <span class="text-muted-p" style="font-size:.8rem" data-resumen-quiz></span>
-                            </div>
-                            <div data-preguntas></div>
-                            <div class="d-flex gap-2 flex-wrap">
-                                <button type="button" class="p-btn sm" data-agregar-pregunta><i class="bi bi-plus-lg"></i> Opción múltiple</button>
-                                <button type="button" class="p-btn sm" data-agregar-vf><i class="bi bi-toggles"></i> Verdadero / Falso</button>
-                            </div>
-                            <div class="ayuda mt-2" style="font-size:.78rem;color:var(--muted)">Marca el círculo de la respuesta correcta. La calificación es proporcional a los puntos obtenidos.</div>
+                        <div class="seccion-tipo" data-tipos="presencial">
+                            <div class="aviso-suave mb-3"><i class="bi bi-info-circle"></i> Los alumnos verán la misión, pero no podrán enviarla. Cuando la completen en clase, califícala con <b>Calificar a todos</b>.</div>
                         </div>
-                        <div class="seccion-tipo mt-4" data-tipos="presencial">
-                            <div class="p-badge azul" style="white-space:normal;padding:.6rem .8rem;border-radius:10px;font-weight:500">
-                                <i class="bi bi-info-circle"></i> Los alumnos verán la misión, pero no podrán enviarla. Califícala con "Calificar a todos" cuando la completen en clase.
+
+                        <div class="campo mb-0">
+                            <label data-label-imagen>Imagen de apoyo <span class="text-muted-p fw-normal">(opcional)</span></label>
+                            <div class="imagen-campo">
+                                <img data-imagen-previa {% if mision.imagen %}src="{{ mision.imagen.url }}"{% else %}class="d-none"{% endif %} alt="">
+                                <div class="min-w-0 flex-grow-1">{{ form.imagen }}</div>
                             </div>
                         </div>
                     </div>
                 </section>
 
-                <section class="p-card">
-                    <div class="p-card-head"><h3>Imagen de apoyo</h3><span class="sub">Opcional</span></div>
-                    <div class="p-card-body">
-                        {% if mision.imagen %}<img src="{{ mision.imagen.url }}" alt="" style="max-height:140px;border-radius:10px;border:1px solid var(--border)" class="mb-3 d-block">{% endif %}
-                        {{ form.imagen }}
+                <!-- Paso 4 -->
+                <section class="p-card paso mb-3">
+                    <div class="paso-cabeza"><span class="paso-num">4</span><div><h3>Recompensa</h3><p>Elige una dificultad o escribe tus propios valores.</p></div></div>
+                    <div class="p-card-body pt-0">
+                        <div class="presets" role="group" aria-label="Dificultad">
+                            <button type="button" class="preset" data-preset data-xp="30" data-monedas="10"><span class="e">🌱</span><span class="n">Fácil</span><span class="v">30 XP · 10 🪙</span></button>
+                            <button type="button" class="preset" data-preset data-xp="50" data-monedas="15"><span class="e">⭐</span><span class="n">Normal</span><span class="v">50 XP · 15 🪙</span></button>
+                            <button type="button" class="preset" data-preset data-xp="80" data-monedas="25"><span class="e">🔥</span><span class="n">Difícil</span><span class="v">80 XP · 25 🪙</span></button>
+                            <button type="button" class="preset" data-preset data-xp="120" data-monedas="40" data-jefe="1"><span class="e">👾</span><span class="n">Jefe</span><span class="v">120 XP · 40 🪙</span></button>
+                        </div>
+                        <div class="row gx-3 mt-3">
+                            <div class="col-6"><div class="campo mb-2"><label for="{{ form.xp_recompensa.id_for_label }}"><i class="bi bi-lightning-charge text-primary"></i> XP</label>{{ form.xp_recompensa }}</div></div>
+                            <div class="col-6"><div class="campo mb-2"><label for="{{ form.monedas_recompensa.id_for_label }}"><i class="bi bi-coin text-warning"></i> Monedas (máximo)</label>{{ form.monedas_recompensa }}</div></div>
+                        </div>
+                        <div class="ayuda-recompensa" data-hint-recompensa></div>
+                    </div>
+                </section>
+
+                <!-- Paso 5 -->
+                <section class="p-card paso">
+                    <div class="paso-cabeza"><span class="paso-num">5</span><div><h3>Publicación</h3><p>Decide si ya la ven tus alumnos.</p></div></div>
+                    <div class="p-card-body pt-0">
+                        <div class="row gx-3">
+                            <div class="col-md-6">
+                                <div class="campo-check">{{ form.activa }}<div><label for="{{ form.activa.id_for_label }}">Visible para los alumnos</label><div class="text-muted-p" style="font-size:.76rem">Apágalo para guardarla como borrador.</div></div></div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="campo-check">{{ form.es_jefe }}<div><label for="{{ form.es_jefe.id_for_label }}">Misión jefe 👾</label><div class="text-muted-p" style="font-size:.76rem">Se ve más grande y especial en el mapa.</div></div></div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="campo mb-0"><label for="{{ form.fecha_limite.id_for_label }}">Fecha de entrega <span class="text-muted-p fw-normal">(opcional)</span></label>{{ form.fecha_limite }}</div>
+                            </div>
+                        </div>
                     </div>
                 </section>
             </div>
 
             <div class="col-lg-4">
-                <section class="p-card sticky-lateral">
-                    <div class="p-card-head"><h3>Botín y publicación</h3></div>
+                <section class="p-card sticky-lateral vista-previa">
+                    <div class="p-card-head"><h3>Vista previa</h3><span class="sub">Así la verán tus alumnos</span></div>
+                    <div class="vp-mapa">
+                        <span class="vp-nodo" data-vp-nodo><span class="vp-corona d-none" data-vp-corona>👾</span><i class="bi bi-question-lg" data-vp-icono></i></span>
+                        <span class="vp-nombre" data-vp-nombre>Nombre de la misión</span>
+                    </div>
                     <div class="p-card-body">
-                        <div class="row gx-2">
-                            <div class="col-6"><div class="campo"><label for="{{ form.xp_recompensa.id_for_label }}"><i class="bi bi-lightning-charge text-primary"></i> XP</label>{{ form.xp_recompensa }}</div></div>
-                            <div class="col-6"><div class="campo"><label for="{{ form.monedas_recompensa.id_for_label }}"><i class="bi bi-coin text-warning"></i> Monedas</label>{{ form.monedas_recompensa }}</div></div>
-                            <div class="col-6"><div class="campo"><label for="{{ form.orden.id_for_label }}">Orden</label>{{ form.orden }}</div></div>
-                            <div class="col-6"><div class="campo"><label for="{{ form.fecha_limite.id_for_label }}">Fecha límite</label>{{ form.fecha_limite }}</div></div>
+                        <div class="d-flex flex-wrap gap-1 mb-2">
+                            <span class="p-badge" data-vp-tipo>Elige un tipo</span>
+                            <span class="p-badge violeta d-none" data-vp-jefe>👾 Jefe</span>
+                            <span class="p-badge d-none" data-vp-oculta><i class="bi bi-eye-slash"></i> Borrador</span>
                         </div>
-                        <p class="text-muted-p" style="font-size:.78rem;margin-top:-.4rem">Las monedas se dan proporcionales a la calificación. La XP siempre es completa.</p>
-                        <div class="campo-check">{{ form.es_jefe }}<div><label for="{{ form.es_jefe.id_for_label }}">Misión jefe 👾</label><div class="text-muted-p" style="font-size:.76rem">Se ve más grande y especial en el mapa.</div></div></div>
-                        <div class="campo-check mb-0">{{ form.activa }}<div><label for="{{ form.activa.id_for_label }}">Visible para los alumnos</label><div class="text-muted-p" style="font-size:.76rem">Desactívala para guardarla como borrador.</div></div></div>
+                        <div class="vp-ubicacion" data-vp-ubicacion><i class="bi bi-geo-alt"></i> Sin ubicación</div>
+                        <div class="vp-botin">
+                            <span><i class="bi bi-lightning-charge-fill"></i> <b data-vp-xp>0</b> XP</span>
+                            <span><i class="bi bi-coin"></i> hasta <b data-vp-monedas>0</b></span>
+                        </div>
+                        <div class="vp-flujo" data-vp-flujo></div>
                     </div>
                 </section>
             </div>
         </div>
         {{ preguntas|json_script:"preguntas-data" }}
+        {{ estructura|json_script:"estructura-data" }}
     </div>
 
     <div class="modal-footer">
