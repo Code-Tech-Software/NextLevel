@@ -22,7 +22,7 @@
     {% endif %}
 
     <div class="container" style="max-width:1100px">
-        <div class="row g-3 g-md-4 justify-content-center">
+        <div class="row g-3 g-md-4 justify-content-center fila-jugadores">
             {% for alumno in alumnos %}
                 {% with rango=alumno.rango %}
                 <div class="col-6 col-md-4 col-lg-3 col-jugador" data-nombre="{{ alumno.nombre|lower }} {{ alumno.apellido|lower }}">

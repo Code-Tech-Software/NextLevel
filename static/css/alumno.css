@@ -1214,3 +1214,22 @@ a.nodo:active { transform: translateY(8px); box-shadow: 0 0 0 var(--n2); }
 .chip-tipo.digital { background: #dbeafe; color: #1d4ed8; }
 .chip-entrega { font-size: .7rem; font-weight: 800; padding: .22rem .6rem; border-radius: 999px; background: #f1f5f9; color: var(--texto-suave); }
 .swal-tipo { display: inline-block; margin-top: 10px; font-size: .85rem; font-weight: 800; background: #f1f5f9; color: #334155; border-radius: 999px; padding: .3rem .8rem; }
+
+/* ---------- Elegir jugador en teléfonos muy angostos: tarjeta horizontal, una por fila ---------- */
+@media (max-width: 400px) {
+    .fila-jugadores { --bs-gutter-y: .75rem; }
+    .fila-jugadores .col-jugador { flex: 0 0 auto; width: 100%; }
+    .jugador {
+        display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
+        grid-template-areas: "avatar nombre monedas" "avatar apellido monedas";
+        align-items: center; column-gap: .9rem; text-align: left;
+        padding: .75rem 1rem; border-radius: 20px; box-shadow: 0 4px 0 var(--sombra-3d);
+    }
+    .jugador:hover { transform: translateY(-3px); }
+    .jugador .avatar-wrap { grid-area: avatar; }
+    .jugador .avatar { --tam: 60px; }
+    .jugador .nivel-badge { min-width: 26px; height: 26px; font-size: .8rem; border-radius: 10px; bottom: -4px; right: -6px; }
+    .jugador .n { grid-area: nombre; align-self: end; margin-top: 0; font-size: 1.1rem; }
+    .jugador .a { grid-area: apellido; align-self: start; }
+    .jugador .monedas-chip { grid-area: monedas; position: static; }
+}
