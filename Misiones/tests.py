@@ -746,3 +746,70 @@ class CuatroMinijuegosTests(BaseJuego):
         formato = Juego.objects.get(nombre='Formato')
         self.assertEqual(formato.configuracion['frases'], [])
         self.assertContains(self.client.get(f'/profesor/juegos/{formato.id}/editar/', HTTP_X_MODAL='1'), 'value="dificil"')
+
+
+def sql_postgresql(query):
+    """SQL que generaría PostgreSQL (la base de Railway) para una consulta, sin conectarse a ningún servidor."""
+    from django.db.backends.postgresql.base import DatabaseWrapper
+    ajustes = {'ENGINE': 'django.db.backends.postgresql', 'NAME': 'sin_conexion', 'USER': '', 'PASSWORD': '', 'HOST': '',
+               'PORT': '', 'OPTIONS': {}, 'TIME_ZONE': None, 'CONN_MAX_AGE': 0, 'CONN_HEALTH_CHECKS': False,
+               'AUTOCOMMIT': True, 'ATOMIC_REQUESTS': False, 'TEST': {}}
+    pg = DatabaseWrapper(ajustes, alias='postgresql_sin_conexion')
+    pg.__dict__['pg_version'] = 160000
+    pg.get_autocommit = lambda: False  # Como si estuviera dentro de transaction.atomic()
+    return query.get_compiler(connection=pg).as_sql()[0]
+
+
+@override_settings(STORAGES=ALMACEN_PRUEBAS)
+class CompatibilidadPostgresTests(BaseJuego):
+    """Las pruebas corren en SQLite, que ignora FOR UPDATE; Railway usa PostgreSQL, que es más estricto."""
+
+    def test_los_bloqueos_funcionan_en_postgresql(self):
+        import json
+        from datetime import timedelta
+        from unittest import mock
+        from django.db.models.sql.compiler import SQLCompiler
+        from django.utils import timezone
+        from .models import Juego, MisionDiaria, PartidaJuego
+
+        bloqueos = []
+        original = SQLCompiler.as_sql
+
+        def espia(compilador, *args, **kwargs):
+            if compilador.query.select_for_update:
+                bloqueos.append(compilador.query.clone())
+            return original(compilador, *args, **kwargs)
+
+        juego_arcade = Juego.objects.create(nombre='Teclas', plantilla='teclado', monedas_arcade=5,
+                                            configuracion={'conjunto': 'central', 'rondas': 20})
+        juego_mapa = Juego.objects.create(nombre='Lluvia', plantilla='meteoros', configuracion={'meta': 10})
+        mision = Mision.objects.create(clase=self.clase, nivel=self.nivel, nombre='Juego', descripcion='x', tipo='juego',
+                                       juego=juego_mapa, orden=0, xp_recompensa=40, monedas_recompensa=20)
+        articulo = ArticuloTienda.objects.create(nombre='Llavero', descripcion='x', costo_monedas=5, stock=3)
+        MisionDiaria.objects.update(activa=False)
+        diaria = MisionDiaria.objects.create(titulo='Entra', objetivo='login', meta=1)
+        Alumno.objects.filter(pk=self.alumno.pk).update(monedas=100)
+        self.entrar()
+
+        def jugar(juego_obj, datos, mision_obj=None):
+            inicio = self.client.post(f'/clase/{self.clase.id}/juegos/{juego_obj.id}/iniciar/',
+                                      {'mision': mision_obj.id} if mision_obj else {}).json()
+            PartidaJuego.objects.filter(pk=inicio['partida']).update(inicio=timezone.now() - timedelta(seconds=60))
+            respuesta = self.client.post(f'/clase/{self.clase.id}/juegos/partida/{inicio["partida"]}/terminar/',
+                                         json.dumps(datos), content_type='application/json')
+            self.assertEqual(respuesta.status_code, 200)
+
+        with mock.patch.object(SQLCompiler, 'as_sql', espia):
+            jugar(juego_arcade, {'completadas': 20, 'aciertos': 18})
+            jugar(juego_mapa, {'destruidos': 9, 'caracteres': 40}, mision)
+            self.client.get(f'/clase/{self.clase.id}/dashboard/')
+            self.client.post(f'/clase/{self.clase.id}/diaria/{diaria.id}/reclamar/')
+            self.client.post(f'/clase/{self.clase.id}/tienda/comprar/{articulo.id}/')
+            compra = CompraAlumno.objects.get(alumno=self.alumno, articulo=articulo)
+            juego.cancelar_compra(compra)
+
+        self.assertGreaterEqual(len(bloqueos), 5)
+        for query in bloqueos:
+            sql = sql_postgresql(query)
+            self.assertIn('FOR UPDATE', sql)
+            self.assertNotIn('LEFT OUTER JOIN', sql, f'PostgreSQL rechaza FOR UPDATE con uniones opcionales:\n{sql}')

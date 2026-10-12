@@ -519,7 +519,8 @@ def mision_jugable(alumno, clase, mision):
 def terminar_partida(partida, datos):
     """Califica la partida, entrega el botín y devuelve el resumen para la pantalla final."""
     with transaction.atomic():
-        partida = PartidaJuego.objects.select_for_update().select_related('juego', 'mision', 'alumno').get(pk=partida.pk)
+        # Solo se bloquea la partida: PostgreSQL no permite FOR UPDATE con uniones a campos opcionales (mision)
+        partida = PartidaJuego.objects.select_for_update().get(pk=partida.pk)
         if partida.terminada:
             return None
         segundos = (timezone.now() - partida.inicio).total_seconds()
