@@ -12,6 +12,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from . import gamificacion as juego
+from .minijuegos import datos_juego
 from .models import (
     Alumno, ArticuloTienda, Clase, CompraAlumno, Mision, Nivel, OpcionRespuesta, ProgresoMision,
     RespuestaAlumno,
@@ -184,6 +185,7 @@ def ver_mision(request, alumno, clase, mision_id):
         'respuestas': respuestas,
         'mundo': mundo,
         'info': juego.TIPO_INFO.get(mision.tipo),
+        'juego_datos': datos_juego(mision.juego) if mision.tipo == 'juego' and mision.juego and mision.juego.activo else None,
         'resultado': request.session.pop('resultado_mision', None),
         'seccion': 'mapa',
     })
@@ -209,6 +211,9 @@ def marcar_completada(request, alumno, clase, mision_id):
 
     if mision.tipo == 'presencial':
         messages.info(request, 'Esta misión se completa en clase. ¡El profe la marcará cuando la termines!')
+        return redirect('ver_mision', clase_id=clase.id, mision_id=mision.id)
+    if mision.tipo == 'juego':
+        messages.info(request, '🎮 Esta misión se completa jugando. ¡Presiona «Jugar»!')
         return redirect('ver_mision', clase_id=clase.id, mision_id=mision.id)
 
     if mision.tipo == 'cuestionario':

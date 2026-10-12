@@ -1233,3 +1233,91 @@ a.nodo:active { transform: translateY(8px); box-shadow: 0 0 0 var(--n2); }
     .jugador .a { grid-area: apellido; align-self: start; }
     .jugador .monedas-chip { grid-area: monedas; position: static; }
 }
+
+/* ---------- Arcade ---------- */
+.arcade-hero {
+    position: relative; overflow: hidden; text-align: center; color: #fff; border-radius: 30px; padding: 2rem 1.25rem 1.6rem;
+    background: radial-gradient(circle at 20% 10%, #7c3aed 0%, transparent 45%), radial-gradient(circle at 85% 90%, #0891b2 0%, transparent 45%), #1e1b4b;
+    box-shadow: 0 7px 0 #0f0d2e;
+}
+.arcade-hero::after { content: ''; position: absolute; inset: 0; pointer-events: none; background-image: radial-gradient(rgba(255, 255, 255, .5) 1px, transparent 1.5px); background-size: 26px 26px; opacity: .35; }
+.arcade-hero > * { position: relative; z-index: 1; }
+.arcade-hero .kicker { font-weight: 900; text-transform: uppercase; letter-spacing: 3px; font-size: .78rem; color: #a5f3fc; }
+.arcade-hero h1 { font-family: var(--fuente-titulo); font-size: clamp(2.2rem, 7vw, 3.2rem); margin: .2rem 0; text-shadow: 0 0 18px rgba(167, 139, 250, .9), 0 4px 0 rgba(0, 0, 0, .3); }
+.arcade-hero p { font-weight: 700; opacity: .9; margin-bottom: .8rem; }
+.arcade-hero .reglas { display: flex; flex-wrap: wrap; gap: .4rem; justify-content: center; }
+.arcade-hero .reglas span { background: rgba(255, 255, 255, .12); border: 1px solid rgba(255, 255, 255, .2); border-radius: 999px; padding: .3rem .75rem; font-weight: 800; font-size: .8rem; }
+
+.maquina {
+    --m1: #7c3aed; --m2: #4c1d95; --brillo: rgba(167, 139, 250, .55);
+    display: flex; flex-direction: column; height: 100%; text-decoration: none; color: var(--texto); background: #fff;
+    border: 2px solid var(--borde); border-radius: 26px; overflow: hidden; box-shadow: 0 7px 0 var(--sombra-3d);
+    transition: transform .25s cubic-bezier(.34, 1.56, .64, 1), box-shadow .2s;
+}
+.maquina.plantilla-teclado { --m1: #0891b2; --m2: #164e63; --brillo: rgba(34, 211, 238, .55); }
+.maquina.plantilla-clasifica { --m1: #db2777; --m2: #831843; --brillo: rgba(244, 114, 182, .55); }
+.maquina.plantilla-robot { --m1: #ea580c; --m2: #7c2d12; --brillo: rgba(251, 146, 60, .55); }
+.maquina.plantilla-atajos { --m1: #4f46e5; --m2: #312e81; --brillo: rgba(129, 140, 248, .55); }
+.maquina.plantilla-mensaje { --m1: #059669; --m2: #064e3b; --brillo: rgba(52, 211, 153, .55); }
+.maquina.plantilla-rutas { --m1: #ca8a04; --m2: #713f12; --brillo: rgba(250, 204, 21, .55); }
+.maquina.plantilla-formato { --m1: #2563eb; --m2: #1e3a8a; --brillo: rgba(96, 165, 250, .55); }
+a.maquina:hover { transform: translateY(-6px); color: var(--texto); box-shadow: 0 7px 0 var(--m2), 0 0 30px var(--brillo); }
+.maquina .pantalla {
+    position: relative; height: 150px; display: grid; place-items: center;
+    background: radial-gradient(circle at 50% 35%, var(--m1), var(--m2) 75%); border-bottom: 4px solid #0f172a;
+}
+.maquina .pantalla::after { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, rgba(255, 255, 255, .05) 0 2px, transparent 2px 4px); pointer-events: none; }
+.maquina .icono { font-size: 4rem; filter: drop-shadow(0 0 16px rgba(255, 255, 255, .55)); animation: flotar 4s ease-in-out infinite; }
+.maquina .premio { position: absolute; top: 10px; right: 10px; background: #fde047; color: #713f12; font-weight: 900; font-size: .75rem; border-radius: 999px; padding: .2rem .6rem; box-shadow: 0 3px 0 #ca8a04; }
+.maquina .premio.cobrado { background: rgba(255, 255, 255, .85); color: #475569; box-shadow: none; }
+.maquina .mis-estrellas { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); font-size: 1rem; white-space: nowrap; }
+.maquina .mis-estrellas .apagada { filter: grayscale(1) opacity(.35); }
+.maquina .cuerpo { padding: .9rem 1.1rem 1.1rem; display: flex; flex-direction: column; gap: .3rem; flex: 1; }
+.maquina .tipo { font-size: .72rem; font-weight: 900; text-transform: uppercase; letter-spacing: .5px; color: var(--m1); }
+.maquina .nombre { font-family: var(--fuente-titulo); font-weight: 700; font-size: 1.35rem; color: var(--navy); line-height: 1.1; }
+.maquina .meta { font-size: .82rem; font-weight: 700; color: var(--texto-suave); }
+.maquina .datos { display: flex; flex-direction: column; gap: .1rem; font-size: .8rem; font-weight: 800; color: #475569; margin-top: .2rem; }
+.maquina .jugar { margin-top: auto; align-self: stretch; text-align: center; background: var(--m1); color: #fff; border-radius: 14px; padding: .6rem; font-weight: 900; text-transform: uppercase; letter-spacing: .5px; box-shadow: 0 4px 0 var(--m2); margin-top: .6rem; }
+.maquina.bloqueada { filter: grayscale(.85); opacity: .8; cursor: not-allowed; }
+.maquina.bloqueada .icono { animation: none; }
+.maquina .candado { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .2rem; background: rgba(15, 23, 42, .65); color: #fff; font-weight: 800; font-size: .82rem; text-align: center; padding: 1rem; z-index: 1; }
+.maquina .candado span { font-size: 2rem; }
+
+.volver-arcade { display: inline-flex; align-items: center; gap: .4rem; font-weight: 900; color: var(--texto-suave); text-decoration: none; margin-bottom: .8rem; }
+.volver-arcade:hover { color: var(--azul); }
+
+/* Tarjeta para jugar (misión y página del juego en el Arcade) */
+.juego-mision {
+    --m1: #7c3aed; --m2: #4c1d95;
+    background: linear-gradient(160deg, #fff 55%, color-mix(in srgb, var(--m1) 12%, #fff)); border: 2px solid color-mix(in srgb, var(--m1) 35%, #fff);
+    box-shadow: 0 6px 0 color-mix(in srgb, var(--m1) 45%, #fff); border-radius: 26px; padding: 1.25rem;
+}
+.juego-mision.plantilla-teclado { --m1: #0891b2; --m2: #164e63; }
+.juego-mision.plantilla-clasifica { --m1: #db2777; --m2: #831843; }
+.juego-mision.plantilla-robot { --m1: #ea580c; --m2: #7c2d12; }
+.juego-mision.plantilla-atajos { --m1: #4f46e5; --m2: #312e81; }
+.juego-mision.plantilla-mensaje { --m1: #059669; --m2: #064e3b; }
+.juego-mision.plantilla-rutas { --m1: #ca8a04; --m2: #713f12; }
+.juego-mision.plantilla-formato { --m1: #2563eb; --m2: #1e3a8a; }
+.juego-mision.arcade { height: 100%; }
+.juego-portada { display: flex; align-items: center; gap: .9rem; }
+.juego-portada .icono { width: 74px; height: 74px; border-radius: 22px; display: grid; place-items: center; font-size: 2.6rem; flex-shrink: 0; background: radial-gradient(circle at 50% 35%, var(--m1), var(--m2)); box-shadow: 0 5px 0 #0f172a, 0 0 22px color-mix(in srgb, var(--m1) 50%, transparent); }
+.juego-portada .tipo { font-size: .74rem; font-weight: 900; text-transform: uppercase; letter-spacing: .5px; color: var(--m1); }
+.juego-portada .nombre { font-family: var(--fuente-titulo); font-size: 1.55rem; font-weight: 700; color: var(--navy); line-height: 1.1; }
+.juego-mision .como { font-weight: 700; color: #475569; margin: .9rem 0 .6rem; }
+.juego-meta { display: inline-block; background: color-mix(in srgb, var(--m1) 14%, #fff); color: var(--m2); font-weight: 900; border-radius: 999px; padding: .35rem .9rem; }
+.juego-cortes { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .6rem; }
+.juego-cortes span { background: #f1f5f9; border-radius: 10px; padding: .25rem .6rem; font-size: .78rem; font-weight: 800; color: #475569; }
+.juego-mision .g-btn { --c: var(--m1); --c-osc: var(--m2); }
+.juego-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; margin-top: .9rem; }
+.juego-stats > div { background: #fff; border: 2px solid var(--borde); border-radius: 16px; padding: .55rem; text-align: center; }
+.juego-stats span { display: block; font-size: .68rem; font-weight: 900; text-transform: uppercase; color: var(--texto-suave); letter-spacing: .4px; }
+.juego-stats b { font-family: var(--fuente-titulo); font-size: 1.25rem; color: var(--navy); }
+
+.ranking-juego { height: 100%; }
+.lista-ranking-juego .fila { display: flex; align-items: center; gap: .6rem; padding: .5rem .3rem; border-bottom: 2px dashed var(--borde); font-weight: 800; }
+.lista-ranking-juego .fila:last-child { border-bottom: 0; }
+.lista-ranking-juego .fila.yo { background: #ede9fe; border-radius: 12px; border-bottom-color: transparent; color: #5b21b6; }
+.lista-ranking-juego .pos { width: 2rem; text-align: center; font-size: 1.1rem; }
+.lista-ranking-juego .n { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lista-ranking-juego .vacio { text-align: center; color: var(--texto-suave); font-weight: 700; padding: 1.2rem .5rem; }

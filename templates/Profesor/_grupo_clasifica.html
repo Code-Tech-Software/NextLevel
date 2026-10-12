@@ -1,0 +1,11 @@
+<div class="grupo-clasifica {% if nombre.errors or tarjetas.errors %}con-error{% endif %}" data-grupo="{{ n }}">
+    <div class="cabeza">
+        <span class="num">{{ n }}</span>
+        <input type="text" name="{{ emoji.html_name }}" value="{{ emoji.value|default:'' }}" maxlength="10" class="nl-input emoji" aria-label="Emoji del grupo {{ n }}" placeholder="📁">
+        <input type="text" name="{{ nombre.html_name }}" value="{{ nombre.value|default:'' }}" maxlength="30" class="nl-input" aria-label="Nombre del grupo {{ n }}" placeholder="{% if opcional %}Grupo 3 (opcional){% else %}Nombre del grupo{% endif %}">
+    </div>
+    <textarea name="{{ tarjetas.html_name }}" rows="5" spellcheck="false" class="nl-input" aria-label="Tarjetas del grupo {{ n }}" placeholder="Una tarjeta por renglón">{{ tarjetas.value|default:'' }}</textarea>
+    <div class="pie"><span data-cuenta-grupo="{{ n }}"></span></div>
+    {% for e in nombre.errors %}<div class="error"><i class="bi bi-exclamation-circle"></i> {{ e }}</div>{% endfor %}
+    {% for e in tarjetas.errors %}<div class="error"><i class="bi bi-exclamation-circle"></i> {{ e }}</div>{% endfor %}
+</div>

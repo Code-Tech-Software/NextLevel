@@ -1,0 +1,54 @@
+{% extends 'Alumnos/base.html' %}
+{% load nextlevel static %}
+{% block title %}{{ juego.nombre }} · Arcade{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/juegos.css' %}">{% endblock %}
+{% block extra_js %}<script src="{% static 'js/juegos.js' %}"></script>{% endblock %}
+
+{% block content %}
+<div class="contenedor">
+    <a href="{% url 'arcade' clase.id %}" class="volver-arcade"><i class="bi bi-arrow-left"></i> Arcade</a>
+    {{ datos|json_script:"juego-data" }}
+
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <section class="juego-mision arcade plantilla-{{ juego.plantilla }}">
+                <div class="juego-portada">
+                    <span class="icono">{{ juego.icono }}</span>
+                    <div class="min-w-0">
+                        <div class="tipo">{{ info.emoji }} {{ info.nombre }}</div>
+                        <div class="nombre">{{ juego.nombre }}</div>
+                    </div>
+                </div>
+                <p class="como">{% if juego.descripcion %}{{ juego.descripcion }}<br>{% endif %}{{ info.como }}</p>
+                <div class="juego-meta">🎯 {{ datos.meta }}</div>
+                <div class="juego-stats">
+                    <div><span>Tu récord</span><b>{% if record %}{{ record }}{% else %}—{% endif %}</b></div>
+                    <div><span>Partidas</span><b>{{ partidas }}</b></div>
+                    <div><span>Premio de hoy</span><b>{% if premio_hoy %}🪙 +{{ juego.monedas_arcade }}{% elif juego.monedas_arcade %}✓ Cobrado{% else %}—{% endif %}</b></div>
+                </div>
+                <button type="button" class="g-btn ancho grande mt-3" data-jugar="juego-data"
+                        data-url-iniciar="{% url 'iniciar_partida' clase.id juego.id %}"
+                        data-url-terminar="{% url 'terminar_partida' clase.id 0 %}"
+                        data-csrf="{{ csrf_token }}" data-alumno="{{ alumno.id }}" data-monedas-arcade="{{ juego.monedas_arcade }}"
+                        data-recargar data-texto-salir="Volver al Arcade">
+                    <i class="bi bi-play-fill"></i> ¡Jugar!
+                </button>
+            </section>
+        </div>
+
+        <div class="col-lg-5">
+            <section class="g-card ranking-juego">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <div class="g-card-titulo mb-0"><span>🏆</span> Récords</div>
+                    <div class="tabs-juego" role="tablist">
+                        <button type="button" class="activo" data-tab-ranking="semana">Semana</button>
+                        <button type="button" data-tab-ranking="siempre">Siempre</button>
+                    </div>
+                </div>
+                {% include 'Alumnos/_ranking_juego.html' with lista=semana clave='semana' %}
+                {% include 'Alumnos/_ranking_juego.html' with lista=siempre clave='siempre' oculto=True %}
+            </section>
+        </div>
+    </div>
+</div>
+{% endblock %}

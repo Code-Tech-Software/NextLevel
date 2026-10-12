@@ -17,6 +17,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link rel="stylesheet" href="{% static 'css/profesor.css' %}">
+    <link rel="stylesheet" href="{% static 'css/juegos.css' %}">
     <link rel="icon" type="image/png" href="{% static 'img/192x192.png' %}">
     <link rel="manifest" href="{% url 'manifest.json' %}">
     <meta name="theme-color" content="#142c45">
@@ -43,6 +44,7 @@
         <a href="{% url 'clases_lista' %}" class="nav-item-p {% if seccion == 'clases' %}activo{% endif %}"><i class="bi bi-globe-americas"></i> Clases y mundos</a>
         <a href="{% url 'diarias_lista' %}" class="nav-item-p {% if seccion == 'diarias' %}activo{% endif %}"><i class="bi bi-calendar-check"></i> Misiones del día</a>
         <a href="{% url 'logros_lista' %}" class="nav-item-p {% if seccion == 'logros' %}activo{% endif %}"><i class="bi bi-award"></i> Logros</a>
+        <a href="{% url 'juegos_lista' %}" class="nav-item-p {% if seccion == 'juegos' %}activo{% endif %}"><i class="bi bi-controller"></i> Juegos</a>
 
         <div class="nav-grupo">Alumnos</div>
         <a href="{% url 'alumnos_lista' %}" class="nav-item-p {% if seccion == 'alumnos' %}activo{% endif %}"><i class="bi bi-people"></i> Alumnos</a>
@@ -113,6 +115,7 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.14.5/dist/sweetalert2.all.min.js"></script>
 <script src="{% static 'js/profesor.js' %}"></script>
+<script src="{% static 'js/juegos.js' %}"></script>
 {% block extra_js %}{% endblock %}
 </body>
 </html>

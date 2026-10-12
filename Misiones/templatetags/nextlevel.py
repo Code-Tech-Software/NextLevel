@@ -4,6 +4,7 @@ from urllib.parse import parse_qs, urlparse
 from django import template
 
 from Misiones.gamificacion import TEMA_INFO, TIPO_INFO
+from Misiones.minijuegos import juegos_arcade
 from Misiones.models import ArticuloTienda, CompraAlumno, ProgresoMision
 
 register = template.Library()
@@ -203,3 +204,9 @@ def info_articulo(articulo):
     else:
         entrega = ('⚡', 'Lo recibes al instante')
     return {'emoji': emoji, 'texto': texto, 'clase': clase, 'entrega_emoji': entrega[0], 'entrega': entrega[1]}
+
+
+@register.simple_tag
+def hay_arcade(clase):
+    """El menú del alumno muestra el Arcade solo si su clase tiene juegos ahí."""
+    return juegos_arcade(clase).exists()

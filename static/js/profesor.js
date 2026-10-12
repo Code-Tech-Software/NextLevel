@@ -260,6 +260,14 @@
             explica: 'El alumno <b>escribe su respuesta</b> dentro de la misión. Tú la lees y la <b>calificas en Revisiones</b>.',
             flujo: ['Lee la pregunta', 'Escribe su respuesta y la envía', 'Tú la lees y la calificas'],
         },
+        juego: {
+            emoji: '🎮', nombre: 'Minijuego', icono: 'bi-controller', colores: ['#f97316', '#c2410c'],
+            instrucciones: 'Instrucciones del juego', nombrePh: 'Ej. Lluvia de meteoros',
+            placeholder: 'Ej. Escribe las partes de la computadora para destruir los meteoros.',
+            imagen: 'Imagen de apoyo', auto: true,
+            explica: 'El alumno juega dentro de la misión y <b>se califica solo</b> con su resultado. Con la mitad de la meta la supera (⭐) y puede volver a jugar para ganar más estrellas.',
+            flujo: ['Presiona «¡Jugar!» dentro de la misión', 'Recibe su calificación al terminar', 'Puede repetir para mejorar sus estrellas'],
+        },
         presencial: {
             emoji: '🙋', nombre: 'Actividad en clase', icono: 'bi-people-fill', colores: ['#10b981', '#047857'],
             instrucciones: 'Describe la actividad', nombrePh: 'Ej. Exposición en equipo',
@@ -635,6 +643,25 @@
             llenar(selClase, estructura, inicio?.c.id);
             alCambiarClase(inicio?.m.id, inicio?.n.id, form.dataset.posicionInicial);
         }
+
+        // ----- Minijuego: al elegirlo se proponen nombre e instrucciones -----
+        const selJuego = campo('juego');
+        let juegos = {};
+        try { juegos = JSON.parse($('#juegos-mision-data', form).textContent); } catch (e) { /* sin juegos */ }
+        selJuego?.addEventListener('change', () => {
+            const j = juegos[selJuego.value];
+            if (!j) return;
+            const nombre = campo('nombre');
+            const descripcion = campo('descripcion');
+            if (!nombre.value.trim()) nombre.value = j.nombre;
+            if (!descripcion.value.trim()) descripcion.value = j.descripcion;
+            $('[data-ayuda-juego]', form).innerHTML = `${escapar(j.icono)} <b>Meta:</b> ${escapar(j.meta)}. Con la mitad de la meta supera la misión.`;
+            form.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+        if (selJuego?.value && juegos[selJuego.value]) {
+            const j = juegos[selJuego.value];
+            $('[data-ayuda-juego]', form).innerHTML = `${escapar(j.icono)} <b>Meta:</b> ${escapar(j.meta)}. Con la mitad de la meta supera la misión.`;
+        }
         aplicarTipo();
         marcarPreset();
     }
@@ -651,6 +678,8 @@
         diarias: { pregunta: '¿Cuántas misiones del día debe reclamar?', unidad: 'misiones del día', sugerencias: [5, 10, 20, 50], texto: n => `Completa ${n} misiones del día` },
         monedas: { pregunta: '¿Cuántas monedas debe ganar en total?', unidad: 'monedas', sugerencias: [100, 250, 500, 1000], texto: n => `Gana ${n} monedas en total` },
         compras: { pregunta: '¿Cuántas compras debe hacer en la tienda?', unidad: 'compras', sugerencias: [1, 3, 5, 10], texto: n => n === 1 ? 'Haz tu primera compra en la tienda' : `Haz ${n} compras en la tienda` },
+        juegos: { pregunta: '¿Cuántas partidas de minijuegos debe jugar?', unidad: 'partidas', sugerencias: [5, 10, 25, 50], texto: n => n === 1 ? 'Juega tu primer minijuego' : `Juega ${n} partidas de minijuegos` },
+        ppm: { pregunta: '¿Cuántas palabras por minuto en Mecanografía?', unidad: 'ppm', sugerencias: [15, 20, 30, 40], texto: n => `Escribe ${n} palabras por minuto en Mecanografía` },
         manual: { texto: () => 'Reconocimiento especial de tu profe' },
     };
     const PREMIOS_RAREZA = { comun: [10, 0], raro: [25, 10], epico: [50, 25], legendario: [100, 50] };
@@ -819,6 +848,9 @@
         tienda: { sinMeta: true, titulo: 'De compras', icono: '🛍️', texto: () => 'Visita la tienda',
             explica: 'Se cumple con <b>solo entrar a la tienda</b>; no tiene que comprar nada.',
             nota: 'No necesita cantidad: con entrar una vez a la tienda queda completa.' },
+        juegos: { pregunta: '¿Cuántas partidas debe jugar hoy?', unidad: 'partidas', sugerencias: [1, 2, 3],
+            titulo: 'Hora del Arcade', icono: '🎮', texto: n => n === 1 ? 'Juega una partida de minijuegos' : `Juega ${n} partidas de minijuegos`,
+            explica: 'Cuenta cada <b>partida terminada</b> de un minijuego, ya sea en una misión del mapa o en el Arcade.' },
     };
 
     function iniciarFormDiaria(raiz = document) {
@@ -1862,9 +1894,337 @@
         alCambiarPolaridad(false);
     }
 
+    // ---------- Juego (minijuego configurable, con «Probar») ----------
+    const NOMBRES_CONJUNTO = {
+        central: 'fila guía', superior: 'fila de arriba', inferior: 'fila de abajo', letras: 'todas las letras',
+        numeros: 'números', todo: 'letras y números', personalizado: 'mis teclas',
+    };
+
+    function iniciarFormJuego(raiz = document) {
+        const form = $('form[data-form="juego"]', raiz);
+        if (!form || form.dataset.listo) return;
+        form.dataset.listo = '1';
+        const campo = nombre => form.querySelector(`[name="${nombre}"]`);
+        const plantillas = leerJSON(form, 'plantillas-juego-data', {});
+        const temas = leerJSON(form, 'temas-juego-data', {});
+        const conjuntos = leerJSON(form, 'conjuntos-juego-data', {});
+        const velocidades = leerJSON(form, 'velocidades-juego-data', {});
+        const temasClasifica = leerJSON(form, 'temas-clasifica-data', {});
+        const catalogoAtajos = leerJSON(form, 'atajos-juego-data', {});
+        const gruposAtajos = leerJSON(form, 'grupos-atajos-data', {});
+        const cifrados = leerJSON(form, 'cifrados-data', {});
+        const frasesFormato = leerJSON(form, 'frases-formato-data', []);
+        const dificultades = leerJSON(form, 'dificultades-robot-data', {});
+        const editando = !!form.dataset.editando;
+        const plantilla = () => $('input[name=plantilla]:checked', form)?.value || 'meteoros';
+        const palabrasInput = campo('palabras');
+        const metaInput = campo('meta');
+        const nombre = campo('nombre');
+        const icono = campo('icono');
+        const enArcade = campo('en_arcade');
+        const agregarMapa = campo('agregar_mapa');
+        // Meta, nombre e ícono siguen a la configuración mientras no los cambies a mano
+        let metaSugerida = !editando || !metaInput.value;
+        let nombreSugerido = !editando;
+        let iconoSugerido = !editando;
+
+        const palabras = () => palabrasInput.value.split(/[\n,;]+/).map(p => p.trim().replace(/\s+/g, ' ')).filter(Boolean)
+            .filter((p, i, lista) => lista.findIndex(x => x.toLowerCase() === p.toLowerCase()) === i);
+        const sugerida = () => {
+            const intervalo = (velocidades[campo('velocidad').value] || velocidades.normal || { intervalo: 2.1 }).intervalo;
+            return Math.max(5, Math.round((parseInt(campo('duracion').value, 10) || 60) / intervalo * 0.7));
+        };
+        // Detective digital: los grupos que escribió el profe (nombre, emoji y tarjetas)
+        const grupos = () => [1, 2, 3].map(n => ({
+            nombre: campo(`cat${n}_nombre`).value.trim(), emoji: campo(`cat${n}_emoji`).value.trim() || '📁',
+            tarjetas: campo(`cat${n}_tarjetas`).value.split('\n').map(t => t.trim()).filter(Boolean),
+        }));
+        const gruposValidos = () => grupos().filter(g => g.nombre && g.tarjetas.length);
+        function ponerTemaClasifica(clave) {
+            const tema = temasClasifica[clave];
+            [1, 2, 3].forEach((n, i) => {
+                const g = tema.categorias[i];
+                campo(`cat${n}_emoji`).value = g ? g.emoji : '';
+                campo(`cat${n}_nombre`).value = g ? g.nombre : '';
+                campo(`cat${n}_tarjetas`).value = g ? g.tarjetas.join('\n') : '';
+            });
+            campo('tema_clasifica').value = clave;
+            avisarCambio(form);
+        }
+        const atajosElegidos = () => $$('input[name=atajos]:checked', form).map(c => c.value);
+        const palabrasMensaje = () => [...new Set(campo('palabras_mensaje').value.split(/[\n,;]+/)
+            .map(p => (window.NLJuegos ? window.NLJuegos.normalizarSecreto(p) : p.trim().toUpperCase())).filter(Boolean))];
+        const frasesPropias = () => campo('frases').value.split('\n').map(f => f.trim().replace(/\s+/g, ' ')).filter(f => f.split(' ').length >= 2);
+        function config() {
+            if (plantilla() === 'atajos') {
+                return { atajos: atajosElegidos(), catalogo: catalogoAtajos, rondas: parseInt(campo('rondas_atajos').value, 10) || 10,
+                    modo: campo('modo_atajos').value || 'aprende' };
+            }
+            if (plantilla() === 'mensaje') {
+                const palabras = palabrasMensaje().filter(p => p.length >= 2 && p.length <= 12);
+                return { cifrado: campo('cifrado').value || 'simbolos', palabras, rondas: Math.min(parseInt(campo('rondas_mensaje').value, 10) || 5, palabras.length || 5),
+                    desplazamiento: parseInt(campo('desplazamiento').value, 10) || 3, intentos: 3 };
+            }
+            if (plantilla() === 'rutas') {
+                return { modo: campo('modo_rutas').value || 'ruta', dificultad: campo('dificultad_rutas').value || 'facil',
+                    rondas: parseInt(campo('rondas_rutas').value, 10) || 5 };
+            }
+            if (plantilla() === 'formato') {
+                const propias = frasesPropias();
+                return { dificultad: campo('dificultad_formato').value || 'facil', rondas: parseInt(campo('rondas_formato').value, 10) || 5,
+                    frases: propias.length >= 3 ? propias : frasesFormato, intentos: 3 };
+            }
+            if (plantilla() === 'clasifica') {
+                const tiempo = parseInt(campo('tiempo_tarjeta').value, 10);
+                const lista = gruposValidos();
+                const total = lista.reduce((n, g) => n + g.tarjetas.length, 0);
+                return { categorias: lista, rondas: Math.min(parseInt(campo('rondas_tarjetas').value, 10) || 10, total || 10),
+                    tiempo: Number.isNaN(tiempo) ? 8 : tiempo };
+            }
+            if (plantilla() === 'robot') {
+                const dificultad = campo('dificultad').value || 'facil';
+                return { dificultad, niveles: parseInt(campo('niveles').value, 10) || 5, modo: campo('modo_robot').value || 'flechas',
+                    bucles: campo('bucles').checked, intentos: 3, tablero: dificultades[dificultad] };
+            }
+            if (plantilla() === 'teclado') {
+                const conjunto = campo('conjunto').value || 'central';
+                const propias = [...new Set(campo('teclas').value.toUpperCase().replace(/[^A-ZÑ0-9]/g, ''))].join('');
+                return {
+                    conjunto, rondas: parseInt(campo('rondas').value, 10) || 20, modo: campo('modo').value || 'guiado',
+                    teclas: conjunto === 'personalizado' ? (propias.length >= 2 ? propias : conjuntos.central) : conjuntos[conjunto],
+                };
+            }
+            const velocidad = campo('velocidad').value || 'normal';
+            return {
+                palabras: palabras(), duracion: parseInt(campo('duracion').value, 10) || 60, velocidad,
+                vidas: parseInt(campo('vidas').value, 10) || 3, meta: Math.max(1, parseInt(metaInput.value, 10) || sugerida()),
+                acentos: campo('acentos_exactos').checked ? 'exactos' : 'opcionales', ...velocidades[velocidad],
+            };
+        }
+        const textoMeta = cfg => ({
+            teclado: () => `Encuentra ${cfg.rondas} teclas sin equivocarte`,
+            clasifica: () => `Clasifica ${cfg.rondas} tarjetas sin equivocarte`,
+            atajos: () => `Resuelve ${cfg.rondas} situaciones con el atajo correcto`,
+            mensaje: () => `Descifra ${cfg.rondas} mensajes secretos`,
+            rutas: () => `Encuentra ${cfg.rondas} archivos con pocos clics`,
+            formato: () => `Copia el formato de ${cfg.rondas} textos`,
+            robot: () => `Resuelve ${cfg.niveles} laberintos programando al robot`,
+        }[plantilla()] || (() => `Destruye ${cfg.meta} meteoros en ${cfg.duracion} segundos`))();
+        const NOMBRES_DIFICULTAD = { facil: 'primeros pasos', media: 'explorador', dificil: 'experto' };
+        function nombrePropuesto() {
+            if (plantilla() === 'teclado') return `Teclado misterioso: ${NOMBRES_CONJUNTO[campo('conjunto').value] || 'fila guía'}`;
+            if (plantilla() === 'robot') return `Robot programador: ${NOMBRES_DIFICULTAD[campo('dificultad').value] || 'primeros pasos'}`;
+            if (plantilla() === 'atajos') {
+                const elegidos = atajosElegidos();
+                const grupos = Object.values(gruposAtajos).filter(g => g.atajos.every(a => elegidos.includes(a)));
+                return grupos.length === 1 ? `Atajos ninja: ${grupos[0].nombre.toLowerCase()}` : 'Atajos ninja';
+            }
+            if (plantilla() === 'mensaje') return `Mensaje secreto: código ${(cifrados[campo('cifrado').value] || ['', 'símbolos'])[1].toLowerCase()}`;
+            if (plantilla() === 'rutas') return `Explorador de rutas: ${campo('modo_rutas').value === 'buscar' ? '¿dónde lo guardarías?' : 'sigue la ruta'}`;
+            if (plantilla() === 'formato') return `Copia el formato: nivel ${NOMBRES_DIFICULTAD[campo('dificultad_formato').value] || 'primeros pasos'}`;
+            if (plantilla() === 'clasifica') {
+                const tema = temasClasifica[campo('tema_clasifica').value];
+                return tema ? `Detective digital: ${tema.nombre}` : 'Detective digital';
+            }
+            const lista = palabras().map(p => p.toLowerCase());
+            const usados = Object.values(temas).filter(t => t.palabras.filter(p => lista.includes(p)).length >= Math.min(5, t.palabras.length));
+            if (usados.length === 1) return `Lluvia de meteoros: ${usados[0].nombre}`;
+            return usados.length ? 'Lluvia de meteoros TIC' : 'Lluvia de meteoros';
+        }
+        function pintarTemas() {
+            const lista = palabras().map(p => p.toLowerCase());
+            $('[data-temas]', form).innerHTML = Object.entries(temas).map(([clave, t]) =>
+                `<button type="button" data-tema="${clave}" class="${t.palabras.every(p => lista.includes(p)) ? 'activo' : ''}">${t.emoji} ${escapar(t.nombre)}</button>`).join('');
+        }
+        function alternarTema(clave) {
+            const tema = temas[clave];
+            let lista = palabras();
+            const minusculas = lista.map(p => p.toLowerCase());
+            if (tema.palabras.every(p => minusculas.includes(p))) lista = lista.filter(p => !tema.palabras.includes(p.toLowerCase()));
+            else tema.palabras.forEach(p => { if (!minusculas.includes(p)) lista.push(p); });
+            palabrasInput.value = lista.join('\n');
+            avisarCambio(form);
+        }
+
+        function actualizar() {
+            const p = plantilla();
+            const info = plantillas[p] || {};
+            $$('[data-bloque]', form).forEach(b => b.classList.toggle('d-none', b.dataset.bloque !== p));
+            $('[data-explicacion-plantilla]', form).innerHTML = `<span class="e">${info.emoji}</span><div>${escapar(info.como || '')}</div>`;
+            if (p === 'atajos') {
+                const elegidos = atajosElegidos();
+                $('[data-grupos-atajos]', form).innerHTML = Object.entries(gruposAtajos).map(([clave, g]) =>
+                    `<button type="button" data-grupo-atajos="${clave}" class="${g.atajos.every(a => elegidos.includes(a)) ? 'activo' : ''}">${g.emoji} ${escapar(g.nombre)}</button>`).join('');
+                const cfgA = config();
+                $('[data-ayuda-atajos]', form).innerHTML = elegidos.length < 2
+                    ? '⚠️ Elige al menos 2 atajos.'
+                    : (cfgA.modo === 'ninja' ? '🥷 <b>Ninja:</b> solo ven la situación; la combinación aparece si se equivocan.'
+                        : '💡 <b>Aprende:</b> ven la situación y la combinación; practican hasta memorizarla.')
+                        + `<br>${elegidos.length} atajos · ⭐ con ${Math.ceil(cfgA.rondas * 0.5)} situaciones resueltas · ⭐⭐⭐ con ${Math.ceil(cfgA.rondas * 0.9)}. En tablets sin teclado aparecen opciones para tocar.`;
+            } else if (p === 'mensaje') {
+                const cfgM = config();
+                const cifrado = cifrados[cfgM.cifrado] || ['🔣', 'Símbolos', ''];
+                $('[data-bloque-desplazamiento]', form).classList.toggle('d-none', cfgM.cifrado !== 'cesar');
+                $('[data-explicacion-cifrado]', form).innerHTML = `<span class="e">${cifrado[0]}</span><div><b>${escapar(cifrado[1])}:</b> ${escapar(cifrado[2])}</div>`;
+                const listaM = palabrasMensaje().map(x => x.toLowerCase());
+                $('[data-temas-mensaje]', form).innerHTML = Object.entries(temas).map(([clave, t]) => {
+                    const normal = t.palabras.map(x => (window.NLJuegos ? window.NLJuegos.normalizarSecreto(x) : x).toLowerCase());
+                    return `<button type="button" data-tema-mensaje="${clave}" class="${normal.every(x => listaM.includes(x)) ? 'activo' : ''}">${t.emoji} ${escapar(t.nombre)}</button>`;
+                }).join('');
+                const largas = palabrasMensaje().filter(x => x.length > 12);
+                const cuenta = $('[data-cuenta-mensaje]', form);
+                cuenta.textContent = largas.length ? `⚠️ ${largas[0]} es muy larga` : `${cfgM.palabras.length} palabras`;
+                cuenta.classList.toggle('text-danger', cfgM.palabras.length < 3 || largas.length > 0);
+                const ejemplo = cfgM.palabras[0];
+                $('[data-ejemplo-cifrado]', form).innerHTML = ejemplo && window.NLJuegos
+                    ? `<span class="t">Así verán «${escapar(ejemplo)}»:</span><span class="codigos">${[...ejemplo].map(l => `<span><b>${escapar(window.NLJuegos.codigoDe(l, cfgM))}</b><i>${l}</i></span>`).join('')}</span>`
+                    : '';
+            } else if (p === 'rutas') {
+                const cfgX = config();
+                $('[data-ayuda-rutas]', form).innerHTML = (cfgX.modo === 'buscar'
+                    ? '🔎 <b>Búscalo:</b> solo ven el nombre del archivo (ej. «cancion_feliz.mp3») y deciden en qué carpeta estaría. Aprenden a organizar.'
+                    : '🧭 <b>Sigue la ruta:</b> ven el nombre y la ruta (ej. «Documentos › Escuela › Ciencias»). Aprenden a leer rutas.')
+                    + `<br>⭐ con ${Math.ceil(cfgX.rondas * 0.5)} archivos encontrados · cada uno cuenta si usan máximo 3 clics de más.`;
+            } else if (p === 'formato') {
+                const cfgF = config();
+                const propias = frasesPropias();
+                $('[data-ayuda-formato]', form).innerHTML = ({
+                    facil: '🌱 <b>Fácil:</b> un solo formato (negrita, cursiva o subrayado) en todo el texto.',
+                    media: '🚀 <b>Media:</b> formato en una o dos palabras; a veces color y centrado.',
+                    dificil: '🔥 <b>Difícil:</b> varias palabras con distinto formato, color, tamaño y alineación.',
+                }[cfgF.dificultad]) + `<br>${propias.length >= 3 ? `Se usarán tus ${propias.length} frases.` : `Se usarán ${frasesFormato.length} frases de TIC (agrega 3 o más para usar las tuyas).`}`;
+            } else if (p === 'clasifica') {
+                const tema = campo('tema_clasifica').value;
+                $('[data-temas-clasifica]', form).innerHTML = Object.entries(temasClasifica).map(([clave, t]) =>
+                    `<button type="button" data-tema-clasifica="${clave}" class="${clave === tema ? 'activo' : ''}">${t.emoji} ${escapar(t.nombre)}</button>`).join('');
+                grupos().forEach((g, i) => {
+                    const cuenta = $(`[data-cuenta-grupo="${i + 1}"]`, form);
+                    cuenta.textContent = g.tarjetas.length ? `${g.tarjetas.length} tarjeta${g.tarjetas.length === 1 ? '' : 's'}` : (i === 2 ? 'Grupo opcional' : 'Sin tarjetas');
+                });
+                const cfgC = config();
+                const total = cfgC.categorias.reduce((n, g) => n + g.tarjetas.length, 0);
+                $('[data-ayuda-clasifica]', form).innerHTML = cfgC.categorias.length < 2
+                    ? '⚠️ Necesitas al menos 2 grupos, cada uno con sus tarjetas.'
+                    : `💡 Hay <b>${total}</b> tarjetas; en cada partida salen <b>${cfgC.rondas}</b> al azar. ⭐ con ${Math.ceil(cfgC.rondas * 0.5)} correctas · ⭐⭐⭐ con ${Math.ceil(cfgC.rondas * 0.9)}.`
+                        + (total < parseInt(campo('rondas_tarjetas').value, 10) ? ' Escribe más tarjetas para que no se repitan.' : '');
+            } else if (p === 'robot') {
+                const cfgR = config();
+                const t = cfgR.tablero || { tam: 5 };
+                $('[data-ayuda-robot]', form).innerHTML = `🧩 Tableros de <b>${t.tam} × ${t.tam}</b>, nuevos en cada partida y siempre con solución. `
+                    + (cfgR.modo === 'giros' ? '🔄 Con «avanzar y girar» piensan como un robot real: hacia dónde mira importa.' : '➡️ Con flechas cada bloque mueve una casilla: ideal para empezar.')
+                    + `<br>⭐ con ${Math.ceil(cfgR.niveles * 0.5)} laberintos resueltos · ⭐⭐⭐ con ${Math.ceil(cfgR.niveles * 0.9)}. Bono extra por resolverlo con el código más corto.`;
+            } else if (p === 'meteoros') {
+                if (metaSugerida) metaInput.value = sugerida();
+                const n = palabras().length;
+                const cuenta = $('[data-cuenta-palabras]', form);
+                cuenta.textContent = n < 5 ? `${n} de 5 mínimo` : `${n} palabras`;
+                cuenta.classList.toggle('text-danger', n < 5);
+                const meta = parseInt(metaInput.value, 10) || sugerida();
+                $('[data-ayuda-meta]', form).innerHTML = `💡 Con <b>${Math.ceil(meta * 0.5)}</b> meteoros superan la misión (⭐), con <b>${Math.ceil(meta * 0.7)}</b> ganan ⭐⭐ y con <b>${Math.ceil(meta * 0.9)}</b> ⭐⭐⭐. Para esta velocidad y duración sugerimos <b>${sugerida()}</b>.`;
+                pintarTemas();
+            } else {
+                $('[data-bloque-teclas]', form).classList.toggle('d-none', campo('conjunto').value !== 'personalizado');
+                const cfg = config();
+                $('[data-ayuda-teclado]', form).innerHTML = (cfg.modo === 'guiado'
+                    ? '💡 <b>Guiado:</b> la tecla brilla en el teclado de la pantalla y el alumno la busca en el suyo.'
+                    : '🕵️ <b>Reto:</b> solo ve la letra. Si se equivoca dos veces, aparece una pista.')
+                    + `<br>⭐ con ${Math.ceil(cfg.rondas * 0.5)} aciertos a la primera · ⭐⭐⭐ con ${Math.ceil(cfg.rondas * 0.9)}.`;
+            }
+            if (nombreSugerido) nombre.value = nombrePropuesto();
+            if (iconoSugerido && info.emoji) icono.value = info.emoji;
+
+            $('[data-bloque-arcade]', form).classList.toggle('d-none', !enArcade.checked);
+            $('[data-bloque-mapa]', form).classList.toggle('d-none', !agregarMapa.checked);
+            $('[data-ayuda-desbloqueo]', form).textContent = $('input[name=desbloqueo]:checked', form)?.value === 'mision'
+                ? 'Sale con candado 🔒 hasta que el alumno supere su misión del mapa. Si no está en el mapa, queda libre.'
+                : 'Lo pueden jugar desde el primer día.';
+
+            const cfg = config();
+            $('[data-maquina]', form).style.setProperty('--m1', info.color || '#7c3aed');
+            $('[data-previa-icono]', form).textContent = icono.value.trim() || info.emoji || '🎮';
+            $('[data-previa-tipo]', form).textContent = `${info.emoji || ''} ${info.nombre || ''}`;
+            $('[data-previa-nombre]', form).textContent = nombre.value.trim() || 'Nombre del juego';
+            $('[data-previa-meta]', form).textContent = `🎯 ${textoMeta(cfg)}`;
+            const corte = q => ({
+                teclado: () => `${Math.ceil(cfg.rondas * q)} a la primera`,
+                clasifica: () => `${Math.ceil(cfg.rondas * q)} correctas`,
+                robot: () => `${Math.ceil(cfg.niveles * q)} laberintos`,
+                atajos: () => `${Math.ceil(cfg.rondas * q)} situaciones`,
+                mensaje: () => `${Math.ceil(cfg.rondas * q)} mensajes`,
+                rutas: () => `${Math.ceil(cfg.rondas * q)} archivos`,
+                formato: () => `${Math.ceil(cfg.rondas * q)} textos`,
+            }[p] || (() => `${Math.ceil(cfg.meta * q)} meteoros`))();
+            $('[data-previa-cortes]', form).innerHTML = `<span>⭐ ${corte(0.5)}</span><span>⭐⭐ ${corte(0.7)}</span><span>⭐⭐⭐ ${corte(0.9)}</span>`;
+            const donde = [];
+            if (agregarMapa.checked || $('.misiones-juego', form)) donde.push('🗺️ Misión del mapa');
+            if (enArcade.checked) donde.push('🕹️ Arcade');
+            $('[data-previa-donde]', form).innerHTML = donde.length
+                ? `Aparece en: <b>${donde.join(' · ')}</b>` : '⚠️ Todavía no aparece en ningún lado: enciéndelo en el Arcade o agrégalo al mapa.';
+            marcarAtajos(form);
+            // Pasos: 1 · 2 (meteoros, teclado, detective, robot, atajos, mensaje, rutas, formato) · 3 · 4
+            marcarPasos(form, [true, palabras().length >= 5, true, gruposValidos().length >= 2, true, atajosElegidos().length >= 2,
+                palabrasMensaje().filter(x => x.length >= 2 && x.length <= 12).length >= 3, true, true, !!nombre.value.trim(), donde.length > 0]);
+        }
+
+        form.addEventListener('click', e => {
+            const tema = e.target.closest('[data-tema]');
+            if (tema) alternarTema(tema.dataset.tema);
+            const temaClasifica = e.target.closest('[data-tema-clasifica]');
+            if (temaClasifica) ponerTemaClasifica(temaClasifica.dataset.temaClasifica);
+            const grupoAtajos = e.target.closest('[data-grupo-atajos]');
+            if (grupoAtajos) {
+                const claves = gruposAtajos[grupoAtajos.dataset.grupoAtajos].atajos;
+                const cajas = claves.map(k => form.querySelector(`input[name=atajos][value="${k}"]`)).filter(Boolean);
+                const poner = !cajas.every(c => c.checked);
+                cajas.forEach(c => { c.checked = poner; });
+                avisarCambio(form);
+            }
+            const temaMensaje = e.target.closest('[data-tema-mensaje]');
+            if (temaMensaje) {
+                const t = temas[temaMensaje.dataset.temaMensaje];
+                const normal = t.palabras.map(x => window.NLJuegos.normalizarSecreto(x));
+                let lista = palabrasMensaje();
+                if (normal.every(x => lista.includes(x))) lista = lista.filter(x => !normal.includes(x));
+                else normal.forEach(x => { if (!lista.includes(x)) lista.push(x); });
+                campo('palabras_mensaje').value = lista.join('\n');
+                avisarCambio(form);
+            }
+            if (e.target.closest('[data-poner="icono"]')) iconoSugerido = false;
+            if (e.target.closest('[data-poner="velocidad"], [data-poner="duracion"]') && metaSugerida) setTimeout(actualizar);
+        });
+        enlazarAtajos(form);
+        metaInput.addEventListener('input', e => { if (e.isTrusted) metaSugerida = false; });
+        // Si el profe edita los grupos a mano, deja de ser un tema listo
+        $$('[data-grupo] input, [data-grupo] textarea', form).forEach(el => el.addEventListener('input', e => {
+            if (e.isTrusted) campo('tema_clasifica').value = 'personalizado';
+        }));
+        nombre.addEventListener('input', e => { if (e.isTrusted) nombreSugerido = false; });
+        icono.addEventListener('input', e => { if (e.isTrusted) iconoSugerido = false; });
+        $('[data-meta-sugerida]', form).addEventListener('click', () => { metaSugerida = true; actualizar(); avisarCambio(form); });
+        $('[data-sugerir-nombre]', form).addEventListener('click', () => { nombreSugerido = true; actualizar(); avisarCambio(form); });
+        $('[data-probar]', form).addEventListener('click', () => {
+            const p = plantilla();
+            const cfg = config();
+            if (p === 'meteoros' && cfg.palabras.length < 3) { toast('Escribe al menos 3 palabras para probarlo', 'warning'); return; }
+            if (p === 'clasifica' && cfg.categorias.length < 2) { toast('Necesitas al menos 2 grupos con tarjetas', 'warning'); return; }
+            if (p === 'atajos' && cfg.atajos.length < 2) { toast('Elige al menos 2 atajos', 'warning'); return; }
+            if (p === 'mensaje' && cfg.palabras.length < 3) { toast('Escribe al menos 3 palabras', 'warning'); return; }
+            if (!window.NLJuegos) { toast('No se pudo cargar el juego', 'error'); return; }
+            window.NLJuegos.abrir({
+                demo: true,
+                juego: { nombre: nombre.value.trim() || nombrePropuesto(), icono: icono.value.trim() || plantillas[p].emoji,
+                    plantilla: p, config: cfg, meta: textoMeta(cfg), info: plantillas[p] },
+            });
+        });
+        form.addEventListener('input', actualizar);
+        form.addEventListener('change', actualizar);
+        actualizar();
+    }
+
     const INICIADORES = [
         iniciarFormMision, iniciarFormLogro, iniciarFormDiaria, iniciarFormArticulo, iniciarFormClase, iniciarFormMundo,
         iniciarFormNivel, iniciarFormAlumno, iniciarFormMasiva, iniciarFormEquipo, iniciarFormMeta, iniciarFormConducta,
+        iniciarFormJuego,
     ];
     function iniciarFormularios(raiz = document) {
         INICIADORES.forEach(iniciar => {

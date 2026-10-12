@@ -3,6 +3,7 @@ from django.urls import path
 
 from . import views
 from . import views_clase as aula
+from . import views_juegos as juegos
 from . import views_profesor as profe
 
 urlpatterns = [
@@ -22,6 +23,11 @@ urlpatterns = [
     path('clase/<int:clase_id>/progreso/', views.mi_progreso, name='mi_progreso'),
     path('clase/<int:clase_id>/avatar/<int:compra_id>/', views.equipar_avatar, name='equipar_avatar'),
     path('clase/<int:clase_id>/ranking/', views.ranking, name='ranking'),
+    path('clase/<int:clase_id>/arcade/', juegos.arcade, name='arcade'),
+    path('clase/<int:clase_id>/arcade/<int:juego_id>/', juegos.arcade_juego, name='arcade_juego'),
+    path('clase/<int:clase_id>/juegos/<int:juego_id>/iniciar/', juegos.iniciar_partida, name='iniciar_partida'),
+    path('clase/<int:clase_id>/juegos/partida/<int:partida_id>/terminar/', juegos.terminar_partida,
+         name='terminar_partida'),
     path('salir/', views.salir_alumno, name='salir_alumno'),
 
     # ===== Acceso del profesor =====
@@ -106,6 +112,11 @@ urlpatterns = [
     path('profesor/metas/nueva/', aula.meta_form, name='alta_meta'),
     path('profesor/metas/<int:pk>/editar/', aula.meta_form, name='editar_meta'),
     path('profesor/metas/<int:pk>/reiniciar/', aula.reiniciar_meta, name='reiniciar_meta'),
+
+    path('profesor/juegos/', juegos.juegos_lista, name='juegos_lista'),
+    path('profesor/juegos/nuevo/', juegos.juego_form, name='alta_juego'),
+    path('profesor/juegos/<int:pk>/editar/', juegos.juego_form, name='editar_juego'),
+    path('profesor/juegos/<int:pk>/arcade/', juegos.alternar_arcade, name='alternar_arcade'),
 
     path('profesor/eliminar/<str:modelo>/<int:pk>/', profe.eliminar, name='eliminar'),
     path('profesor/alternar/<str:modelo>/<int:pk>/', profe.alternar_activo, name='alternar_activo'),

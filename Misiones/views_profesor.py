@@ -20,12 +20,13 @@ from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
 from . import gamificacion as juego
+from . import minijuegos
 from .forms import (
     AltaMasivaForm, AlumnoForm, ArticuloTiendaForm, ClaseForm, LogroForm, MisionDiariaForm, MisionForm,
     MundoForm, NivelForm, OtorgarLogroForm, separar_nombre,
 )
 from .models import (
-    Alumno, ArticuloTienda, Clase, CompraAlumno, Comportamiento, Equipo, Logro, LogroAlumno, MetaGrupo, Mision,
+    Alumno, ArticuloTienda, Clase, CompraAlumno, Comportamiento, Equipo, Juego, Logro, LogroAlumno, MetaGrupo, Mision,
     MisionDiaria, Movimiento, Mundo, Nivel, OpcionRespuesta, Pregunta, ProgresoMision,
 )
 from .templatetags.nextlevel import COLORES_CLASE, avatar_url
@@ -447,6 +448,11 @@ def alta_mision(request, pk=None):
             inicial = {'nivel': nivel.id}
     if not mision:
         inicial.update({'xp_recompensa': 50, 'monedas_recompensa': 15, 'activa': True})
+        # «Agregar al mapa» desde la biblioteca de juegos
+        juego_elegido = Juego.objects.filter(pk=request.GET.get('juego'), activo=True).first()             if (request.GET.get('juego') or '').isdigit() else None
+        if juego_elegido:
+            inicial.update({'tipo': 'juego', 'juego': juego_elegido.id, 'nombre': juego_elegido.nombre,
+                            'descripcion': juego_elegido.descripcion or minijuegos.PLANTILLAS_INFO[juego_elegido.plantilla]['como']})
     form = MisionForm(request.POST or None, request.FILES or None, instance=mision, initial=inicial)
     if mision and not request.POST:
         form.initial['nivel'] = mision.nivel_id
@@ -484,6 +490,9 @@ def alta_mision(request, pk=None):
         'mision': mision,
         'preguntas': preguntas,
         'tipos': juego.TIPO_INFO,
+        'juegos_data': {j.id: {'nombre': j.nombre, 'icono': j.icono, 'meta': minijuegos.descripcion_meta(j),
+                               'descripcion': j.descripcion or minijuegos.PLANTILLAS_INFO[j.plantilla]['como']}
+                        for j in Juego.objects.all()},
         'estructura': _estructura_niveles(),
         'posicion': request.POST.get('posicion', 'mantener' if mision else 'final'),
         'error_cuestionario': error_cuestionario,
@@ -529,6 +538,8 @@ CONDICIONES_INFO = [
     ('diarias', '📅', 'Misiones del día', 'Ej. reclama 10 diarias'),
     ('monedas', '💰', 'Ganar monedas', 'Ej. gana 500 monedas'),
     ('compras', '🛒', 'Comprar en la tienda', 'Ej. haz 3 compras'),
+    ('juegos', '🎮', 'Jugar minijuegos', 'Ej. juega 20 partidas'),
+    ('ppm', '⌨️', 'Escribir rápido', 'Ej. 30 palabras por minuto'),
     ('manual', '🎁', 'Lo das tú', 'Reconocimiento especial'),
 ]
 
@@ -549,6 +560,7 @@ OBJETIVOS_DIARIA = [
     ('xp', '🔋', 'Ganar XP', 'Toda la XP del día'),
     ('evidencias', '🛠️', 'Enviar trabajos', 'Entregas para revisión'),
     ('tienda', '🛍️', 'Visitar la tienda', 'Solo entrar, sin comprar'),
+    ('juegos', '🎮', 'Jugar minijuegos', 'Partidas del mapa o del Arcade'),
 ]
 
 ICONOS_DIARIA = ['👋', '🗺️', '⚡', '🧠', '💯', '🔋', '🛠️', '🛍️', '⭐', '🔥', '🎯', '🚀', '🤖', '💡', '📚', '🏃',
@@ -569,6 +581,7 @@ MODELOS_ELIMINABLES = {
     'equipo': (Equipo, 'equipos_lista'),
     'meta': (MetaGrupo, 'metas_lista'),
     'comportamiento': (Comportamiento, 'comportamientos_lista'),
+    'juego': (Juego, 'juegos_lista'),
 }
 
 
@@ -1016,7 +1029,7 @@ def ajustar_stock(request, pk):
 @login_required
 def alternar_activo(request, modelo, pk):
     modelos = {'articulo': ArticuloTienda, 'diaria': MisionDiaria, 'logro': Logro, 'mision': Mision,
-               'clase': Clase, 'alumno': Alumno, 'meta': MetaGrupo, 'comportamiento': Comportamiento}
+               'clase': Clase, 'alumno': Alumno, 'meta': MetaGrupo, 'comportamiento': Comportamiento, 'juego': Juego}
     if modelo not in modelos:
         return HttpResponse(status=404)
     objeto = get_object_or_404(modelos[modelo], pk=pk)

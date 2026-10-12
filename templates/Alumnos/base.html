@@ -5,6 +5,7 @@
 
 {% block cuerpo %}
 {% notificaciones_alumno alumno as notifs %}
+{% hay_arcade clase as arcade_activo %}
 {% with rango=alumno.rango %}
 
 <header class="hud">
@@ -22,6 +23,7 @@
         <nav class="hud-nav" aria-label="Navegación principal">
             <a href="{% url 'dashboard_alumno' clase.id %}" class="{% if seccion == 'mapa' %}activo{% endif %}"><i class="bi bi-map-fill"></i> Mapa</a>
             <a href="{% url 'tienda_alumno' clase.id %}" class="{% if seccion == 'tienda' %}activo{% endif %}"><i class="bi bi-shop"></i> Tienda</a>
+            {% if arcade_activo %}<a href="{% url 'arcade' clase.id %}" class="{% if seccion == 'arcade' %}activo{% endif %}"><i class="bi bi-controller"></i> Arcade</a>{% endif %}
             <a href="{% url 'ranking' clase.id %}" class="{% if seccion == 'ranking' %}activo{% endif %}"><i class="bi bi-trophy-fill"></i> Ranking</a>
             <a href="{% url 'mi_progreso' clase.id %}" class="{% if seccion == 'perfil' %}activo{% endif %}"><i class="bi bi-person-badge-fill"></i> Perfil</a>
         </nav>
@@ -77,9 +79,10 @@
 <nav class="nav-inferior" aria-label="Navegación">
     <a href="{% url 'dashboard_alumno' clase.id %}" class="{% if seccion == 'mapa' %}activo{% endif %}"><i class="bi bi-map-fill"></i>Mapa</a>
     <a href="{% url 'tienda_alumno' clase.id %}" class="{% if seccion == 'tienda' %}activo{% endif %}"><i class="bi bi-shop"></i>Tienda</a>
+    {% if arcade_activo %}<a href="{% url 'arcade' clase.id %}" class="{% if seccion == 'arcade' %}activo{% endif %}"><i class="bi bi-controller"></i>Arcade</a>{% endif %}
     <a href="{% url 'ranking' clase.id %}" class="{% if seccion == 'ranking' %}activo{% endif %}"><i class="bi bi-trophy-fill"></i>Ranking</a>
     <a href="{% url 'mi_progreso' clase.id %}" class="{% if seccion == 'perfil' %}activo{% endif %}"><i class="bi bi-person-badge-fill"></i>Perfil</a>
-    <a href="{% url 'salir_alumno' %}"><i class="bi bi-box-arrow-right"></i>Salir</a>
+    {% if not arcade_activo %}<a href="{% url 'salir_alumno' %}"><i class="bi bi-box-arrow-right"></i>Salir</a>{% endif %}
 </nav>
 
 {{ notifs.celebraciones|json_script:"celebraciones-data" }}

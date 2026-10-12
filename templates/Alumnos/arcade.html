@@ -1,0 +1,60 @@
+{% extends 'Alumnos/base.html' %}
+{% load nextlevel %}
+{% block title %}Arcade · {{ alumno.nombre }}{% endblock %}
+
+{% block content %}
+<div class="contenedor">
+    <section class="arcade-hero">
+        <div class="kicker">Sala de juegos</div>
+        <h1>🕹️ Arcade</h1>
+        <p>Practica, rompe tu récord y gana monedas extra todos los días.</p>
+        <div class="reglas">
+            <span>🪙 Premio una vez al día por juego</span>
+            <span>⭐ Necesitas al menos una estrella</span>
+            <span>🏆 Ranking de la semana</span>
+        </div>
+    </section>
+
+    <div class="row g-4 mt-1">
+        {% for m in maquinas %}
+            <div class="col-12 col-sm-6 col-lg-4">
+                {% if m.bloqueado %}
+                    <div class="maquina bloqueada plantilla-{{ m.juego.plantilla }}" aria-disabled="true">
+                {% else %}
+                    <a href="{% url 'arcade_juego' clase.id m.juego.id %}" class="maquina plantilla-{{ m.juego.plantilla }}">
+                {% endif %}
+                    <div class="pantalla">
+                        <span class="icono">{{ m.juego.icono }}</span>
+                        {% if m.bloqueado %}
+                            <div class="candado"><span>🔒</span>Supera su misión en el mapa para desbloquearlo</div>
+                        {% elif m.premio_hoy %}
+                            <span class="premio">🪙 +{{ m.juego.monedas_arcade }} hoy</span>
+                        {% elif m.juego.monedas_arcade %}
+                            <span class="premio cobrado">✓ Premio de hoy cobrado</span>
+                        {% endif %}
+                        {% if m.estrellas %}<span class="mis-estrellas">{% for e in m.estrellas|estrellas %}<span class="{% if not e %}apagada{% endif %}">⭐</span>{% endfor %}</span>{% endif %}
+                    </div>
+                    <div class="cuerpo">
+                        <div class="tipo">{{ m.info.emoji }} {{ m.info.nombre }}</div>
+                        <div class="nombre">{{ m.juego.nombre }}</div>
+                        <div class="meta">🎯 {{ m.meta }}</div>
+                        <div class="datos">
+                            <span>🏆 Tu récord: <b>{% if m.record %}{{ m.record }}{% else %}—{% endif %}</b></span>
+                            {% if m.top %}<span>👑 {{ m.top.nombre }} · {{ m.top.puntaje }}</span>{% endif %}
+                        </div>
+                        <span class="jugar">{% if m.bloqueado %}🔒 Bloqueado{% else %}<i class="bi bi-play-fill"></i> Jugar{% endif %}</span>
+                    </div>
+                {% if m.bloqueado %}</div>{% else %}</a>{% endif %}
+            </div>
+        {% empty %}
+            <div class="col-12">
+                <div class="g-card vacio-juego">
+                    <span class="e">🕹️</span>
+                    <h3 class="text-dark">El Arcade está en mantenimiento</h3>
+                    <p class="mb-0">Tu profe aún no ha encendido ninguna máquina. ¡Vuelve pronto!</p>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

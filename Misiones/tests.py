@@ -498,3 +498,251 @@ class FormulariosGuiadosAdminTests(BaseJuego):
         Equipo.objects.create(clase=self.clase, nombre='Leones', emoji='🦁', orden=1)
         self.client.post('/profesor/equipos/nuevo/', {'clase': self.clase.id, 'nombre': 'Lobos', 'emoji': '🐺', 'color': 'uva'})
         self.assertEqual(Equipo.objects.get(nombre='Lobos').orden, 2)
+
+
+@override_settings(STORAGES=ALMACEN_PRUEBAS)
+class MinijuegosTests(BaseJuego):
+    def setUp(self):
+        super().setUp()
+        from .models import Juego
+        self.meteoros = Juego.objects.create(nombre='Lluvia', plantilla='meteoros', monedas_arcade=5, configuracion={
+            'palabras': ['monitor', 'teclado', 'mouse', 'bocina', 'cpu'], 'duracion': 60, 'velocidad': 'normal', 'meta': 10})
+        self.teclado = Juego.objects.create(nombre='Teclas', plantilla='teclado', monedas_arcade=0,
+                                            configuracion={'conjunto': 'central', 'rondas': 20})
+        # La misión del juego va después de las dos misiones del nivel
+        self.m3 = Mision.objects.create(clase=self.clase, nivel=self.nivel, nombre='Juego', descripcion='x', tipo='juego',
+                                        juego=self.meteoros, orden=3, xp_recompensa=40, monedas_recompensa=20)
+
+    def jugar(self, juego_obj, datos, mision=None, segundos=60):
+        import json
+        from datetime import timedelta
+        from django.utils import timezone
+        from .models import PartidaJuego
+        inicio = self.client.post(f'/clase/{self.clase.id}/juegos/{juego_obj.id}/iniciar/',
+                                  {'mision': mision.id} if mision else {})
+        if inicio.status_code != 200:
+            return inicio
+        partida = inicio.json()['partida']
+        PartidaJuego.objects.filter(pk=partida).update(inicio=timezone.now() - timedelta(seconds=segundos))
+        return self.client.post(f'/clase/{self.clase.id}/juegos/partida/{partida}/terminar/',
+                                json.dumps(datos), content_type='application/json')
+
+    def test_calificacion_limita_lo_imposible(self):
+        from . import minijuegos
+        inflado = minijuegos.calificar_partida(self.meteoros, {'destruidos': 999, 'caracteres': 99999, 'vidas': 3}, 60)
+        self.assertLessEqual(inflado['aciertos'], int(60 / (2.1 * 0.5)) + 3)
+        self.assertEqual(inflado['calificacion'], 100)
+        self.assertIsNone(minijuegos.calificar_partida(self.teclado, {'completadas': 20, 'aciertos': 20}, 1))
+        normal = minijuegos.calificar_partida(self.teclado, {'completadas': 20, 'aciertos': 15, 'errores': 6, 'rapidas': 4}, 40)
+        self.assertEqual((normal['calificacion'], normal['estrellas']), (75, 2))
+        self.assertEqual(normal['puntaje'], 15 * 100 + 5 * 40 + 4 * 50)
+
+    def test_la_mision_de_juego_se_supera_jugando_y_se_puede_mejorar(self):
+        self.entrar()
+        # Bloqueada hasta completar las anteriores
+        self.assertEqual(self.jugar(self.meteoros, {}, mision=self.m3).status_code, 403)
+        for m in (self.m1, self.m2):
+            juego.calificar(ProgresoMision(alumno=self.alumno, mision=m), 100, avisar=False)
+        monedas = Alumno.objects.get(pk=self.alumno.pk).monedas
+
+        fallida = self.jugar(self.meteoros, {'destruidos': 3, 'caracteres': 18}, mision=self.m3).json()
+        self.assertEqual(fallida['estrellas'], 0)
+        self.assertFalse(fallida['mision']['aprobada'])
+
+        superada = self.jugar(self.meteoros, {'destruidos': 6, 'caracteres': 36, 'vidas': 2}, mision=self.m3).json()
+        self.assertTrue(superada['mision']['primera'])
+        self.assertEqual((superada['estrellas'], superada['xp'], superada['monedas']), (1, 40, 12))
+        progreso = ProgresoMision.objects.get(alumno=self.alumno, mision=self.m3)
+        self.assertEqual((progreso.estado, progreso.puntuacion), ('aprobado', 60))
+
+        peor = self.jugar(self.meteoros, {'destruidos': 5, 'caracteres': 30}, mision=self.m3).json()
+        self.assertFalse(peor['mision']['mejoro'])
+        mejor = self.jugar(self.meteoros, {'destruidos': 10, 'caracteres': 60, 'vidas': 3}, mision=self.m3).json()
+        self.assertTrue(mejor['mision']['mejoro'])
+        self.assertEqual((mejor['estrellas'], mejor['monedas'], mejor['xp']), (3, 8, 0))
+        self.assertTrue(mejor['record'])
+        # 12 por superarla + 8 al mejorar, más los bonos de subir de nivel que pudiera haber
+        self.assertGreaterEqual(Alumno.objects.get(pk=self.alumno.pk).monedas, monedas + 20)
+
+    def test_arcade_da_monedas_una_vez_al_dia_y_respeta_el_candado(self):
+        self.entrar()
+        self.assertContains(self.client.get(f'/clase/{self.clase.id}/dashboard/'), f'/clase/{self.clase.id}/arcade/')
+        sin_premio = self.jugar(self.teclado, {'completadas': 20, 'aciertos': 19, 'errores': 1, 'rapidas': 10}, segundos=30).json()
+        self.assertEqual((sin_premio['estrellas'], sin_premio['monedas']), (3, 0))  # Este juego no da monedas
+        self.teclado.monedas_arcade = 5
+        self.teclado.save()
+        cero = self.jugar(self.teclado, {'completadas': 20, 'aciertos': 5}, segundos=30).json()
+        self.assertEqual(cero['monedas'], 0)  # Sin estrellas no hay premio
+        premio = self.jugar(self.teclado, {'completadas': 20, 'aciertos': 15}, segundos=30).json()
+        self.assertEqual((premio['monedas'], premio.get('premio_diario')), (5, True))
+        otra = self.jugar(self.teclado, {'completadas': 20, 'aciertos': 20}, segundos=30).json()
+        self.assertEqual(otra['monedas'], 0)
+
+        # «Al superar su misión»: con candado hasta aprobarla en el mapa
+        self.meteoros.desbloqueo = 'mision'
+        self.meteoros.save()
+        self.assertEqual(self.jugar(self.meteoros, {}).status_code, 403)
+        self.assertContains(self.client.get(f'/clase/{self.clase.id}/arcade/'), 'Supera su misión en el mapa')
+        juego.calificar(ProgresoMision(alumno=self.alumno, mision=self.m3), 80, avisar=False)
+        self.assertEqual(self.jugar(self.meteoros, {'destruidos': 8, 'caracteres': 40}).status_code, 200)
+        self.assertContains(self.client.get(f'/clase/{self.clase.id}/arcade/{self.meteoros.id}/'), 'Récords')
+
+    def test_partidas_cuentan_para_misiones_del_dia_y_logros(self):
+        from .models import Logro, LogroAlumno, MisionDiaria, ProgresoDiario
+        MisionDiaria.objects.update(activa=False)  # Solo esta, para que salga en el sorteo de hoy
+        MisionDiaria.objects.create(titulo='Arcade', objetivo='juegos', meta=1)
+        veloz = Logro.objects.create(nombre='Dedos veloces', condicion='ppm', valor=20)
+        self.entrar()
+        self.jugar(self.meteoros, {'destruidos': 12, 'caracteres': 150}, segundos=60)
+        self.assertTrue(ProgresoDiario.objects.filter(alumno=self.alumno, mision__objetivo='juegos', progreso=1).exists())
+        self.assertTrue(LogroAlumno.objects.filter(alumno=self.alumno, logro=veloz).exists())  # 150/5 = 30 ppm
+
+    def test_profe_crea_el_juego_y_lo_pone_en_el_mapa(self):
+        from .models import Juego
+        self.client.force_login(User.objects.create_superuser('profe7', 'p@x.com', 'x'))
+        self.assertContains(self.client.get('/profesor/juegos/nuevo/', HTTP_X_MODAL='1'), 'data-form="juego"')
+        base = {'duracion': 60, 'velocidad': 'normal', 'vidas': 3, 'conjunto': 'central', 'rondas': 20, 'modo': 'guiado',
+                'desbloqueo': 'libre', 'monedas_arcade': 5, 'en_arcade': 'on', 'activo': 'on'}
+        respuesta = self.client.post('/profesor/juegos/nuevo/', {**base, 'plantilla': 'meteoros', 'nombre': 'Pocas',
+                                                                'icono': '☄️', 'palabras': 'uno, dos'})
+        self.assertContains(respuesta, 'al menos 5 palabras')
+        self.client.post('/profesor/juegos/nuevo/', {
+            **base, 'plantilla': 'teclado', 'nombre': 'Vocales', 'icono': '⌨️', 'conjunto': 'personalizado',
+            'teclas': 'a e i o u', 'rondas': 15, 'modo': 'reto', 'desbloqueo': 'mision', 'agregar_mapa': 'on',
+            'nivel_mapa': self.nivel.id, 'xp_mapa': 30, 'monedas_mapa': 10})
+        vocales = Juego.objects.get(nombre='Vocales')
+        self.assertEqual(vocales.configuracion['teclas'], 'AEIOU')
+        mision = Mision.objects.get(juego=vocales)
+        self.assertEqual((mision.tipo, mision.nivel, mision.xp_recompensa, mision.orden), ('juego', self.nivel, 30, 4))
+        self.assertContains(self.client.get('/profesor/juegos/'), 'Vocales')
+        self.assertContains(self.client.get(f'/forja/mision/nueva/?juego={vocales.id}', HTTP_X_MODAL='1'), 'value="juego" checked')
+        # Una misión de tipo minijuego necesita su juego
+        respuesta = self.client.post('/forja/mision/nueva/', {'nivel': self.nivel.id, 'nombre': 'Sin juego', 'descripcion': 'x',
+                                                              'tipo': 'juego', 'xp_recompensa': 10, 'monedas_recompensa': 5})
+        self.assertContains(respuesta, 'Elige el minijuego')
+
+
+@override_settings(STORAGES=ALMACEN_PRUEBAS)
+class DetectiveYRobotTests(BaseJuego):
+    def test_detective_califica_y_limita(self):
+        from . import minijuegos
+        from .models import Juego
+        detective = Juego.objects.create(nombre='Detective', plantilla='clasifica', configuracion={
+            'rondas': 10, 'tiempo': 8, 'categorias': [
+                {'nombre': 'Entrada', 'emoji': '⌨️', 'tarjetas': ['Teclado', 'Mouse', 'Micrófono', 'Escáner']},
+                {'nombre': 'Salida', 'emoji': '🔊', 'tarjetas': ['Monitor', 'Bocinas', 'Impresora']}]})
+        cfg = minijuegos.configuracion(detective)
+        self.assertEqual(cfg['rondas'], 7)  # No puede pedir más tarjetas de las que hay
+        self.assertIsNone(minijuegos.calificar_partida(detective, {'completadas': 7, 'aciertos': 7}, 1))
+        r = minijuegos.calificar_partida(detective, {'completadas': 99, 'aciertos': 99, 'rapidas': 99}, 30)
+        self.assertEqual((r['calificacion'], r['estrellas'], r['puntaje']), (100, 3, 7 * 150))
+        r = minijuegos.calificar_partida(detective, {'completadas': 7, 'aciertos': 4, 'rapidas': 1}, 30)
+        self.assertEqual((r['calificacion'], r['estrellas'], r['errores'], r['precision']), (57, 1, 3, 57))
+        # Datos rotos: se usa el tema «¿Seguro o peligroso?»
+        roto = Juego(nombre='Roto', plantilla='clasifica', configuracion={'categorias': [{'nombre': 'Solo uno'}]})
+        self.assertEqual(len(minijuegos.configuracion(roto)['categorias']), 2)
+
+    def test_robot_califica_y_limita(self):
+        from . import minijuegos
+        from .models import Juego
+        robot = Juego.objects.create(nombre='Robot', plantilla='robot', configuracion={
+            'dificultad': 'media', 'niveles': 3, 'modo': 'giros', 'bucles': True})
+        cfg = minijuegos.configuracion(robot)
+        self.assertEqual((cfg['tablero']['tam'], cfg['intentos'], cfg['modo']), (6, 3, 'giros'))
+        self.assertIsNone(minijuegos.calificar_partida(robot, {'resueltos': 3}, 2))
+        r = minijuegos.calificar_partida(robot, {'resueltos': 2, 'perfectos': 5, 'errores': 50}, 60)
+        self.assertEqual((r['calificacion'], r['estrellas'], r['puntaje'], r['errores']), (67, 1, 2 * 150 + 2 * 75, 9))
+        self.assertEqual(minijuegos.descripcion_meta(robot), 'Resuelve 3 laberintos programando al robot')
+
+    def test_profe_crea_detective_y_robot(self):
+        from .models import Juego
+        self.client.force_login(User.objects.create_superuser('profe8', 'p@x.com', 'x'))
+        respuesta = self.client.get('/profesor/juegos/nuevo/?plantilla=clasifica', HTTP_X_MODAL='1')
+        self.assertContains(respuesta, 'data-temas-clasifica')
+        self.assertContains(respuesta, 'Pedir permiso antes de descargar un juego')  # Tema listo precargado
+        base = {'icono': '🎮', 'duracion': 60, 'velocidad': 'normal', 'vidas': 3, 'conjunto': 'central', 'rondas': 20,
+                'modo': 'guiado', 'desbloqueo': 'libre', 'monedas_arcade': 5, 'en_arcade': 'on', 'activo': 'on'}
+        incompleto = self.client.post('/profesor/juegos/nuevo/', {**base, 'plantilla': 'clasifica', 'nombre': 'Uno',
+                                                                  'cat1_nombre': 'Solo', 'cat1_tarjetas': 'a\nb'})
+        self.assertContains(incompleto, 'al menos 2 grupos')
+        self.client.post('/profesor/juegos/nuevo/', {
+            **base, 'plantilla': 'clasifica', 'nombre': 'Hardware', 'tema_clasifica': 'personalizado',
+            'cat1_emoji': '🔧', 'cat1_nombre': 'Hardware', 'cat1_tarjetas': 'Teclado\nMonitor\n\nMouse',
+            'cat2_emoji': '💿', 'cat2_nombre': 'Software', 'cat2_tarjetas': 'Word\nScratch', 'rondas_tarjetas': 15,
+            'tiempo_tarjeta': 0})
+        detective = Juego.objects.get(nombre='Hardware')
+        self.assertEqual([c['tarjetas'] for c in detective.configuracion['categorias']], [['Teclado', 'Monitor', 'Mouse'], ['Word', 'Scratch']])
+        self.assertEqual(detective.configuracion['tiempo'], 0)
+        self.client.post('/profesor/juegos/nuevo/', {**base, 'plantilla': 'robot', 'nombre': 'Rover', 'dificultad': 'dificil',
+                                                     'niveles': 8, 'modo_robot': 'giros', 'bucles': 'on'})
+        self.assertEqual(Juego.objects.get(nombre='Rover').configuracion,
+                         {'dificultad': 'dificil', 'niveles': 8, 'modo': 'giros', 'bucles': True})
+        # Al editar, los grupos vuelven a sus campos
+        edicion = self.client.get(f'/profesor/juegos/{detective.id}/editar/', HTTP_X_MODAL='1')
+        self.assertContains(edicion, 'Teclado\nMonitor\nMouse')
+
+
+@override_settings(STORAGES=ALMACEN_PRUEBAS)
+class CuatroMinijuegosTests(BaseJuego):
+    def test_configuracion_y_calificacion_por_rondas(self):
+        from . import minijuegos
+        from .models import Juego
+        atajos = Juego(nombre='A', plantilla='atajos', configuracion={'atajos': ['copiar', 'cerrar_pestaña'], 'rondas': 10})
+        self.assertEqual(minijuegos.configuracion(atajos)['atajos'], list(minijuegos.GRUPOS_ATAJOS['texto'][2]))  # 1 válido no alcanza
+        mensaje = Juego(nombre='M', plantilla='mensaje', configuracion={'cifrado': 'cesar', 'palabras': ['Ratón', 'pc', 'Contraseña', 'x', 'electroencefalograma'], 'rondas': 10})
+        cfg = minijuegos.configuracion(mensaje)
+        self.assertEqual(cfg['palabras'], ['RATON', 'PC', 'CONTRASEÑA'])
+        self.assertEqual(cfg['rondas'], 3)
+        for plantilla, minimo in (('atajos', 0.4), ('mensaje', 2), ('rutas', 1.5), ('formato', 2)):
+            juego_obj = Juego(nombre=plantilla, plantilla=plantilla, configuracion={'rondas': 5})
+            self.assertIsNone(minijuegos.calificar_partida(juego_obj, {'completadas': 5, 'aciertos': 5}, 5 * minimo - 0.1), plantilla)
+            r = minijuegos.calificar_partida(juego_obj, {'completadas': 9, 'aciertos': 9, 'perfectos': 9, 'errores': 2}, 60)
+            self.assertEqual((r['calificacion'], r['estrellas'], r['puntaje'], r['precision']), (100, 3, 750, 71), plantilla)
+            self.assertTrue(minijuegos.descripcion_meta(juego_obj))
+
+    def test_jugar_atajos_en_el_arcade(self):
+        import json
+        from datetime import timedelta
+        from django.utils import timezone
+        from .models import Juego, PartidaJuego
+        atajos = Juego.objects.create(nombre='Ninja', plantilla='atajos', monedas_arcade=3,
+                                      configuracion={'atajos': ['copiar', 'pegar', 'guardar'], 'rondas': 10, 'modo': 'ninja'})
+        self.entrar()
+        pagina = self.client.get(f'/clase/{self.clase.id}/arcade/{atajos.id}/')
+        self.assertContains(pagina, 'Atajos ninja')
+        self.assertContains(pagina, 'situaciones')  # La configuración trae las situaciones del catálogo
+        partida = self.client.post(f'/clase/{self.clase.id}/juegos/{atajos.id}/iniciar/').json()['partida']
+        PartidaJuego.objects.filter(pk=partida).update(inicio=timezone.now() - timedelta(seconds=40))
+        r = self.client.post(f'/clase/{self.clase.id}/juegos/partida/{partida}/terminar/',
+                             json.dumps({'completadas': 10, 'aciertos': 8, 'perfectos': 6, 'errores': 3}),
+                             content_type='application/json').json()
+        self.assertEqual((r['estrellas'], r['puntaje'], r['monedas']), (2, 8 * 100 + 6 * 50, 3))
+
+    def test_profe_crea_los_cuatro(self):
+        from .models import Juego
+        self.client.force_login(User.objects.create_superuser('profe9', 'p@x.com', 'x'))
+        formulario = self.client.get('/profesor/juegos/nuevo/', HTTP_X_MODAL='1')
+        for texto in ('data-bloque="atajos"', 'data-bloque="mensaje"', 'data-bloque="rutas"', 'data-bloque="formato"', 'Ctrl + C'):
+            self.assertContains(formulario, texto)
+        base = {'icono': '🎮', 'duracion': 60, 'velocidad': 'normal', 'vidas': 3, 'conjunto': 'central', 'rondas': 20,
+                'modo': 'guiado', 'desbloqueo': 'libre', 'monedas_arcade': 5, 'en_arcade': 'on', 'activo': 'on'}
+        pocos = self.client.post('/profesor/juegos/nuevo/', {**base, 'plantilla': 'atajos', 'nombre': 'X', 'atajos': ['copiar']})
+        self.assertContains(pocos, 'al menos 2 atajos')
+        self.client.post('/profesor/juegos/nuevo/', {**base, 'plantilla': 'atajos', 'nombre': 'Ninja', 'atajos': ['negrita', 'cursiva'],
+                                                     'rondas_atajos': 15, 'modo_atajos': 'ninja'})
+        self.assertEqual(Juego.objects.get(nombre='Ninja').configuracion, {'atajos': ['negrita', 'cursiva'], 'rondas': 15, 'modo': 'ninja'})
+        larga = self.client.post('/profesor/juegos/nuevo/', {**base, 'plantilla': 'mensaje', 'nombre': 'M', 'cifrado': 'binario',
+                                                             'palabras_mensaje': 'robot\nmotor\nelectroencefalograma'})
+        self.assertContains(larga, 'Máximo 12 letras')
+        self.client.post('/profesor/juegos/nuevo/', {**base, 'plantilla': 'mensaje', 'nombre': 'Secreto', 'cifrado': 'cesar',
+                                                     'palabras_mensaje': 'Ratón, Contraseña\nrobot', 'rondas_mensaje': 8, 'desplazamiento': 5})
+        self.assertEqual(Juego.objects.get(nombre='Secreto').configuracion['palabras'], ['RATON', 'CONTRASEÑA', 'ROBOT'])
+        self.client.post('/profesor/juegos/nuevo/', {**base, 'plantilla': 'rutas', 'nombre': 'Rutas', 'modo_rutas': 'buscar',
+                                                     'dificultad_rutas': 'dificil', 'rondas_rutas': 8})
+        self.assertEqual(Juego.objects.get(nombre='Rutas').configuracion, {'modo': 'buscar', 'dificultad': 'dificil', 'rondas': 8})
+        mal = self.client.post('/profesor/juegos/nuevo/', {**base, 'plantilla': 'formato', 'nombre': 'F', 'frases': 'una sola frase aquí'})
+        self.assertContains(mal, 'al menos 3 frases')
+        self.client.post('/profesor/juegos/nuevo/', {**base, 'plantilla': 'formato', 'nombre': 'Formato', 'dificultad_formato': 'dificil'})
+        formato = Juego.objects.get(nombre='Formato')
+        self.assertEqual(formato.configuracion['frases'], [])
+        self.assertContains(self.client.get(f'/profesor/juegos/{formato.id}/editar/', HTTP_X_MODAL='1'), 'value="dificil"')

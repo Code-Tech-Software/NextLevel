@@ -5,9 +5,10 @@ from django.db import transaction
 from django.utils import timezone
 
 from Misiones import gamificacion as juego
+from Misiones import minijuegos
 from Misiones.models import (
-    Alumno, ArticuloTienda, Clase, Comportamiento, Equipo, MetaGrupo, Mision, Mundo, Nivel, OpcionRespuesta, Pregunta,
-    ProgresoMision,
+    Alumno, ArticuloTienda, Clase, Comportamiento, Equipo, Juego, MetaGrupo, Mision, Mundo, Nivel, OpcionRespuesta,
+    PartidaJuego, Pregunta, ProgresoMision,
 )
 
 NOMBRE_CLASE = 'Robótica Demo'
@@ -37,6 +38,8 @@ ESTRUCTURA = [
         ('Bloques mágicos', [
             ('Explora Scratch', 'link', 'Entra a Scratch y crea tu primer personaje que se mueva.',
              {'link': 'https://scratch.mit.edu/'}),
+            ('Lluvia de meteoros', 'juego', 'Escribe las palabras de robótica para destruir los meteoros antes de que caigan.',
+             {'juego': 'meteoros'}),
             ('Exposición en equipo', 'presencial', 'Presenta tu proyecto frente al grupo.', {}),
         ]),
         ('Corrientes y ciclos', [
@@ -50,6 +53,8 @@ ESTRUCTURA = [
             ('El sensor ultrasónico', 'video', 'Aprende cómo los murciélagos (y los robots) miden distancias.',
              {'link': 'https://www.youtube.com/watch?v=6F1B_N6LuKw'}),
             ('Radar de proximidad', 'arduino', 'Haz que un buzzer suene cuando algo se acerque a menos de 10 cm.', {}),
+            ('Rover explorador', 'juego', 'Programa al rover para que llegue a la batería sin chocar con las rocas.',
+             {'juego': 'robot'}),
         ]),
     ]),
 ]
@@ -92,6 +97,43 @@ class Command(BaseCommand):
         clase = Clase.objects.create(nombre=NOMBRE_CLASE, grado='4°', grupo='B', anio=timezone.localdate().year,
                                      icono='🤖', color='cielo', descripcion='Clase de ejemplo de Next-Level')
 
+        # Un juego que es misión del mapa (y se abre en el Arcade al superarla) y otro solo para el Arcade
+        juegos = {
+            'meteoros': Juego.objects.create(
+                clase=clase, nombre='Lluvia de meteoros: Robótica', icono='☄️', plantilla='meteoros', desbloqueo='mision',
+                descripcion='Practica escribiendo palabras de robótica.', monedas_arcade=5,
+                configuracion={'palabras': minijuegos.TEMAS_PALABRAS['robotica'][2], 'duracion': 60, 'velocidad': 'lenta'}),
+            'teclado': Juego.objects.create(
+                clase=clase, nombre='Teclado misterioso: fila guía', icono='⌨️', plantilla='teclado', monedas_arcade=5,
+                descripcion='Encuentra las teclas de la fila guía sin mirar.',
+                configuracion={'conjunto': 'central', 'rondas': 20, 'modo': 'guiado'}),
+            'robot': Juego.objects.create(
+                clase=clase, nombre='Robot programador: primeros pasos', icono='🤖', plantilla='robot', monedas_arcade=5,
+                descripcion='Programa al robot con flechas para llegar a la batería.',
+                configuracion={'dificultad': 'facil', 'niveles': 5, 'modo': 'flechas', 'bucles': True}),
+            'detective': Juego.objects.create(
+                clase=clase, nombre='Detective digital: ¿sensor o actuador?', icono='🕵️', plantilla='clasifica',
+                monedas_arcade=5, descripcion='¿Mide algo o hace algo? Clasifica los componentes del robot.',
+                configuracion={'tema': 'robotica', 'rondas': 10, 'tiempo': 8, 'categorias': [
+                    {'nombre': n, 'emoji': e, 'tarjetas': t} for n, e, t in minijuegos.TEMAS_CLASIFICA['robotica'][2]]}),
+            'atajos': Juego.objects.create(
+                clase=clase, nombre='Atajos ninja: editar texto', icono='🥷', plantilla='atajos', monedas_arcade=5,
+                descripcion='Copiar, pegar, cortar y deshacer como un ninja del teclado.',
+                configuracion={'atajos': minijuegos.GRUPOS_ATAJOS['texto'][2], 'rondas': 10, 'modo': 'aprende'}),
+            'mensaje': Juego.objects.create(
+                clase=clase, nombre='Mensaje secreto: código Morse', icono='📡', plantilla='mensaje', monedas_arcade=5,
+                descripcion='Descifra palabras de robótica escritas en Morse.',
+                configuracion={'cifrado': 'morse', 'palabras': minijuegos.TEMAS_PALABRAS['robotica'][2], 'rondas': 5}),
+            'rutas': Juego.objects.create(
+                clase=clase, nombre='Explorador de rutas: ¿dónde lo guardarías?', icono='📁', plantilla='rutas',
+                monedas_arcade=5, descripcion='Encuentra cada archivo en su carpeta.',
+                configuracion={'modo': 'buscar', 'dificultad': 'media', 'rondas': 5}),
+            'formato': Juego.objects.create(
+                clase=clase, nombre='Copia el formato: como en Word', icono='🎨', plantilla='formato', monedas_arcade=5,
+                descripcion='Selecciona palabras y dales el mismo formato que el modelo.',
+                configuracion={'dificultad': 'media', 'rondas': 5}),
+        }
+
         misiones = []
         for orden_mundo, (nombre, tema, desc, niveles) in enumerate(ESTRUCTURA, start=1):
             mundo = Mundo.objects.create(clase=clase, nombre=nombre, tema=tema, descripcion=desc, orden=orden_mundo)
@@ -100,6 +142,8 @@ class Command(BaseCommand):
                                              recompensa_cofre=25)
                 for orden, (titulo, tipo, descripcion, extra) in enumerate(lista, start=1):
                     datos = {'xp_recompensa': 60, 'monedas_recompensa': 20, **extra}
+                    if tipo == 'juego':
+                        datos['juego'] = juegos[extra['juego']]
                     mision = Mision.objects.create(clase=clase, nivel=nivel, nombre=titulo, tipo=tipo,
                                                    descripcion=descripcion, orden=orden, **datos)
                     if tipo == 'cuestionario':
@@ -140,6 +184,14 @@ class Command(BaseCommand):
             alumno.notificaciones.all().delete()
         MetaGrupo.objects.create(clase=clase, titulo='¡Viernes de película!', icono='🍿', tipo='conducta', objetivo=40,
                                  recompensa='🍿 Película con palomitas el viernes', monedas_recompensa=10)
+
+        # Algunas partidas del Arcade para que el ranking ya tenga récords
+        for alumno in list(clase.alumnos.all())[:5]:
+            aciertos = rnd.randint(11, 20)
+            PartidaJuego.objects.create(
+                juego=juegos['teclado'], alumno=alumno, clase=clase, terminada=True, aciertos=aciertos, duracion=40,
+                calificacion=aciertos * 5, estrellas=minijuegos.estrellas_de(aciertos * 5), precision=rnd.randint(75, 98),
+                puntaje=aciertos * 100 + (20 - aciertos) * 40 + rnd.randint(2, 9) * 50)
 
         self.stdout.write(self.style.SUCCESS(
             f'Clase "{NOMBRE_CLASE}" creada con {len(misiones)} misiones y {len(ALUMNOS)} alumnos (PIN de todos: 1234).'

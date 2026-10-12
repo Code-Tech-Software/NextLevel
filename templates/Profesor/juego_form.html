@@ -1,0 +1,491 @@
+{% extends base_plantilla|default:"Profesor/baseProfesor.html" %}
+{% block title %}{% if juego %}Editar juego{% else %}Nuevo juego{% endif %}{% endblock %}
+{% block migas %}<a href="{% url 'juegos_lista' %}">Juegos</a><i class="bi bi-chevron-right"></i><span class="actual">{% if juego %}{{ juego.nombre }}{% else %}Nuevo juego{% endif %}</span>{% endblock %}
+
+{% block content %}
+<form method="post" action="{{ request.get_full_path }}" class="form-panel ancho" data-form="juego" data-editando="{% if juego %}1{% endif %}" novalidate>
+    {% csrf_token %}
+    {{ plantillas|json_script:"plantillas-juego-data" }}
+    {{ temas|json_script:"temas-juego-data" }}
+    {{ conjuntos|json_script:"conjuntos-juego-data" }}
+    {{ velocidades|json_script:"velocidades-juego-data" }}
+    {{ temas_clasifica|json_script:"temas-clasifica-data" }}
+    {{ dificultades|json_script:"dificultades-robot-data" }}
+    {{ catalogo_atajos|json_script:"atajos-juego-data" }}
+    {{ grupos_atajos|json_script:"grupos-atajos-data" }}
+    {{ cifrados|json_script:"cifrados-data" }}
+    {{ frases_formato|json_script:"frases-formato-data" }}
+    <div class="modal-header">
+        <span class="icono-form"><i class="bi bi-controller"></i></span>
+        <div class="min-w-0 flex-grow-1">
+            <h2 class="titulo-form">{% if juego %}Editar «{{ juego.nombre }}»{% else %}Nuevo juego{% endif %}</h2>
+            <p class="sub-form">Configura el juego una vez y úsalo como misión del mapa, en el Arcade o en los dos.</p>
+        </div>
+        {% if modal %}<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>{% endif %}
+    </div>
+
+    <div class="modal-body">
+        {% if form.errors %}<div class="aviso-error"><i class="bi bi-exclamation-circle"></i> Revisa los campos marcados en rojo.</div>{% endif %}
+        <div class="row g-3">
+            <div class="col-lg-8">
+                <!-- Paso 1 -->
+                <section class="p-card paso mb-3">
+                    <div class="paso-cabeza"><span class="paso-num">1</span><div><h3>¿Qué juego?</h3><p>Cada juego entrena una habilidad distinta del teclado.</p></div></div>
+                    <div class="p-card-body pt-0">
+                        <div class="polaridad-grid">
+                            {% for clave, p in plantillas.items %}
+                                <label class="tipo-op">
+                                    <input type="radio" name="plantilla" value="{{ clave }}" {% if form.plantilla.value == clave %}checked{% endif %}>
+                                    <span class="caja d-block"><span class="e d-block">{{ p.emoji }}</span><span class="n d-block">{{ p.nombre }}</span><span class="d d-block">{{ p.corto }}</span></span>
+                                </label>
+                            {% endfor %}
+                        </div>
+                        <div class="explicacion-tipo" data-explicacion-plantilla></div>
+                    </div>
+                </section>
+
+                <!-- Paso 2: meteoros -->
+                <section class="p-card paso mb-3" data-bloque="meteoros">
+                    <div class="paso-cabeza"><span class="paso-num">2</span><div><h3>Palabras y dificultad</h3><p>Usa el vocabulario de tu clase: así practican escritura y temario a la vez.</p></div></div>
+                    <div class="p-card-body pt-0">
+                        <span class="etiqueta-campo">Agrega palabras por tema <span class="text-muted-p fw-normal">(toca para poner o quitar)</span></span>
+                        <div class="sugerencias mb-2" data-temas></div>
+                        <div class="campo {% if form.palabras.errors %}con-error{% endif %}">
+                            <label for="{{ form.palabras.id_for_label }}" class="d-flex justify-content-between"><span>Palabras de los meteoros</span><span class="text-muted-p fw-normal" data-cuenta-palabras></span></label>
+                            {{ form.palabras }}
+                            {% for e in form.palabras.errors %}<div class="error"><i class="bi bi-exclamation-circle"></i> {{ e }}</div>{% endfor %}
+                            <div class="ayuda">Palabras cortas para los más pequeños; largas para retar a los grandes.</div>
+                        </div>
+
+                        <span class="etiqueta-campo">Velocidad</span>
+                        <div class="presets" style="grid-template-columns:repeat(3,1fr)" role="group" aria-label="Velocidad">
+                            <button type="button" class="preset" data-poner="velocidad" data-valor="lenta"><span class="e">🐢</span><span class="n">Lenta</span><span class="v">Para empezar</span></button>
+                            <button type="button" class="preset" data-poner="velocidad" data-valor="normal"><span class="e">🚀</span><span class="n">Normal</span><span class="v">3° a 4°</span></button>
+                            <button type="button" class="preset" data-poner="velocidad" data-valor="rapida"><span class="e">⚡</span><span class="n">Rápida</span><span class="v">Expertos</span></button>
+                        </div>
+                        <input type="hidden" name="velocidad" value="{{ form.velocidad.value|default:'normal' }}">
+
+                        <div class="row gx-3 mt-3">
+                            <div class="col-sm-6">
+                                <span class="etiqueta-campo">Duración</span>
+                                <div class="segmento" role="group" aria-label="Duración">
+                                    <button type="button" data-poner="duracion" data-valor="60">1 min</button>
+                                    <button type="button" data-poner="duracion" data-valor="90">1½ min</button>
+                                    <button type="button" data-poner="duracion" data-valor="120">2 min</button>
+                                </div>
+                                <input type="hidden" name="duracion" value="{{ form.duracion.value|default:60 }}">
+                            </div>
+                            <div class="col-sm-6 mt-3 mt-sm-0">
+                                <span class="etiqueta-campo">Vidas</span>
+                                <div class="segmento" role="group" aria-label="Vidas">
+                                    <button type="button" data-poner="vidas" data-valor="3">❤️ 3</button>
+                                    <button type="button" data-poner="vidas" data-valor="5">❤️ 5</button>
+                                </div>
+                                <input type="hidden" name="vidas" value="{{ form.vidas.value|default:3 }}">
+                            </div>
+                        </div>
+
+                        <label class="etiqueta-campo mt-3" for="{{ form.meta.id_for_label }}">Meta para ⭐⭐⭐</label>
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <div class="input-unidad {% if form.meta.errors %}con-error{% endif %}">{{ form.meta }}<span>meteoros</span></div>
+                            <button type="button" class="p-btn xs fantasma" data-meta-sugerida><i class="bi bi-magic"></i> Sugerida</button>
+                        </div>
+                        <div class="ayuda-recompensa mt-2" data-ayuda-meta></div>
+                        <div class="campo-check mt-3 mb-0">
+                            {{ form.acentos_exactos }}
+                            <div><label for="{{ form.acentos_exactos.id_for_label }}">{{ form.acentos_exactos.label }}</label>
+                                <div class="ayuda text-muted-p" style="font-size:.78rem">Apagado: «raton» cuenta como «ratón». Enciéndelo para practicar ortografía.</div></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Paso 2: teclado -->
+                <section class="p-card paso mb-3" data-bloque="teclado">
+                    <div class="paso-cabeza"><span class="paso-num">2</span><div><h3>Teclas y dificultad</h3><p>Empieza por la fila guía y avanza cuando la dominen.</p></div></div>
+                    <div class="p-card-body pt-0">
+                        <span class="etiqueta-campo">¿Qué teclas aparecen?</span>
+                        <div class="condiciones-grid" role="group" aria-label="Teclas">
+                            <button type="button" class="preset" data-poner="conjunto" data-valor="central"><span class="e">🏠</span><span class="n">Fila guía</span><span class="v">A S D F G H J K L Ñ</span></button>
+                            <button type="button" class="preset" data-poner="conjunto" data-valor="superior"><span class="e">⬆️</span><span class="n">Fila de arriba</span><span class="v">Q W E R T Y U I O P</span></button>
+                            <button type="button" class="preset" data-poner="conjunto" data-valor="inferior"><span class="e">⬇️</span><span class="n">Fila de abajo</span><span class="v">Z X C V B N M</span></button>
+                            <button type="button" class="preset" data-poner="conjunto" data-valor="letras"><span class="e">🔤</span><span class="n">Todas las letras</span><span class="v">A a la Z con Ñ</span></button>
+                            <button type="button" class="preset" data-poner="conjunto" data-valor="numeros"><span class="e">🔢</span><span class="n">Números</span><span class="v">1 al 0</span></button>
+                            <button type="button" class="preset" data-poner="conjunto" data-valor="todo"><span class="e">🌈</span><span class="n">Letras y números</span><span class="v">Para expertos</span></button>
+                            <button type="button" class="preset" data-poner="conjunto" data-valor="personalizado"><span class="e">✏️</span><span class="n">Las que yo elija</span><span class="v">Ej. vocales</span></button>
+                        </div>
+                        <input type="hidden" name="conjunto" value="{{ form.conjunto.value|default:'central' }}">
+                        <div class="campo mt-3 mb-0 {% if form.teclas.errors %}con-error{% endif %}" data-bloque-teclas>
+                            <label for="{{ form.teclas.id_for_label }}">Escribe las teclas</label>
+                            {{ form.teclas }}
+                            {% for e in form.teclas.errors %}<div class="error"><i class="bi bi-exclamation-circle"></i> {{ e }}</div>{% endfor %}
+                            <div class="ayuda">Letras o números, sin espacios. Ej. «AEIOU» para las vocales.</div>
+                        </div>
+
+                        <div class="row gx-3 mt-3">
+                            <div class="col-sm-5">
+                                <span class="etiqueta-campo">Rondas</span>
+                                <div class="segmento" role="group" aria-label="Rondas">
+                                    <button type="button" data-poner="rondas" data-valor="15">15</button>
+                                    <button type="button" data-poner="rondas" data-valor="20">20</button>
+                                    <button type="button" data-poner="rondas" data-valor="30">30</button>
+                                </div>
+                                <input type="hidden" name="rondas" value="{{ form.rondas.value|default:20 }}">
+                            </div>
+                            <div class="col-sm-7 mt-3 mt-sm-0">
+                                <span class="etiqueta-campo">Modo</span>
+                                <div class="segmento" role="group" aria-label="Modo">
+                                    <button type="button" data-poner="modo" data-valor="guiado">💡 Guiado</button>
+                                    <button type="button" data-poner="modo" data-valor="reto">🕵️ Reto</button>
+                                </div>
+                                <input type="hidden" name="modo" value="{{ form.modo.value|default:'guiado' }}">
+                            </div>
+                        </div>
+                        <div class="ayuda-recompensa mt-3" data-ayuda-teclado></div>
+                    </div>
+                </section>
+
+                <!-- Paso 2: detective digital -->
+                <section class="p-card paso mb-3" data-bloque="clasifica">
+                    <div class="paso-cabeza"><span class="paso-num">2</span><div><h3>Grupos y tarjetas</h3><p>Elige un tema listo o escribe los tuyos. Cada partida toma tarjetas al azar.</p></div></div>
+                    <div class="p-card-body pt-0">
+                        <span class="etiqueta-campo">Temas listos <span class="text-muted-p fw-normal">(llenan los grupos; después puedes editarlos)</span></span>
+                        <div class="sugerencias mb-3" data-temas-clasifica></div>
+                        {{ form.tema_clasifica }}
+                        {% if form.cat2_nombre.errors %}<div class="aviso-error mb-2">{{ form.cat2_nombre.errors|join:" " }}</div>{% endif %}
+                        <div class="grupos-clasifica">
+                            {% include 'Profesor/_grupo_clasifica.html' with n=1 emoji=form.cat1_emoji nombre=form.cat1_nombre tarjetas=form.cat1_tarjetas %}
+                            {% include 'Profesor/_grupo_clasifica.html' with n=2 emoji=form.cat2_emoji nombre=form.cat2_nombre tarjetas=form.cat2_tarjetas %}
+                            {% include 'Profesor/_grupo_clasifica.html' with n=3 emoji=form.cat3_emoji nombre=form.cat3_nombre tarjetas=form.cat3_tarjetas opcional=True %}
+                        </div>
+                        <div class="row gx-3 mt-3">
+                            <div class="col-sm-5">
+                                <span class="etiqueta-campo">Tarjetas por partida</span>
+                                <div class="segmento" role="group" aria-label="Tarjetas por partida">
+                                    <button type="button" data-poner="rondas_tarjetas" data-valor="10">10</button>
+                                    <button type="button" data-poner="rondas_tarjetas" data-valor="15">15</button>
+                                    <button type="button" data-poner="rondas_tarjetas" data-valor="20">20</button>
+                                </div>
+                                <input type="hidden" name="rondas_tarjetas" value="{{ form.rondas_tarjetas.value|default:10 }}">
+                            </div>
+                            <div class="col-sm-7 mt-3 mt-sm-0">
+                                <span class="etiqueta-campo">Tiempo por tarjeta</span>
+                                <div class="segmento" role="group" aria-label="Tiempo por tarjeta">
+                                    <button type="button" data-poner="tiempo_tarjeta" data-valor="0">Sin límite</button>
+                                    <button type="button" data-poner="tiempo_tarjeta" data-valor="8">⏱️ 8 s</button>
+                                    <button type="button" data-poner="tiempo_tarjeta" data-valor="5">⚡ 5 s</button>
+                                </div>
+                                <input type="hidden" name="tiempo_tarjeta" value="{% if form.tiempo_tarjeta.value is not None %}{{ form.tiempo_tarjeta.value }}{% else %}8{% endif %}">
+                            </div>
+                        </div>
+                        <div class="ayuda-recompensa mt-3" data-ayuda-clasifica></div>
+                    </div>
+                </section>
+
+                <!-- Paso 2: robot programador -->
+                <section class="p-card paso mb-3" data-bloque="robot">
+                    <div class="paso-cabeza"><span class="paso-num">2</span><div><h3>Laberintos y dificultad</h3><p>Los laberintos se crean al azar en cada partida: nunca son iguales.</p></div></div>
+                    <div class="p-card-body pt-0">
+                        <span class="etiqueta-campo">Dificultad</span>
+                        <div class="presets" style="grid-template-columns:repeat(3,1fr)" role="group" aria-label="Dificultad">
+                            <button type="button" class="preset" data-poner="dificultad" data-valor="facil"><span class="e">🌱</span><span class="n">Fácil</span><span class="v">5 × 5 · pocos obstáculos</span></button>
+                            <button type="button" class="preset" data-poner="dificultad" data-valor="media"><span class="e">🚀</span><span class="n">Media</span><span class="v">6 × 6 · caminos largos</span></button>
+                            <button type="button" class="preset" data-poner="dificultad" data-valor="dificil"><span class="e">🔥</span><span class="n">Difícil</span><span class="v">7 × 7 · laberintos</span></button>
+                        </div>
+                        <input type="hidden" name="dificultad" value="{{ form.dificultad.value|default:'facil' }}">
+                        <div class="row gx-3 mt-3">
+                            <div class="col-sm-5">
+                                <span class="etiqueta-campo">Laberintos por partida</span>
+                                <div class="segmento" role="group" aria-label="Laberintos">
+                                    <button type="button" data-poner="niveles" data-valor="3">3</button>
+                                    <button type="button" data-poner="niveles" data-valor="5">5</button>
+                                    <button type="button" data-poner="niveles" data-valor="8">8</button>
+                                </div>
+                                <input type="hidden" name="niveles" value="{{ form.niveles.value|default:5 }}">
+                            </div>
+                            <div class="col-sm-7 mt-3 mt-sm-0">
+                                <span class="etiqueta-campo">Instrucciones</span>
+                                <div class="segmento" role="group" aria-label="Instrucciones">
+                                    <button type="button" data-poner="modo_robot" data-valor="flechas">➡️ Flechas</button>
+                                    <button type="button" data-poner="modo_robot" data-valor="giros">🔄 Avanzar y girar</button>
+                                </div>
+                                <input type="hidden" name="modo_robot" value="{{ form.modo_robot.value|default:'flechas' }}">
+                            </div>
+                        </div>
+                        <div class="campo-check mt-3 mb-0">
+                            {{ form.bucles }}
+                            <div><label for="{{ form.bucles.id_for_label }}">{{ form.bucles.label }}</label>
+                                <div class="ayuda text-muted-p" style="font-size:.78rem">Agrega los bloques «🔁 ×2» y «🔁 ×3», que repiten la siguiente instrucción. Su primer contacto con los ciclos.</div></div>
+                        </div>
+                        <div class="ayuda-recompensa mt-3" data-ayuda-robot></div>
+                    </div>
+                </section>
+
+                <!-- Paso 2: atajos ninja -->
+                <section class="p-card paso mb-3" data-bloque="atajos">
+                    <div class="paso-cabeza"><span class="paso-num">2</span><div><h3>Atajos y modo</h3><p>Elige los atajos que han visto en clase. Cada situación sale al azar.</p></div></div>
+                    <div class="p-card-body pt-0">
+                        <span class="etiqueta-campo">Grupos <span class="text-muted-p fw-normal">(toca para poner o quitar)</span></span>
+                        <div class="sugerencias mb-2" data-grupos-atajos></div>
+                        <div class="atajos-grid {% if form.atajos.errors %}con-error{% endif %}">
+                            {% for clave, a in catalogo_atajos.items %}
+                                <label class="atajo-op">
+                                    <input type="checkbox" name="atajos" value="{{ clave }}" {% if clave in form.atajos.value %}checked{% endif %}>
+                                    <span class="caja"><span class="e">{{ a.emoji }}</span><span class="n">{{ a.nombre }}</span><kbd>Ctrl + {{ a.tecla }}</kbd></span>
+                                </label>
+                            {% endfor %}
+                        </div>
+                        {% for e in form.atajos.errors %}<div class="error mt-1" style="color:var(--danger);font-size:.8rem"><i class="bi bi-exclamation-circle"></i> {{ e }}</div>{% endfor %}
+                        <div class="row gx-3 mt-3">
+                            <div class="col-sm-5">
+                                <span class="etiqueta-campo">Situaciones por partida</span>
+                                <div class="segmento" role="group" aria-label="Situaciones">
+                                    <button type="button" data-poner="rondas_atajos" data-valor="10">10</button>
+                                    <button type="button" data-poner="rondas_atajos" data-valor="15">15</button>
+                                    <button type="button" data-poner="rondas_atajos" data-valor="20">20</button>
+                                </div>
+                                <input type="hidden" name="rondas_atajos" value="{{ form.rondas_atajos.value|default:10 }}">
+                            </div>
+                            <div class="col-sm-7 mt-3 mt-sm-0">
+                                <span class="etiqueta-campo">Modo</span>
+                                <div class="segmento" role="group" aria-label="Modo">
+                                    <button type="button" data-poner="modo_atajos" data-valor="aprende">💡 Aprende</button>
+                                    <button type="button" data-poner="modo_atajos" data-valor="ninja">🥷 Ninja</button>
+                                </div>
+                                <input type="hidden" name="modo_atajos" value="{{ form.modo_atajos.value|default:'aprende' }}">
+                            </div>
+                        </div>
+                        <div class="ayuda-recompensa mt-3" data-ayuda-atajos></div>
+                    </div>
+                </section>
+
+                <!-- Paso 2: mensaje secreto -->
+                <section class="p-card paso mb-3" data-bloque="mensaje">
+                    <div class="paso-cabeza"><span class="paso-num">2</span><div><h3>Código y palabras</h3><p>El alumno ve la tabla de pistas y descifra cada palabra.</p></div></div>
+                    <div class="p-card-body pt-0">
+                        <span class="etiqueta-campo">Tipo de código</span>
+                        <div class="presets" role="group" aria-label="Código">
+                            {% for clave, c in cifrados.items %}
+                                <button type="button" class="preset" data-poner="cifrado" data-valor="{{ clave }}"><span class="e">{{ c.0 }}</span><span class="n">{{ c.1 }}</span></button>
+                            {% endfor %}
+                        </div>
+                        <input type="hidden" name="cifrado" value="{{ form.cifrado.value|default:'simbolos' }}">
+                        <div class="mt-2" data-bloque-desplazamiento>
+                            <span class="etiqueta-campo">¿Cuántos lugares se recorre cada letra?</span>
+                            <div class="segmento" role="group" aria-label="Desplazamiento">
+                                <button type="button" data-poner="desplazamiento" data-valor="1">1</button>
+                                <button type="button" data-poner="desplazamiento" data-valor="3">3</button>
+                                <button type="button" data-poner="desplazamiento" data-valor="5">5</button>
+                            </div>
+                            <input type="hidden" name="desplazamiento" value="{{ form.desplazamiento.value|default:3 }}">
+                        </div>
+                        <div class="explicacion-tipo" data-explicacion-cifrado></div>
+                        <span class="etiqueta-campo mt-3">Palabras por tema <span class="text-muted-p fw-normal">(toca para poner o quitar)</span></span>
+                        <div class="sugerencias mb-2" data-temas-mensaje></div>
+                        <div class="campo {% if form.palabras_mensaje.errors %}con-error{% endif %}">
+                            <label for="{{ form.palabras_mensaje.id_for_label }}" class="d-flex justify-content-between"><span>Palabras secretas</span><span class="text-muted-p fw-normal" data-cuenta-mensaje></span></label>
+                            {{ form.palabras_mensaje }}
+                            {% for e in form.palabras_mensaje.errors %}<div class="error"><i class="bi bi-exclamation-circle"></i> {{ e }}</div>{% endfor %}
+                            <div class="ayuda">Los acentos se quitan solos (la Ñ se queda). Sin espacios ni números.</div>
+                        </div>
+                        <span class="etiqueta-campo">Mensajes por partida</span>
+                        <div class="segmento" role="group" aria-label="Mensajes">
+                            <button type="button" data-poner="rondas_mensaje" data-valor="5">5</button>
+                            <button type="button" data-poner="rondas_mensaje" data-valor="8">8</button>
+                            <button type="button" data-poner="rondas_mensaje" data-valor="10">10</button>
+                        </div>
+                        <input type="hidden" name="rondas_mensaje" value="{{ form.rondas_mensaje.value|default:5 }}">
+                        <div class="ejemplo-cifrado mt-3" data-ejemplo-cifrado></div>
+                    </div>
+                </section>
+
+                <!-- Paso 2: explorador de rutas -->
+                <section class="p-card paso mb-3" data-bloque="rutas">
+                    <div class="paso-cabeza"><span class="paso-num">2</span><div><h3>Modo y dificultad</h3><p>Un explorador de archivos de práctica, con carpetas como las de una compu real.</p></div></div>
+                    <div class="p-card-body pt-0">
+                        <span class="etiqueta-campo">Modo</span>
+                        <div class="presets" style="grid-template-columns:repeat(2,1fr)" role="group" aria-label="Modo">
+                            <button type="button" class="preset" data-poner="modo_rutas" data-valor="ruta"><span class="e">🧭</span><span class="n">Sigue la ruta</span><span class="v">Lee «Documentos › Escuela»</span></button>
+                            <button type="button" class="preset" data-poner="modo_rutas" data-valor="buscar"><span class="e">🔎</span><span class="n">Búscalo</span><span class="v">Solo el nombre del archivo</span></button>
+                        </div>
+                        <input type="hidden" name="modo_rutas" value="{{ form.modo_rutas.value|default:'ruta' }}">
+                        <span class="etiqueta-campo mt-3">Dificultad</span>
+                        <div class="presets" style="grid-template-columns:repeat(3,1fr)" role="group" aria-label="Dificultad">
+                            <button type="button" class="preset" data-poner="dificultad_rutas" data-valor="facil"><span class="e">🌱</span><span class="n">Fácil</span><span class="v">Carpetas cerca</span></button>
+                            <button type="button" class="preset" data-poner="dificultad_rutas" data-valor="media"><span class="e">🚀</span><span class="n">Media</span><span class="v">Subcarpetas</span></button>
+                            <button type="button" class="preset" data-poner="dificultad_rutas" data-valor="dificil"><span class="e">🔥</span><span class="n">Difícil</span><span class="v">Rutas largas</span></button>
+                        </div>
+                        <input type="hidden" name="dificultad_rutas" value="{{ form.dificultad_rutas.value|default:'facil' }}">
+                        <span class="etiqueta-campo mt-3">Archivos por partida</span>
+                        <div class="segmento" role="group" aria-label="Archivos">
+                            <button type="button" data-poner="rondas_rutas" data-valor="5">5</button>
+                            <button type="button" data-poner="rondas_rutas" data-valor="8">8</button>
+                            <button type="button" data-poner="rondas_rutas" data-valor="10">10</button>
+                        </div>
+                        <input type="hidden" name="rondas_rutas" value="{{ form.rondas_rutas.value|default:5 }}">
+                        <div class="ayuda-recompensa mt-3" data-ayuda-rutas></div>
+                    </div>
+                </section>
+
+                <!-- Paso 2: copia el formato -->
+                <section class="p-card paso mb-3" data-bloque="formato">
+                    <div class="paso-cabeza"><span class="paso-num">2</span><div><h3>Dificultad y frases</h3><p>Practican lo más importante de Word: seleccionar primero y luego dar formato.</p></div></div>
+                    <div class="p-card-body pt-0">
+                        <span class="etiqueta-campo">Dificultad</span>
+                        <div class="presets" style="grid-template-columns:repeat(3,1fr)" role="group" aria-label="Dificultad">
+                            <button type="button" class="preset" data-poner="dificultad_formato" data-valor="facil"><span class="e">🌱</span><span class="n">Fácil</span><span class="v">Todo el texto</span></button>
+                            <button type="button" class="preset" data-poner="dificultad_formato" data-valor="media"><span class="e">🚀</span><span class="n">Media</span><span class="v">Algunas palabras</span></button>
+                            <button type="button" class="preset" data-poner="dificultad_formato" data-valor="dificil"><span class="e">🔥</span><span class="n">Difícil</span><span class="v">Color y alineación</span></button>
+                        </div>
+                        <input type="hidden" name="dificultad_formato" value="{{ form.dificultad_formato.value|default:'facil' }}">
+                        <span class="etiqueta-campo mt-3">Textos por partida</span>
+                        <div class="segmento" role="group" aria-label="Textos">
+                            <button type="button" data-poner="rondas_formato" data-valor="5">5</button>
+                            <button type="button" data-poner="rondas_formato" data-valor="8">8</button>
+                            <button type="button" data-poner="rondas_formato" data-valor="10">10</button>
+                        </div>
+                        <input type="hidden" name="rondas_formato" value="{{ form.rondas_formato.value|default:5 }}">
+                        <div class="campo mt-3 mb-0 {% if form.frases.errors %}con-error{% endif %}">
+                            <label for="{{ form.frases.id_for_label }}">Tus frases <span class="text-muted-p fw-normal">(opcional)</span></label>
+                            {{ form.frases }}
+                            {% for e in form.frases.errors %}<div class="error"><i class="bi bi-exclamation-circle"></i> {{ e }}</div>{% endfor %}
+                        </div>
+                        <div class="ayuda-recompensa mt-3" data-ayuda-formato></div>
+                    </div>
+                </section>
+
+                <!-- Paso 3 -->
+                <section class="p-card paso mb-3">
+                    <div class="paso-cabeza"><span class="paso-num">3</span><div><h3>Nombre e ícono</h3><p>Se proponen solos; cámbialos si quieres.</p></div></div>
+                    <div class="p-card-body pt-0">
+                        <div class="row gx-3">
+                            <div class="col-8">
+                                <div class="campo {% if form.nombre.errors %}con-error{% endif %}">
+                                    <label for="{{ form.nombre.id_for_label }}" class="d-flex justify-content-between align-items-center">
+                                        <span>Nombre <span class="text-danger">*</span></span>
+                                        <button type="button" class="p-btn xs fantasma" data-sugerir-nombre><i class="bi bi-magic"></i> Sugerir</button>
+                                    </label>
+                                    {{ form.nombre }}
+                                    {% for e in form.nombre.errors %}<div class="error"><i class="bi bi-exclamation-circle"></i> {{ e }}</div>{% endfor %}
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="campo"><label for="{{ form.icono.id_for_label }}">Ícono</label>{{ form.icono }}</div>
+                            </div>
+                        </div>
+                        <div class="iconos-grid" role="group" aria-label="Elegir ícono">
+                            {% for i in iconos %}<button type="button" class="icono-op" data-poner="icono" data-valor="{{ i }}" aria-label="{{ i }}">{{ i }}</button>{% endfor %}
+                        </div>
+                        <div class="campo mt-3 mb-0">
+                            <label for="{{ form.descripcion.id_for_label }}">Descripción <span class="text-muted-p fw-normal">(opcional · la ven los alumnos)</span></label>
+                            {{ form.descripcion }}
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Paso 4 -->
+                <section class="p-card paso">
+                    <div class="paso-cabeza"><span class="paso-num">4</span><div><h3>¿Dónde se juega?</h3><p>Puedes cambiarlo cuando quieras, según cómo vaya tu clase.</p></div></div>
+                    <div class="p-card-body pt-0">
+                        <div class="donde-juego">
+                            <div class="donde-op">
+                                <div class="cabeza"><span class="e">🗺️</span><div><b>En el mapa</b><span>Como misión: da XP, monedas y estrellas, y desbloquea lo que sigue.</span></div></div>
+                                {% if misiones %}
+                                    <div class="misiones-juego">
+                                        {% for m in misiones %}<span class="p-badge azul">{{ m.clase.icono }} {{ m.clase.grado }} {{ m.clase.grupo }} › {% if m.nivel.mundo %}{{ m.nivel.mundo.nombre }} › {% endif %}{{ m.nivel.nombre }}</span>{% endfor %}
+                                    </div>
+                                {% endif %}
+                                <div class="campo-check mt-2 mb-0">
+                                    {{ form.agregar_mapa }}
+                                    <div><label for="{{ form.agregar_mapa.id_for_label }}">{% if misiones %}Agregarlo también en otro nivel{% else %}Agregarlo como misión{% endif %}</label></div>
+                                </div>
+                                <div class="mt-2 {% if not form.agregar_mapa.value %}d-none{% endif %}" data-bloque-mapa>
+                                    <div class="campo {% if form.nivel_mapa.errors %}con-error{% endif %}">
+                                        <label for="{{ form.nivel_mapa.id_for_label }}">Nivel</label>
+                                        {{ form.nivel_mapa }}
+                                        {% for e in form.nivel_mapa.errors %}<div class="error"><i class="bi bi-exclamation-circle"></i> {{ e }}</div>{% endfor %}
+                                        <div class="ayuda">Va al final del nivel. Puedes moverla después desde la misión.</div>
+                                    </div>
+                                    <div class="row gx-2">
+                                        <div class="col-6"><div class="campo mb-0"><label for="{{ form.xp_mapa.id_for_label }}"><i class="bi bi-lightning-charge text-primary"></i> XP</label>{{ form.xp_mapa }}</div></div>
+                                        <div class="col-6"><div class="campo mb-0"><label for="{{ form.monedas_mapa.id_for_label }}"><i class="bi bi-coin text-warning"></i> Monedas</label>{{ form.monedas_mapa }}</div></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="donde-op">
+                                <div class="cabeza"><span class="e">🕹️</span><div><b>En el Arcade</b><span>Para practicar libre: récords, ranking y monedas una vez al día.</span></div></div>
+                                <div class="campo-check mt-2 mb-0">
+                                    {{ form.en_arcade }}
+                                    <div><label for="{{ form.en_arcade.id_for_label }}">{{ form.en_arcade.label }}</label></div>
+                                </div>
+                                <div class="mt-2" data-bloque-arcade>
+                                    <div class="campo"><label for="{{ form.clase.id_for_label }}">{{ form.clase.label }}</label>{{ form.clase }}</div>
+                                    <span class="etiqueta-campo">¿Cuándo se puede jugar?</span>
+                                    <div class="segmento mb-1" role="group" aria-label="Desbloqueo">
+                                        {% for valor, texto in form.fields.desbloqueo.choices %}
+                                            <label class="segmento-op"><input type="radio" name="desbloqueo" value="{{ valor }}" {% if form.desbloqueo.value == valor %}checked{% endif %}><span>{% if valor == 'libre' %}Siempre{% else %}Al superar su misión{% endif %}</span></label>
+                                        {% endfor %}
+                                    </div>
+                                    <div class="ayuda mb-2" data-ayuda-desbloqueo></div>
+                                    <label class="etiqueta-campo" for="{{ form.monedas_arcade.id_for_label }}">Monedas del premio diario</label>
+                                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                                        <div class="input-unidad">{{ form.monedas_arcade }}<span>monedas</span></div>
+                                        <div class="sugerencias">
+                                            <button type="button" data-poner="monedas_arcade" data-valor="0">0</button>
+                                            <button type="button" data-poner="monedas_arcade" data-valor="3">3</button>
+                                            <button type="button" data-poner="monedas_arcade" data-valor="5">5</button>
+                                            <button type="button" data-poner="monedas_arcade" data-valor="10">10</button>
+                                        </div>
+                                    </div>
+                                    <div class="ayuda mt-1">Solo la primera partida del día con al menos ⭐ en cada juego. Así juegan por diversión, no por farmear monedas.</div>
+                                </div>
+                            </div>
+                        </div>
+                        {% if juego %}
+                            <div class="campo-check mt-3 mb-0">
+                                {{ form.activo }}
+                                <div><label for="{{ form.activo.id_for_label }}">{{ form.activo.label }}</label>
+                                    <div class="ayuda text-muted-p" style="font-size:.78rem">Si lo apagas desaparece del Arcade y sus misiones muestran «en preparación».</div></div>
+                            </div>
+                        {% else %}
+                            <input type="hidden" name="activo" value="on">
+                        {% endif %}
+                    </div>
+                </section>
+            </div>
+
+            <div class="col-lg-4">
+                <section class="p-card sticky-lateral vista-previa">
+                    <div class="p-card-head"><h3>Vista previa</h3><span class="sub">Así lo ven en el Arcade</span></div>
+                    <div class="p-card-body">
+                        <div class="maquina-previa" data-maquina>
+                            <div class="pantalla"><span class="icono" data-previa-icono>🎮</span></div>
+                            <div class="cuerpo">
+                                <div class="tipo" data-previa-tipo></div>
+                                <div class="nombre" data-previa-nombre>Nombre del juego</div>
+                                <div class="meta" data-previa-meta></div>
+                            </div>
+                        </div>
+                        <button type="button" class="p-btn primario w-100 mt-3 justify-content-center" data-probar><i class="bi bi-play-fill"></i> Probar el juego</button>
+                        <div class="ayuda text-center mt-1" style="font-size:.76rem">Con lo que llevas configurado. No se guarda nada.</div>
+                        <div class="vp-flujo mt-3">
+                            <div class="t">Estrellas</div>
+                            <div class="cortes-previa" data-previa-cortes></div>
+                            <div class="mt-2" data-previa-donde></div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-footer">
+        {% if modal %}
+            <button type="button" class="p-btn fantasma" data-bs-dismiss="modal">Cancelar</button>
+        {% else %}
+            <a href="{% url 'juegos_lista' %}" class="p-btn fantasma">Cancelar</a>
+        {% endif %}
+        <button type="submit" class="p-btn primario"><i class="bi bi-check2"></i> {% if juego %}Guardar cambios{% else %}Crear juego{% endif %}</button>
+    </div>
+</form>
+{% endblock %}

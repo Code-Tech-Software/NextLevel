@@ -43,7 +43,7 @@
                                         <span class="e d-block">{{ info.emoji }}</span>
                                         <span class="n d-block">{{ etiqueta }}</span>
                                         <span class="d d-block">
-                                            {% if valor == 'arduino' %}Circuito con código base{% elif valor == 'cuestionario' %}Se califica solo{% elif valor == 'link' %}Actividad en una página{% elif valor == 'video' %}Ver un video de YouTube{% elif valor == 'evidencia' %}Subir foto del trabajo{% elif valor == 'texto' %}Escribir una respuesta{% else %}Se hace en el salón{% endif %}
+                                            {% if valor == 'arduino' %}Circuito con código base{% elif valor == 'cuestionario' %}Se califica solo{% elif valor == 'link' %}Actividad en una página{% elif valor == 'video' %}Ver un video de YouTube{% elif valor == 'evidencia' %}Subir foto del trabajo{% elif valor == 'texto' %}Escribir una respuesta{% elif valor == 'juego' %}Jugar y calificarse solo{% else %}Se hace en el salón{% endif %}
                                         </span>
                                     </span>
                                 </label>
@@ -124,6 +124,15 @@
                                     <button type="button" class="p-btn sm" data-agregar-vf><i class="bi bi-toggles"></i> Verdadero / Falso</button>
                                 </div>
                                 <div class="ayuda mt-2">Marca el círculo de la respuesta correcta. La calificación es proporcional a los puntos que obtenga.</div>
+                            </div>
+                        </div>
+                        <div class="seccion-tipo" data-tipos="juego">
+                            {{ juegos_data|json_script:"juegos-mision-data" }}
+                            <div class="campo {% if form.juego.errors %}con-error{% endif %}">
+                                <label for="{{ form.juego.id_for_label }}"><i class="bi bi-controller"></i> Minijuego <span class="text-danger">*</span></label>
+                                {{ form.juego }}
+                                {% for e in form.juego.errors %}<div class="error">{{ e }}</div>{% endfor %}
+                                <div class="ayuda" data-ayuda-juego>{% if not juegos_data %}Aún no tienes juegos. Créalos en <a href="{% url 'juegos_lista' %}">Juegos</a> y vuelve aquí.{% else %}El juego y su dificultad se configuran en <a href="{% url 'juegos_lista' %}">Juegos</a>.{% endif %}</div>
                             </div>
                         </div>
                         <div class="seccion-tipo" data-tipos="presencial">

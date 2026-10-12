@@ -1005,3 +1005,88 @@ body.modo-enfoque .contenido-p { max-width: none; }
     .meta-previa { flex-direction: column; gap: .35rem; }
     .meta-previa .icono { font-size: 2rem; }
 }
+
+/* ---------- Biblioteca de juegos ---------- */
+.juego-card { --c: #7c3aed; padding: 1rem 1.1rem; display: flex; flex-direction: column; gap: .75rem; height: 100%; border-top: 4px solid var(--c); }
+.juego-card.inactivo { opacity: .65; }
+.juego-card .cabeza { display: flex; align-items: center; gap: .75rem; }
+.juego-card .ico { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; font-size: 1.6rem; flex-shrink: 0; background: color-mix(in srgb, var(--c) 14%, transparent); }
+.juego-card h3 { font-size: 1rem; margin: 0; }
+.juego-card .sub { font-size: .78rem; color: var(--muted); }
+.juego-card .meta { font-size: .84rem; color: var(--text-2); }
+.juego-card .lugares { display: grid; gap: .5rem; }
+.juego-card .lugar { background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: .55rem .7rem; display: flex; flex-direction: column; gap: .35rem; }
+.juego-card .lugar .t { font-size: .74rem; font-weight: 650; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.juego-card .misiones { display: flex; flex-wrap: wrap; gap: .3rem; }
+.juego-card .misiones a { text-decoration: none; }
+.arcade-switch { display: flex; align-items: center; gap: .55rem; margin: 0; font-size: .82rem; color: var(--text-2); cursor: pointer; }
+.juego-card .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: .4rem; text-align: center; }
+.juego-card .stats b { display: block; font-size: 1.15rem; font-weight: 700; }
+.juego-card .stats span { font-size: .7rem; color: var(--muted); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.juego-card .acciones { display: flex; gap: .4rem; margin-top: auto; }
+.plantilla-juego { --c: #7c3aed; display: flex; align-items: center; gap: .85rem; padding: .9rem 1rem; border: 1px solid var(--border); border-radius: 14px; text-decoration: none; color: var(--text); background: var(--surface); transition: border-color .12s, transform .12s; }
+.plantilla-juego:hover { border-color: var(--c); transform: translateY(-2px); color: var(--text); }
+.plantilla-juego .ico { width: 52px; height: 52px; border-radius: 15px; display: grid; place-items: center; font-size: 1.8rem; flex-shrink: 0; background: color-mix(in srgb, var(--c) 14%, transparent); }
+.plantilla-juego .n { font-weight: 650; }
+.plantilla-juego .d { font-size: .8rem; color: var(--muted); }
+
+/* Formulario del juego */
+.donde-juego { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
+@media (max-width: 767.98px) { .donde-juego { grid-template-columns: 1fr; } }
+.donde-op { border: 1px solid var(--border); border-radius: 14px; padding: .8rem .9rem; background: var(--surface); }
+.donde-op .cabeza { display: flex; gap: .6rem; align-items: flex-start; }
+.donde-op .cabeza .e { font-size: 1.5rem; line-height: 1; }
+.donde-op .cabeza b { display: block; font-size: .92rem; }
+.donde-op .cabeza span { display: block; font-size: .76rem; color: var(--muted); line-height: 1.35; }
+.misiones-juego { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .55rem; }
+.segmento-op { margin: 0; cursor: pointer; }
+.segmento-op input { position: absolute; opacity: 0; }
+.segmento-op span { display: block; border-radius: 9px; padding: .45rem .8rem; font-weight: 600; font-size: .84rem; color: var(--muted); }
+.segmento-op input:checked + span { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm), 0 0 0 1px var(--border); }
+.segmento-op input:focus-visible + span { outline: 2px solid var(--info); }
+.sugerencias button[data-tema].activo { border-color: var(--accent); color: var(--accent-strong); background: var(--accent-soft); }
+
+.maquina-previa { --m1: #7c3aed; background: #fff; color: #1e293b; border: 2px solid #e3e9f3; border-radius: 22px; overflow: hidden; box-shadow: 0 5px 0 #d5deeb; }
+.maquina-previa .pantalla { position: relative; height: 120px; display: grid; place-items: center; background: radial-gradient(circle at 50% 35%, var(--m1), color-mix(in srgb, var(--m1) 45%, #0f172a) 80%); border-bottom: 4px solid #0f172a; }
+.maquina-previa .pantalla::after { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, rgba(255, 255, 255, .05) 0 2px, transparent 2px 4px); }
+.maquina-previa .icono { font-size: 3.3rem; filter: drop-shadow(0 0 14px rgba(255, 255, 255, .55)); }
+.maquina-previa .cuerpo { padding: .75rem .9rem .9rem; }
+.maquina-previa .tipo { font-size: .66rem; font-weight: 900; text-transform: uppercase; letter-spacing: .5px; color: var(--m1); }
+.maquina-previa .nombre { font-weight: 800; font-size: 1.12rem; color: #142c45; line-height: 1.15; word-break: break-word; }
+.maquina-previa .meta { font-size: .78rem; font-weight: 700; color: #64748b; margin-top: .15rem; }
+.cortes-previa { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .35rem; }
+.cortes-previa span { font-size: .74rem; background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; padding: .15rem .55rem; }
+.donde-op .segmento { display: flex; width: 100%; }
+.donde-op .segmento-op { flex: 1 1 auto; text-align: center; }
+
+/* Detective digital: grupos y tarjetas */
+.grupos-clasifica { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: .6rem; }
+.grupo-clasifica { --gc: #0ea5e9; border: 1px solid var(--border); border-top: 3px solid var(--gc); border-radius: 12px; padding: .55rem; background: var(--surface-2); display: flex; flex-direction: column; gap: .4rem; min-width: 0; }
+.grupo-clasifica:nth-child(2) { --gc: #f97316; }
+.grupo-clasifica:nth-child(3) { --gc: #a855f7; }
+.grupo-clasifica.con-error { border-color: var(--danger); }
+.grupo-clasifica .cabeza { display: flex; gap: .35rem; align-items: center; }
+.grupo-clasifica .num { width: 22px; height: 22px; border-radius: 50%; background: var(--gc); color: #fff; font-size: .72rem; font-weight: 700; display: grid; place-items: center; flex-shrink: 0; }
+.grupo-clasifica .emoji { width: 50px; flex-shrink: 0; text-align: center; padding-left: .25rem; padding-right: .25rem; }
+.grupo-clasifica .cabeza .nl-input:not(.emoji) { min-width: 0; }
+.grupo-clasifica textarea { resize: vertical; font-size: .84rem; }
+.grupo-clasifica .pie { font-size: .72rem; color: var(--muted); }
+.grupo-clasifica .error { color: var(--danger); font-size: .76rem; }
+
+/* Atajos ninja y Mensaje secreto en el formulario */
+.atajos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .4rem; }
+.atajo-op { cursor: pointer; margin: 0; position: relative; }
+.atajo-op input { position: absolute; opacity: 0; }
+.atajo-op .caja { display: flex; align-items: center; gap: .45rem; padding: .5rem .6rem; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); transition: border-color .12s, background .12s; }
+.atajo-op .e { font-size: 1.15rem; }
+.atajo-op .n { font-size: .82rem; font-weight: 600; flex: 1; min-width: 0; }
+.atajo-op kbd { font-size: .68rem; background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border-strong); border-radius: 6px; padding: .05rem .35rem; box-shadow: 0 1px 0 var(--border-strong); white-space: nowrap; }
+.atajo-op input:checked + .caja { border-color: var(--accent); background: var(--accent-soft); }
+.atajo-op input:focus-visible + .caja { outline: 2px solid var(--info); outline-offset: 2px; }
+.ejemplo-cifrado { background: #064e3b; color: #fff; border-radius: 12px; padding: .65rem .8rem; }
+.ejemplo-cifrado:empty { display: none; }
+.ejemplo-cifrado .t { display: block; font-size: .78rem; font-weight: 700; opacity: .85; margin-bottom: .35rem; }
+.ejemplo-cifrado .codigos { display: flex; flex-wrap: wrap; gap: .3rem; }
+.ejemplo-cifrado .codigos span { display: flex; flex-direction: column; align-items: center; background: rgba(255, 255, 255, .12); border-radius: 8px; padding: .2rem .45rem; min-width: 38px; }
+.ejemplo-cifrado .codigos b { font-size: 1.05rem; }
+.ejemplo-cifrado .codigos i { font-style: normal; font-size: .72rem; color: #fde047; font-weight: 800; }

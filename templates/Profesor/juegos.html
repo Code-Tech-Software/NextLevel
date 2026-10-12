@@ -1,0 +1,94 @@
+{% extends 'Profesor/baseProfesor.html' %}
+{% block title %}Juegos{% endblock %}
+{% block titulo_pagina %}Juegos{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1>Juegos</h1>
+        <p>Minijuegos que se califican solos. Úsalos como misión en el mapa, en el Arcade de tus alumnos o en los dos.</p>
+    </div>
+    <div class="acciones"><a data-modal href="{% url 'alta_juego' %}" class="p-btn primario"><i class="bi bi-plus-lg"></i> Nuevo juego</a></div>
+</div>
+
+{% if juegos %}
+    <div class="row g-3">
+        {% for j in juegos %}
+            {{ j.datos|json_script:j.datos_id }}
+            <div class="col-md-6 col-xxl-4">
+                <section class="p-card juego-card {% if not j.activo %}inactivo{% endif %}" style="--c: {{ j.info.color }}">
+                    <div class="cabeza">
+                        <span class="ico">{{ j.icono }}</span>
+                        <div class="min-w-0 flex-grow-1">
+                            <h3 class="text-truncate">{{ j.nombre }}</h3>
+                            <div class="sub">{{ j.info.emoji }} {{ j.info.nombre }}{% if not j.activo %} · <span class="text-danger">Desactivado</span>{% endif %}</div>
+                        </div>
+                        <div class="dropdown">
+                            <button class="p-btn xs icono fantasma" data-bs-toggle="dropdown" aria-label="Más opciones"><i class="bi bi-three-dots"></i></button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a data-modal class="dropdown-item" href="{% url 'editar_juego' j.id %}"><i class="bi bi-pencil"></i> Editar</a></li>
+                                <li><a data-modal="xl" class="dropdown-item" href="{% url 'alta_mision' %}?juego={{ j.id }}"><i class="bi bi-map"></i> Agregar al mapa</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><form method="post" action="{% url 'eliminar' 'juego' j.id %}" data-confirmar="{% if j.total_misiones %}Sus {{ j.total_misiones }} misión(es) del mapa se quedarán sin juego. {% endif %}Se borrarán sus partidas y récords." data-titulo="¿Eliminar «{{ j.nombre }}»?" data-boton="Eliminar" data-peligro>{% csrf_token %}<button class="dropdown-item text-danger"><i class="bi bi-trash"></i> Eliminar</button></form></li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="meta"><i class="bi bi-bullseye"></i> {{ j.meta_texto }}</div>
+
+                    <div class="lugares">
+                        <div class="lugar">
+                            <div class="t">🗺️ En el mapa</div>
+                            {% if j.lista_misiones %}
+                                <div class="misiones">
+                                    {% for m in j.lista_misiones %}
+                                        <a data-modal="xl" href="{% url 'editar_mision' m.id %}" class="p-badge azul" title="Editar misión">{{ m.clase.icono }} {{ m.clase.grado }} {{ m.clase.grupo }} › {{ m.nivel.nombre }}</a>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <a data-modal="xl" href="{% url 'alta_mision' %}?juego={{ j.id }}" class="p-btn xs"><i class="bi bi-plus"></i> Agregar al mapa</a>
+                            {% endif %}
+                        </div>
+                        <div class="lugar">
+                            <div class="t">🕹️ En el Arcade</div>
+                            <label class="arcade-switch">
+                                <input type="checkbox" class="nl-switch" {% if j.en_arcade %}checked{% endif %} data-alternar-url="{% url 'alternar_arcade' j.id %}" aria-label="Disponible en el Arcade">
+                                <span>{% if j.clase %}{{ j.clase.grado }} {{ j.clase.grupo }} · {{ j.clase.nombre }}{% else %}Todas las clases{% endif %}{% if j.desbloqueo == 'mision' %} · tras su misión{% endif %}{% if j.monedas_arcade %} · 🪙 {{ j.monedas_arcade }}/día{% endif %}</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="stats">
+                        <div><b>{{ j.total_partidas }}</b><span>partidas</span></div>
+                        <div><b>{{ j.jugadores }}</b><span>jugadores</span></div>
+                        <div><b>{% if j.mejor %}{{ j.mejor.puntaje }}{% else %}—{% endif %}</b><span>{% if j.mejor %}récord · {{ j.mejor.alumno.nombre }}{% else %}récord{% endif %}</span></div>
+                    </div>
+
+                    <div class="acciones">
+                        <button type="button" class="p-btn sm" data-jugar="{{ j.datos_id }}" data-demo><i class="bi bi-play-fill"></i> Probar</button>
+                        <a data-modal href="{% url 'editar_juego' j.id %}" class="p-btn sm fantasma"><i class="bi bi-pencil"></i> Editar</a>
+                    </div>
+                </section>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <section class="p-card p-4">
+        <h3 class="mb-1" style="font-size:1.05rem">Empieza con un juego</h3>
+        <p class="text-muted-p mb-3" style="font-size:.88rem">Elige uno, ajústalo a tu clase y decide si va en el mapa, en el Arcade o en los dos.</p>
+        <div class="row g-3">
+            {% for clave, p in plantillas.items %}
+                <div class="col-md-6">
+                    <a data-modal href="{% url 'alta_juego' %}?plantilla={{ clave }}" class="plantilla-juego" style="--c: {{ p.color }}">
+                        <span class="ico">{{ p.emoji }}</span>
+                        <span class="min-w-0">
+                            <span class="n d-block">{{ p.nombre }}</span>
+                            <span class="d d-block">{{ p.como }}</span>
+                        </span>
+                        <i class="bi bi-chevron-right ms-auto"></i>
+                    </a>
+                </div>
+            {% endfor %}
+        </div>
+    </section>
+{% endif %}
+{% endblock %}

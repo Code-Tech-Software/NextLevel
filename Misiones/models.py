@@ -166,9 +166,10 @@ class Mision(models.Model):
         ("evidencia", "Evidencia con foto"),
         ("texto", "Respuesta escrita"),
         ("presencial", "Actividad en clase"),
+        ("juego", "Minijuego"),
     )
     # Tipos que se califican solos al enviarse (no pasan por revisión del profesor)
-    TIPOS_AUTOMATICOS = ('cuestionario', 'video')
+    TIPOS_AUTOMATICOS = ('cuestionario', 'video', 'juego')
 
     clase = models.ForeignKey(Clase, on_delete=models.CASCADE, related_name="misiones")
     nivel = models.ForeignKey(Nivel, on_delete=models.CASCADE, related_name="misiones")
@@ -184,6 +185,8 @@ class Mision(models.Model):
     es_jefe = models.BooleanField(default=False, help_text='Batalla final: se ve especial en el mapa')
     activa = models.BooleanField(default=True, help_text='Las misiones inactivas no aparecen a los alumnos')
     fecha_limite = models.DateField(null=True, blank=True)
+    juego = models.ForeignKey('Juego', on_delete=models.SET_NULL, null=True, blank=True, related_name='misiones',
+                              help_text='Solo para misiones de tipo minijuego')
 
     def __str__(self):
         return self.nombre
@@ -368,6 +371,7 @@ class Movimiento(models.Model):
         ('ajuste', 'Ajuste del profesor'),
         ('conducta', 'Comportamiento'),
         ('meta', 'Meta del grupo'),
+        ('juego', 'Minijuego del Arcade'),
     ]
     alumno = models.ForeignKey(Alumno, on_delete=models.CASCADE, related_name="movimientos")
     clase = models.ForeignKey(Clase, on_delete=models.SET_NULL, null=True, blank=True, related_name="movimientos")
@@ -430,6 +434,8 @@ class Logro(models.Model):
         ('nivel', 'Nivel de jugador'),
         ('diarias', 'Misiones diarias completadas'),
         ('jefes', 'Jefes derrotados'),
+        ('juegos', 'Partidas de minijuegos'),
+        ('ppm', 'Récord de palabras por minuto'),
         ('manual', 'Lo otorga el profesor'),
     ]
     RAREZAS = [
@@ -481,6 +487,7 @@ class MisionDiaria(models.Model):
         ('xp', 'Ganar XP'),
         ('evidencias', 'Enviar trabajos para revisión'),
         ('tienda', 'Visitar la tienda'),
+        ('juegos', 'Jugar minijuegos'),
     ]
     titulo = models.CharField(max_length=100)
     descripcion = models.CharField(max_length=200, blank=True, default='')
@@ -625,3 +632,68 @@ class MetaGrupo(models.Model):
 
     def __str__(self):
         return f"{self.icono} {self.titulo}"
+
+
+# ========================
+# MINIJUEGOS
+# ========================
+class Juego(models.Model):
+    """Un minijuego configurado por el profe. Se puede usar como misión del mapa, en el Arcade o en ambos."""
+    PLANTILLAS = [
+        ('meteoros', 'Mecanografía de meteoros'),
+        ('teclado', 'Teclado misterioso'),
+        ('clasifica', 'Detective digital'),
+        ('robot', 'Robot programador'),
+        ('atajos', 'Atajos ninja'),
+        ('mensaje', 'Mensaje secreto'),
+        ('rutas', 'Explorador de rutas'),
+        ('formato', 'Copia el formato'),
+    ]
+    DESBLOQUEOS = [
+        ('libre', 'Siempre disponible'),
+        ('mision', 'Al completar su misión del mapa'),
+    ]
+    nombre = models.CharField(max_length=100)
+    descripcion = models.CharField(max_length=200, blank=True, default='')
+    icono = models.CharField(max_length=10, default='🎮')
+    plantilla = models.CharField(max_length=20, choices=PLANTILLAS, default='meteoros')
+    configuracion = models.JSONField(default=dict, blank=True)
+    clase = models.ForeignKey(Clase, on_delete=models.CASCADE, null=True, blank=True, related_name='juegos',
+                              help_text='Vacío = aparece en el Arcade de todas las clases')
+    en_arcade = models.BooleanField(default=True)
+    desbloqueo = models.CharField(max_length=10, choices=DESBLOQUEOS, default='libre')
+    monedas_arcade = models.PositiveIntegerField(
+        default=5, help_text='Monedas por la primera partida del día con al menos una estrella'
+    )
+    activo = models.BooleanField(default=True)
+    creado = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-creado', '-id']
+
+    def __str__(self):
+        return f"{self.icono} {self.nombre}"
+
+
+class PartidaJuego(models.Model):
+    juego = models.ForeignKey(Juego, on_delete=models.CASCADE, related_name='partidas')
+    alumno = models.ForeignKey(Alumno, on_delete=models.CASCADE, related_name='partidas')
+    clase = models.ForeignKey(Clase, on_delete=models.CASCADE, related_name='partidas')
+    mision = models.ForeignKey(Mision, on_delete=models.SET_NULL, null=True, blank=True, related_name='partidas')
+    inicio = models.DateTimeField(default=timezone.now)
+    terminada = models.BooleanField(default=False)
+    puntaje = models.PositiveIntegerField(default=0)
+    calificacion = models.PositiveSmallIntegerField(default=0, help_text='0 a 100')
+    estrellas = models.PositiveSmallIntegerField(default=0)
+    aciertos = models.PositiveIntegerField(default=0)
+    errores = models.PositiveIntegerField(default=0)
+    precision = models.PositiveSmallIntegerField(default=0, help_text='Porcentaje de teclas correctas')
+    ppm = models.PositiveSmallIntegerField(default=0, help_text='Palabras por minuto')
+    duracion = models.PositiveIntegerField(default=0, help_text='Segundos jugados')
+    monedas = models.IntegerField(default=0)
+
+    class Meta:
+        ordering = ['-inicio']
+
+    def __str__(self):
+        return f"{self.alumno} · {self.juego} · {self.puntaje}"

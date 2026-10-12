@@ -10,13 +10,14 @@ from collections import OrderedDict, defaultdict
 from datetime import timedelta
 
 from django.db import transaction
-from django.db.models import Count, F, Q, Sum, Value
+from django.db.models import Count, F, Max, Q, Sum, Value
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 
 from .models import (
     Alumno, ArticuloTienda, CofreAbierto, CompraAlumno, Logro, LogroAlumno, Mision, MisionDiaria,
-    Movimiento, Notificacion, ProgresoDiario, ProgresoMision, PuntosEquipo, RegistroConducta, calcular_nivel, xp_para_nivel, RANGOS,
+    Movimiento, Notificacion, PartidaJuego, ProgresoDiario, ProgresoMision, PuntosEquipo, RegistroConducta, calcular_nivel,
+    xp_para_nivel, RANGOS,
 )
 
 DIARIAS_POR_DIA = 3
@@ -29,6 +30,7 @@ TIPO_INFO = {
     'evidencia': {'icono': 'bi-camera-fill', 'emoji': '📸', 'color': '#f59e0b'},
     'texto': {'icono': 'bi-pencil-fill', 'emoji': '✍️', 'color': '#ec4899'},
     'presencial': {'icono': 'bi-people-fill', 'emoji': '🙋', 'color': '#10b981'},
+    'juego': {'icono': 'bi-controller', 'emoji': '🎮', 'color': '#f97316'},
 }
 
 TEMA_INFO = {
@@ -226,6 +228,8 @@ def estadisticas_alumno(alumno):
         'jefes': aprobados.filter(mision__es_jefe=True).count(),
         'estrellas': estrellas,
         'logros': LogroAlumno.objects.filter(alumno=alumno).count(),
+        'juegos': PartidaJuego.objects.filter(alumno=alumno, terminada=True).count(),
+        'ppm': PartidaJuego.objects.filter(alumno=alumno, terminada=True).aggregate(m=Max('ppm'))['m'] or 0,
     }
 
 
@@ -285,6 +289,9 @@ def alumnos_que_cumplen(condicion, valor):
         ).annotate(total=F('monedas') + F('gastado')).filter(total__gte=valor).values_list('id', flat=True))
     if condicion == 'mundos':
         return [alumno.id for alumno in activos if mundos_completados(alumno) >= valor]
+    if condicion == 'ppm':
+        return list(PartidaJuego.objects.filter(alumno__activo=True, terminada=True).values('alumno_id')
+                    .annotate(m=Max('ppm')).filter(m__gte=valor).values_list('alumno_id', flat=True))
 
     aprobados = ProgresoMision.objects.filter(estado='aprobado', alumno__activo=True)
     origenes = {
@@ -293,6 +300,7 @@ def alumnos_que_cumplen(condicion, valor):
         'jefes': aprobados.filter(mision__es_jefe=True),
         'compras': CompraAlumno.objects.filter(alumno__activo=True).exclude(estado='cancelado'),
         'diarias': ProgresoDiario.objects.filter(alumno__activo=True, reclamada=True),
+        'juegos': PartidaJuego.objects.filter(alumno__activo=True, terminada=True),
     }
     if condicion not in origenes:
         return []

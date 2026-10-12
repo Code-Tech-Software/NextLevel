@@ -1,0 +1,11 @@
+<div class="lista-ranking-juego {% if oculto %}d-none{% endif %}" data-ranking="{{ clave }}">
+    {% for fila in lista %}
+        <div class="fila {% if fila.alumno_id == alumno.id %}yo{% endif %}">
+            <span class="pos">{% if forloop.counter == 1 %}🥇{% elif forloop.counter == 2 %}🥈{% elif forloop.counter == 3 %}🥉{% else %}{{ forloop.counter }}{% endif %}</span>
+            <span class="n">{{ fila.nombre }} {{ fila.apellido|slice:":1" }}.{% if fila.alumno_id == alumno.id %} <small>(tú)</small>{% endif %}</span>
+            <b>{{ fila.puntaje }}</b>
+        </div>
+    {% empty %}
+        <div class="vacio">{% if clave == 'semana' %}Nadie ha jugado esta semana. ¡Sé el primero en el ranking!{% else %}Aún no hay récords. ¡Estrénalo!{% endif %}</div>
+    {% endfor %}
+</div>

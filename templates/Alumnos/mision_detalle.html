@@ -1,6 +1,8 @@
 {% extends 'Alumnos/base.html' %}
-{% load nextlevel %}
+{% load nextlevel static %}
 {% block title %}{{ mision.nombre }} · Next-Level{% endblock %}
+{% block extra_css %}{% if juego_datos %}<link rel="stylesheet" href="{% static 'css/juegos.css' %}">{% endif %}{% endblock %}
+{% block extra_js %}{% if juego_datos %}<script src="{% static 'js/juegos.js' %}"></script>{% endif %}{% endblock %}
 
 {% block content %}
 <div class="tema-{{ mundo.tema|default:'bosque' }}">
@@ -91,6 +93,16 @@
                     {% if progreso.comentario_profesor %}
                         <div class="comentario-profe"><b>💬 Tu profe dice:</b><br>{{ progreso.comentario_profesor|linebreaksbr }}</div>
                     {% endif %}
+                    {% if juego_datos %}
+                        {{ juego_datos|json_script:"juego-data" }}
+                        <div class="mt-3">
+                            <button type="button" class="g-btn " data-jugar="juego-data" data-recargar data-mision="{{ mision.id }}"
+                                data-url-iniciar="{% url 'iniciar_partida' clase.id juego_datos.id %}"
+                                data-url-terminar="{% url 'terminar_partida' clase.id 0 %}"
+                                data-csrf="{{ csrf_token }}" data-alumno="{{ alumno.id }}" data-texto-salir="Volver a la misión"><i class="bi bi-arrow-repeat"></i> Jugar otra vez</button>
+                            {% if progreso.estrellas < 3 %}<div class="mt-2 fw-bold" style="font-size:.85rem">¡Mejora tu resultado para ganar más estrellas y monedas!</div>{% endif %}
+                        </div>
+                    {% endif %}
                 </div>
 
                 {% if preguntas %}
@@ -126,6 +138,36 @@
                     <span class="botin-item"><i class="bi bi-coin ico" style="color:var(--moneda)"></i> hasta +{{ mision.monedas_recompensa }}</span>
                     <span class="botin-item"><i class="bi bi-lightning-charge-fill ico" style="color:var(--azul)"></i> +{{ mision.xp_recompensa }} XP</span>
                 </div>
+            </section>
+
+        {% elif mision.tipo == 'juego' %}
+            <section class="g-card mb-4 juego-mision plantilla-{{ juego_datos.plantilla|default:'meteoros' }}">
+                {% if juego_datos %}
+                    {{ juego_datos|json_script:"juego-data" }}
+                    <div class="juego-portada">
+                        <span class="icono">{{ juego_datos.icono }}</span>
+                        <div class="min-w-0">
+                            <div class="tipo">{{ juego_datos.info.emoji }} {{ juego_datos.info.nombre }}</div>
+                            <div class="nombre">{{ juego_datos.nombre }}</div>
+                        </div>
+                    </div>
+                    <p class="como">{{ juego_datos.info.como }}</p>
+                    <div class="juego-meta">🎯 {{ juego_datos.meta }}</div>
+                    <div class="juego-cortes"><span>Supera la misión con la mitad de la meta</span><span>⭐⭐⭐ con el 90 %</span></div>
+                    <div class="botin my-3">
+                        <span class="botin-item"><i class="bi bi-coin ico" style="color:var(--moneda)"></i> hasta +{{ mision.monedas_recompensa }}</span>
+                        <span class="botin-item"><i class="bi bi-lightning-charge-fill ico" style="color:var(--azul)"></i> +{{ mision.xp_recompensa }} XP</span>
+                    </div>
+                    <button type="button" class="g-btn ancho grande" data-jugar="juego-data" data-recargar data-mision="{{ mision.id }}"
+                                data-url-iniciar="{% url 'iniciar_partida' clase.id juego_datos.id %}"
+                                data-url-terminar="{% url 'terminar_partida' clase.id 0 %}"
+                                data-csrf="{{ csrf_token }}" data-alumno="{{ alumno.id }}" data-texto-salir="Volver a la misión"><i class="bi bi-play-fill"></i> ¡Jugar!</button>
+                {% else %}
+                    <div class="estado-caja presencial">
+                        <div class="grande">🛠️</div>
+                        <div class="fs-5 mt-2">Tu profe está preparando este juego</div>
+                    </div>
+                {% endif %}
             </section>
 
         {% elif mision.tipo == 'presencial' %}
