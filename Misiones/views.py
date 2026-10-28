@@ -67,6 +67,8 @@ def lista_alumnos(request, clase_id):
         'clase': clase,
         'alumnos': alumnos,
         'pin_error': request.session.pop('pin_error', None),
+        # El QR de la credencial abre directo la tarjeta del alumno
+        'jugador': int(request.GET['jugador']) if request.GET.get('jugador', '').isdigit() else None,
     })
 
 

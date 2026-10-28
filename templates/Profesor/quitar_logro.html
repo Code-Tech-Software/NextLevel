@@ -1,0 +1,117 @@
+{% extends base_plantilla|default:"Profesor/baseProfesor.html" %}
+{% load nextlevel %}
+{% block title %}Quitar logro{% endblock %}
+{% block migas %}<a href="{% url 'logros_lista' %}">Logros</a><i class="bi bi-chevron-right"></i><span class="actual">Quitar «{{ logro.nombre }}»</span>{% endblock %}
+
+{% block content %}
+<form method="post" action="{{ request.get_full_path }}" class="form-panel" data-form="quitar-logro"
+      data-monedas="{{ logro.recompensa_monedas }}" data-xp="{{ logro.recompensa_xp }}" data-manual="{% if logro.condicion == 'manual' %}1{% endif %}" novalidate>
+    {% csrf_token %}
+    <div class="modal-header">
+        <span class="icono-form peligro"><i class="bi bi-award"></i></span>
+        <div class="min-w-0 flex-grow-1">
+            <h2 class="titulo-form">{% if unico %}Quitarle un logro a {{ unico.alumno.nombre }}{% else %}Quitar «{{ logro.nombre }}»{% endif %}</h2>
+            <p class="sub-form">Para corregir un logro que se dio por error o por una falla. El alumno no recibe ningún aviso.</p>
+        </div>
+        {% if modal %}<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>{% endif %}
+    </div>
+
+    <div class="modal-body">
+        {% if error %}<div class="aviso-error"><i class="bi bi-exclamation-circle"></i> {{ error }}</div>{% endif %}
+
+        <div class="p-card logro-tile {{ logro.rareza }} mb-3">
+            <span class="disco">{{ logro.icono }}</span>
+            <div class="min-w-0 flex-grow-1">
+                <div class="d-flex align-items-center gap-2 flex-wrap"><span class="fw-semibold">{{ logro.nombre }}</span><span class="p-badge {% if logro.rareza == 'legendario' %}ambar{% elif logro.rareza == 'epico' %}violeta{% elif logro.rareza == 'raro' %}azul{% endif %}">{{ logro.get_rareza_display }}</span></div>
+                <div class="text-2" style="font-size:.82rem">{{ logro.descripcion }}</div>
+                <div class="text-muted-p mt-1" style="font-size:.76rem">
+                    {% if logro.condicion == 'manual' %}Lo otorga el profesor{% else %}Se gana solo: {{ logro.get_condicion_display|lower }} ≥ {{ logro.valor }}{% endif %}
+                    {% if con_premio %} · Premio: {% if logro.recompensa_monedas %}{{ logro.recompensa_monedas }} monedas{% endif %}{% if logro.recompensa_monedas and logro.recompensa_xp %} + {% endif %}{% if logro.recompensa_xp %}{{ logro.recompensa_xp }} XP{% endif %}{% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Paso 1 -->
+        <section class="p-card paso mb-3">
+            <div class="paso-cabeza"><span class="paso-num">1</span><div><h3>{% if unico %}Alumno{% else %}¿A quién se lo quitas?{% endif %}</h3><p>{% if unico %}Este es el logro que se le retirará.{% else %}Marca a los alumnos que lo recibieron por error.{% endif %}</p></div></div>
+            <div class="p-card-body pt-0">
+                {% if unico %}
+                    <input type="hidden" name="alumnos" value="{{ unico.alumno_id }}" data-cumple="{% if unico.cumple %}1{% endif %}" data-nombre="{{ unico.alumno.nombre }}">
+                    <div class="quitar-op solo">
+                        <img src="{{ unico.alumno|avatar_url }}" alt="" class="av">
+                        <span class="min-w-0 flex-grow-1">
+                            <span class="n d-block">{{ unico.alumno.nombre }} {{ unico.alumno.apellido }}</span>
+                            <span class="f d-block">Lo ganó el {{ unico.fecha|date:"j \d\e F \d\e Y"|lower }}{% if logro.condicion != 'manual' %} · lleva {{ unico.avance }} de {{ logro.valor }}{% endif %}</span>
+                        </span>
+                        {% if unico.cumple %}<span class="p-badge verde">Cumple la condición</span>{% elif logro.condicion != 'manual' %}<span class="p-badge ambar">Aún no la cumple</span>{% endif %}
+                    </div>
+                {% elif poseedores %}
+                    <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
+                        <input type="search" class="p-input" style="height:36px;flex:1 1 160px;width:auto" placeholder="Buscar alumno…" aria-label="Buscar alumno" data-buscar-quitar>
+                        <button type="button" class="p-btn sm fantasma" data-marcar-todos>Marcar todos</button>
+                    </div>
+                    <div class="quitar-lista" role="group" aria-label="Alumnos que tienen el logro">
+                        {% for la in poseedores %}
+                            <label class="quitar-op">
+                                <input type="checkbox" name="alumnos" value="{{ la.alumno_id }}" data-cumple="{% if la.cumple %}1{% endif %}" data-nombre="{{ la.alumno.nombre }}" {% if la.alumno_id in elegidos %}checked{% endif %}>
+                                <img src="{{ la.alumno|avatar_url }}" alt="" class="av" loading="lazy">
+                                <span class="min-w-0 flex-grow-1">
+                                    <span class="n d-block">{{ la.alumno.nombre }} {{ la.alumno.apellido }}{% if not la.alumno.activo %} <span class="text-muted-p fw-normal">(inactivo)</span>{% endif %}</span>
+                                    <span class="f d-block">Lo ganó hace {{ la.fecha|timesince }}</span>
+                                </span>
+                                {% if la.cumple %}<span class="p-badge verde" title="Ya cumple la condición del logro">Cumple</span>{% endif %}
+                            </label>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="vacio-p py-3">Ningún alumno tiene este logro.</div>
+                {% endif %}
+            </div>
+        </section>
+
+        {% if con_premio %}
+            <!-- Paso 2 -->
+            <section class="p-card paso mb-3">
+                <div class="paso-cabeza"><span class="paso-num">2</span><div><h3>¿Y el premio que recibió?</h3><p>Al ganar el logro recibió {% if logro.recompensa_monedas %}{{ logro.recompensa_monedas }} monedas{% endif %}{% if logro.recompensa_monedas and logro.recompensa_xp %} y {% endif %}{% if logro.recompensa_xp %}{{ logro.recompensa_xp }} XP{% endif %}.</p></div></div>
+                <div class="p-card-body pt-0">
+                    <div class="opciones-premio">
+                        <label class="tipo-op">
+                            <input type="radio" name="devolver" value="1" {% if devolver != '0' %}checked{% endif %}>
+                            <span class="caja d-block">
+                                <span class="e d-block">↩️</span>
+                                <span class="n d-block">Descontar el premio</span>
+                                <span class="d d-block">{% if logro.recompensa_monedas %}−{{ logro.recompensa_monedas }} monedas{% endif %}{% if logro.recompensa_monedas and logro.recompensa_xp %} · {% endif %}{% if logro.recompensa_xp %}−{{ logro.recompensa_xp }} XP{% endif %}</span>
+                            </span>
+                        </label>
+                        <label class="tipo-op">
+                            <input type="radio" name="devolver" value="0" {% if devolver == '0' %}checked{% endif %}>
+                            <span class="caja d-block">
+                                <span class="e d-block">🎁</span>
+                                <span class="n d-block">Dejarle el premio</span>
+                                <span class="d d-block">Solo se quita la insignia</span>
+                            </span>
+                        </label>
+                    </div>
+                    <p class="text-muted-p mt-2 mb-0" style="font-size:.78rem"><i class="bi bi-info-circle"></i> Si ya gastó sus monedas, solo se descuenta lo que tenga: nunca queda en negativo.</p>
+                </div>
+            </section>
+        {% endif %}
+
+        <div class="quitar-resumen">
+            <div class="t"><i class="bi bi-list-check"></i> Qué va a pasar</div>
+            <ul data-resumen-quitar>
+                <li>Elige a quién se lo quitas.</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="modal-footer">
+        {% if modal %}
+            <button type="button" class="p-btn fantasma" data-bs-dismiss="modal">Cancelar</button>
+        {% else %}
+            <a href="{% url 'logros_lista' %}" class="p-btn fantasma">Cancelar</a>
+        {% endif %}
+        <button type="submit" class="p-btn peligro-lleno" data-boton-quitar {% if not unico and not poseedores %}disabled{% endif %}><i class="bi bi-award"></i> <span>Quitar logro</span></button>
+    </div>
+</form>
+{% endblock %}

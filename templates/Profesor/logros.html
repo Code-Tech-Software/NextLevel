@@ -29,12 +29,13 @@
                                 {% if l.condicion == 'manual' %}Otorgado por el profesor{% else %}{{ l.get_condicion_display }}: {{ l.valor }}{% endif %}
                                 {% if l.recompensa_monedas or l.recompensa_xp %} · Premio: {% if l.recompensa_monedas %}{{ l.recompensa_monedas }} monedas{% endif %}{% if l.recompensa_monedas and l.recompensa_xp %} + {% endif %}{% if l.recompensa_xp %}{{ l.recompensa_xp }} XP{% endif %}{% endif %}
                             </div>
-                            <div class="text-muted-p" style="font-size:.76rem"><i class="bi bi-people"></i> {{ l.total }} alumno{{ l.total|pluralize }}</div>
+                            <div class="text-muted-p" style="font-size:.76rem"><i class="bi bi-people"></i> {{ l.total }} alumno{{ l.total|pluralize }}{% if l.total %} · <a data-modal href="{% url 'quitar_logro' l.id %}" class="enlace-quitar">Quitar a alguien</a>{% endif %}</div>
                         </div>
                         <div class="dropdown">
                             <button class="p-btn xs icono fantasma" data-bs-toggle="dropdown" aria-label="Opciones"><i class="bi bi-three-dots"></i></button>
                             <ul class="dropdown-menu dropdown-menu-end">
                                 <li><a data-modal="xl" class="dropdown-item" href="{% url 'editar_logro' l.id %}"><i class="bi bi-pencil"></i> Editar</a></li>
+                                {% if l.total %}<li><a data-modal class="dropdown-item" href="{% url 'quitar_logro' l.id %}"><i class="bi bi-person-dash"></i> Quitar a alumnos</a></li>{% endif %}
                                 <li><form method="post" action="{% url 'alternar_activo' 'logro' l.id %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}"><button class="dropdown-item">{% if l.activo %}<i class="bi bi-eye-slash"></i> Desactivar{% else %}<i class="bi bi-eye"></i> Activar{% endif %}</button></form></li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li><form method="post" action="{% url 'eliminar' 'logro' l.id %}" data-confirmar="Los alumnos que lo tienen lo perderán." data-titulo="¿Eliminar «{{ l.nombre }}»?" data-boton="Eliminar" data-peligro>{% csrf_token %}<button class="dropdown-item text-danger"><i class="bi bi-trash"></i> Eliminar</button></form></li>
@@ -52,9 +53,10 @@
             <div class="p-card-head"><h2>Desbloqueados recientemente</h2></div>
             <div class="p-card-body sin-pad">
                 {% for la in recientes %}
-                    <div class="feed-item">
+                    <div class="feed-item con-accion">
                         <span class="ico">{{ la.logro.icono }}</span>
-                        <div class="min-w-0"><div class="t"><b>{{ la.alumno.nombre }}</b> · {{ la.logro.nombre }}</div><div class="f">hace {{ la.fecha|timesince }}</div></div>
+                        <div class="min-w-0 flex-grow-1"><div class="t"><b>{{ la.alumno.nombre }}</b> · {{ la.logro.nombre }}</div><div class="f">hace {{ la.fecha|timesince }}</div></div>
+                        <a data-modal href="{% url 'quitar_logro' la.logro_id %}?alumno={{ la.alumno_id }}" class="p-btn xs icono fantasma quitar" title="Quitar este logro a {{ la.alumno.nombre }}" aria-label="Quitar «{{ la.logro.nombre }}» a {{ la.alumno.nombre }}"><i class="bi bi-x-lg"></i></a>
                     </div>
                 {% empty %}
                     <div class="vacio-p">Aún nadie ha desbloqueado logros.</div>

@@ -15,7 +15,7 @@ from django.db.models.functions import Coalesce
 from django.utils import timezone
 
 from .models import (
-    Alumno, ArticuloTienda, CofreAbierto, CompraAlumno, Logro, LogroAlumno, Mision, MisionDiaria,
+    Alumno, ArticuloTienda, CofreAbierto, CompraAlumno, Logro, LogroAlumno, LogroRetirado, Mision, MisionDiaria,
     Movimiento, Notificacion, PartidaJuego, ProgresoDiario, ProgresoMision, PuntosEquipo, RegistroConducta, calcular_nivel,
     xp_para_nivel, RANGOS,
 )
@@ -237,6 +237,8 @@ def otorgar_logro(alumno, logro):
     registro, creado = LogroAlumno.objects.get_or_create(alumno=alumno, logro=logro)
     if not creado:
         return False
+    # Si el profe se lo había retirado y ahora se lo vuelve a dar, deja de estar apartado
+    LogroRetirado.objects.filter(alumno=alumno, logro=logro).delete()
 
     premio = []
     if logro.recompensa_monedas:
@@ -256,6 +258,7 @@ def verificar_logros(alumno):
     desbloqueados = LogroAlumno.objects.filter(alumno=alumno).values_list('logro_id', flat=True)
     pendientes = list(
         Logro.objects.filter(activo=True).exclude(condicion='manual').exclude(id__in=list(desbloqueados))
+        .exclude(retirados__alumno=alumno)
     )
     if not pendientes:
         return
@@ -264,6 +267,46 @@ def verificar_logros(alumno):
     for logro in pendientes:
         if stats.get(logro.condicion, 0) >= logro.valor:
             otorgar_logro(alumno, logro)
+
+
+def cumple_logro(alumno, logro, stats=None):
+    """¿El alumno ya cumple la condición automática del logro?"""
+    if logro.condicion == 'manual':
+        return False
+    stats = stats if stats is not None else estadisticas_alumno(alumno)
+    return stats.get(logro.condicion, 0) >= logro.valor
+
+
+def quitar_logro(alumno, logro, devolver_premio=True):
+    """El profe retira un logro dado por error. Devuelve lo que se descontó, o None si no lo tenía.
+
+    Si el alumno todavía cumple la condición, el logro queda apartado para que el sistema no se lo
+    vuelva a dar en su siguiente acción; solo regresa si el profe se lo otorga a mano.
+    """
+    apartar = cumple_logro(alumno, logro)
+    with transaction.atomic():
+        if apartar:
+            LogroRetirado.objects.get_or_create(alumno=alumno, logro=logro)
+        borrados, _ = LogroAlumno.objects.filter(alumno=alumno, logro=logro).delete()
+        if not borrados:
+            LogroRetirado.objects.filter(alumno=alumno, logro=logro).delete()
+            return None
+    # Que no le salga la celebración de un logro que ya no tiene
+    Notificacion.objects.filter(alumno=alumno, tipo='logro', leida=False,
+                                titulo=f'Logro desbloqueado: {logro.nombre}'[:120]).delete()
+
+    resultado = {'monedas': 0, 'xp': 0, 'apartado': apartar}
+    if devolver_premio and (logro.recompensa_monedas > 0 or logro.recompensa_xp > 0):
+        alumno.refresh_from_db(fields=['monedas', 'xp_total'])
+        # Nunca queda en negativo: si ya gastó sus monedas, solo se descuenta lo que tiene
+        monedas = min(max(logro.recompensa_monedas, 0), alumno.monedas)
+        xp = min(max(logro.recompensa_xp, 0), alumno.xp_total)
+        motivo = f'Se retiró el logro: {logro.nombre}'
+        otorgar(alumno, xp=-xp, monedas=-monedas, tipo='ajuste', descripcion=motivo)
+        if xp:
+            sumar_puntos_equipo(alumno, -xp, motivo)
+        resultado.update(monedas=monedas, xp=xp)
+    return resultado
 
 
 def alumnos_que_cumplen(condicion, valor):
@@ -313,6 +356,7 @@ def entregar_logro_a_quienes_cumplen(logro):
     if not logro.activo or logro.condicion == 'manual':
         return 0
     ya_tienen = set(LogroAlumno.objects.filter(logro=logro).values_list('alumno_id', flat=True))
+    ya_tienen |= set(LogroRetirado.objects.filter(logro=logro).values_list('alumno_id', flat=True))
     nuevos = 0
     for alumno in Alumno.objects.filter(id__in=alumnos_que_cumplen(logro.condicion, logro.valor)).exclude(id__in=ya_tienen):
         if otorgar_logro(alumno, logro):
@@ -325,7 +369,8 @@ def progreso_logros(alumno):
     stats = estadisticas_alumno(alumno)
     obtenidos = {la.logro_id: la for la in LogroAlumno.objects.filter(alumno=alumno)}
     lista = []
-    for logro in Logro.objects.filter(activo=True):
+    # Los que el profe le retiró no se muestran: los cumpliría, pero no los puede ganar
+    for logro in Logro.objects.filter(activo=True).exclude(retirados__alumno=alumno):
         valor = stats.get(logro.condicion, 0) if logro.condicion != 'manual' else 0
         lista.append({
             'logro': logro,

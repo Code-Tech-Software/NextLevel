@@ -906,10 +906,23 @@ def credenciales(request):
     elif request.GET.get('clase', '').isdigit():
         clase = Clase.objects.filter(pk=request.GET['clase']).first()
         alumnos = alumnos.filter(clases__id=request.GET['clase'])
+    alumnos = list(alumnos.distinct())
+    for alumno in alumnos:
+        # La credencial se pinta con la clase elegida o, si no, con su primera clase activa
+        suyas = list(alumno.clases.all())
+        alumno.clase_pase = clase if clase in suyas else next((c for c in suyas if c.activa), suyas[0] if suyas else None)
+        alumno.colores = COLORES_CLASE.get(getattr(alumno.clase_pase, 'color', ''), COLORES_CLASE['indigo'])
+        # El QR lleva directo a su tarjeta en la lista de la clase, listo para escribir el código
+        alumno.url_acceso = request.build_absolute_uri(
+            f"{reverse('lista_alumnos', args=[alumno.clase_pase.id])}?jugador={alumno.id}"
+            if alumno.clase_pase else '/')
     return render(request, 'Profesor/credenciales.html', {
-        'alumnos': alumnos.distinct(),
+        'alumnos': alumnos,
         'clase': clase,
-        'url_sitio': request.build_absolute_uri('/'),
+        'seleccion': bool(request.GET.get('ids')),
+        'clases': Clase.objects.filter(activa=True).order_by('grado', 'grupo', 'nombre'),
+        'sitio': request.get_host(),
+        'seccion': 'alumnos',
     })
 
 
@@ -966,6 +979,53 @@ def otorgar_logro(request):
     otorgados = sum(1 for alumno in Alumno.objects.filter(id__in=ids) if juego.otorgar_logro(alumno, logro))
     messages.success(request, f'"{logro.nombre}" se otorgó a {otorgados} alumno(s). 🏅')
     return redirect(_siguiente(request, reverse('logros_lista')))
+
+
+@login_required
+def quitar_logro(request, pk):
+    """Retira un logro a uno o varios alumnos (por si se dio por error o por una falla)."""
+    logro = get_object_or_404(Logro, pk=pk)
+    poseedores = list(logro.alumnos.select_related('alumno').order_by('alumno__apellido', 'alumno__nombre'))
+    pedido = request.GET.get('alumno', '')
+    unico = next((la for la in poseedores if pedido.isdigit() and la.alumno_id == int(pedido)), None)
+    if unico:
+        stats = juego.estadisticas_alumno(unico.alumno)
+        unico.avance = stats.get(logro.condicion, 0)
+        unico.cumple = juego.cumple_logro(unico.alumno, logro, stats)
+    elif logro.condicion != 'manual' and poseedores:
+        cumplen = set(juego.alumnos_que_cumplen(logro.condicion, logro.valor))
+        for la in poseedores:
+            la.cumple = la.alumno_id in cumplen
+
+    error = ''
+    elegidos_ids = set()
+    if request.method == 'POST':
+        elegidos_ids = {int(i) for i in request.POST.getlist('alumnos') if i.isdigit()}
+        elegidos = [la.alumno for la in poseedores if la.alumno_id in elegidos_ids]
+        if elegidos:
+            devolver = request.POST.get('devolver', '1') == '1'
+            quitados = [a for a in elegidos if juego.quitar_logro(a, logro, devolver_premio=devolver) is not None]
+            if len(quitados) == 1:
+                mensaje = f'Se le quitó «{logro.nombre}» a {quitados[0].nombre}.'
+            else:
+                mensaje = f'Se quitó «{logro.nombre}» a {len(quitados)} alumnos.'
+            if devolver and (logro.recompensa_monedas > 0 or logro.recompensa_xp > 0):
+                mensaje += ' También se descontó el premio.'
+            return _guardado(request, mensaje, _siguiente(request, reverse('logros_lista')))
+        error = 'Elige al menos un alumno.' if poseedores else 'Nadie tiene este logro.'
+    elif pedido.isdigit() and not unico:
+        error = 'Ese alumno ya no tiene este logro.'
+
+    return _formulario(request, 'Profesor/quitar_logro.html', {
+        'logro': logro,
+        'poseedores': poseedores,
+        'unico': unico,
+        'elegidos': elegidos_ids,
+        'devolver': request.POST.get('devolver', '1'),
+        'con_premio': logro.recompensa_monedas > 0 or logro.recompensa_xp > 0,
+        'error': error,
+        'seccion': 'logros',
+    })
 
 
 # ========================

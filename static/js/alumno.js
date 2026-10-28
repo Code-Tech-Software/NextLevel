@@ -418,6 +418,10 @@
                 instancia.show();
                 setTimeout(() => { puntos.classList.add('error'); Sonido.play('error'); }, 350);
             }
+            // Llegó desde el QR de su credencial: su tarjeta se abre sola
+            if (modal.dataset.abrir === '1' && window.bootstrap) {
+                bootstrap.Modal.getOrCreateInstance(modal).show();
+            }
         });
     }
 

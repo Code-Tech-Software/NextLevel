@@ -1,33 +1,89 @@
 {% extends 'Profesor/baseProfesor.html' %}
-{% load nextlevel %}
+{% load static nextlevel %}
 {% block title %}Credenciales{% endblock %}
 {% block migas %}<a href="{% url 'alumnos_lista' %}">Alumnos</a><i class="bi bi-chevron-right"></i><span class="actual">Credenciales</span>{% endblock %}
+{% block extra_css %}<style>@page { margin: 8mm; }</style>{% endblock %}
 
 {% block content %}
 <div class="page-head no-imprimir">
     <div>
         <h1>Credenciales de acceso</h1>
-        <p>{{ alumnos|length }} alumnos{% if clase %} de {{ clase.nombre }}{% endif %}. Imprímelas, recórtalas y entrégalas a cada alumno.</p>
+        <p>{{ alumnos|length }} alumno{{ alumnos|length|pluralize }}{% if clase %} de {{ clase.nombre }} {{ clase.grado }}{{ clase.grupo }}{% elif seleccion %} seleccionados{% endif %}. Imprímelas, recórtalas por la línea punteada y entrégalas a cada alumno.</p>
     </div>
     <div class="acciones">
-        <button type="button" class="p-btn primario" onclick="window.print()"><i class="bi bi-printer"></i> Imprimir</button>
+        <button type="button" class="p-btn primario" onclick="window.print()" {% if not alumnos %}disabled{% endif %}><i class="bi bi-printer"></i> Imprimir</button>
     </div>
 </div>
 
-<div class="credenciales">
-    {% for a in alumnos %}
-        <div class="credencial">
-            <img src="{{ a|avatar_url }}" alt="">
-            <div class="min-w-0">
-                <div class="n">{{ a.nombre }} {{ a.apellido }}</div>
-                <div class="c">{% for c in a.clases.all %}{{ c.nombre }} {{ c.grado }}{{ c.grupo }}{% if not forloop.last %} · {% endif %}{% endfor %}</div>
-                <div class="c mt-1">Tu código secreto:</div>
-                <div class="pin">{{ a.pin }}</div>
-                <div class="c">{{ url_sitio }}</div>
-            </div>
+<section class="p-card cred-opciones no-imprimir" data-cred-opciones>
+    <div class="grupo">
+        <label class="etq" for="cred-clase">Clase</label>
+        <select id="cred-clase" class="p-input" data-cred-clase>
+            <option value="">Todas las clases</option>
+            {% if seleccion %}<option value="sel" selected>Solo los seleccionados ({{ alumnos|length }})</option>{% endif %}
+            {% for c in clases %}<option value="{{ c.id }}" {% if clase.id == c.id %}selected{% endif %}>{{ c.icono }} {{ c.nombre }} · {{ c.grado }}{{ c.grupo }}</option>{% endfor %}
+        </select>
+    </div>
+    <div class="grupo">
+        <span class="etq">Tamaño</span>
+        <div class="segmento" role="group" aria-label="Tamaño de la credencial">
+            <button type="button" data-cred-tamano="gafete" class="activo"><i class="bi bi-person-badge"></i> Gafete <span class="extra">· 8 por hoja</span></button>
+            <button type="button" data-cred-tamano="grande"><i class="bi bi-file-earmark-person"></i> Grande <span class="extra">· 4 por hoja</span></button>
         </div>
+    </div>
+    <div class="grupo interruptores">
+        <label class="interruptor"><input type="checkbox" class="nl-switch" data-cred-opcion="qr" checked> <span>Código QR</span></label>
+        <label class="interruptor"><input type="checkbox" class="nl-switch" data-cred-opcion="tinta"> <span>Ahorrar tinta</span></label>
+    </div>
+    <p class="nota" data-cred-nota><i class="bi bi-lightbulb"></i> <span data-cred-ayuda>El tamaño gafete (8.6 × 5.4 cm) cabe en un porta-gafete de plástico.</span> El QR abre directo la tarjeta del alumno: solo escribe su código. Si salen sin color, activa «Gráficos de fondo» al imprimir.</p>
+</section>
+
+<div class="credenciales" data-credenciales>
+    {% for a in alumnos %}
+        {% with c=a.clase_pase rango=a.rango %}
+        <div class="corte">
+            <article class="credencial" style="--c1: {{ a.colores.0 }}; --c2: {{ a.colores.1 }}">
+                <header class="cred-cabeza">
+                    <img src="{% static 'img/192x192.png' %}" alt="" class="cred-logo">
+                    <span class="cred-marca">Next-Level</span>
+                    <span class="cred-tipo">Pase de jugador</span>
+                </header>
+                <div class="cred-cuerpo">
+                    <div class="cred-avatar">
+                        <img src="{{ a|avatar_url }}" alt="">
+                        <span class="cred-nivel">{{ rango.emoji }} Nv {{ a.nivel }}</span>
+                    </div>
+                    <div class="cred-datos">
+                        <div class="cred-nombre">{{ a.nombre }}</div>
+                        <div class="cred-apellido">{{ a.apellido }}</div>
+                        {% if c %}<div class="cred-clase">{{ c.icono }} {{ c.nombre }} · {{ c.grado }}{{ c.grupo }}</div>{% endif %}
+                        <div class="cred-etq">Tu código secreto</div>
+                        <div class="cred-pin" aria-label="Código {{ a.pin }}">{% for d in a.pin %}<span>{{ d }}</span>{% endfor %}</div>
+                    </div>
+                    <div class="cred-qr">
+                        <div class="qr" data-qr="{{ a.url_acceso }}"></div>
+                        <span>¡Escanéame!</span>
+                    </div>
+                    <ol class="cred-pasos">
+                        <li>Entra a <b>{{ sitio }}</b></li>
+                        <li>Toca tu clase{% if c %} <b>{{ c.icono }} {{ c.nombre }}</b>{% endif %}</li>
+                        <li>Busca tu tarjeta y tócala</li>
+                        <li>Escribe tu código secreto</li>
+                    </ol>
+                </div>
+                <footer class="cred-pie">
+                    <span class="web"><i class="bi bi-globe2"></i> {{ sitio }}</span>
+                    <span class="secreto">🤫 No compartas tu código</span>
+                </footer>
+            </article>
+        </div>
+        {% endwith %}
     {% empty %}
-        <div class="p-card vacio-p">No hay alumnos para mostrar.</div>
+        <div class="p-card vacio-p w-100"><i class="bi bi-person-badge"></i>No hay alumnos para mostrar.</div>
     {% endfor %}
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 {% endblock %}

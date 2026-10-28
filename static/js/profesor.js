@@ -1900,6 +1900,77 @@
         numeros: 'números', todo: 'letras y números', personalizado: 'mis teclas',
     };
 
+    // ===== Quitar un logro (dado por error o por una falla) =====
+    function iniciarFormQuitarLogro(raiz = document) {
+        const form = $('form[data-form="quitar-logro"]', raiz);
+        if (!form || form.dataset.listo) return;
+        form.dataset.listo = '1';
+        const monedas = Math.max(parseInt(form.dataset.monedas, 10) || 0, 0);
+        const xp = Math.max(parseInt(form.dataset.xp, 10) || 0, 0);
+        const manual = form.dataset.manual === '1';
+        const resumen = $('[data-resumen-quitar]', form);
+        const boton = $('[data-boton-quitar]', form);
+        const casillas = $$('input[name="alumnos"]', form);
+        const marcables = casillas.filter(c => c.type === 'checkbox');
+        const buscar = $('[data-buscar-quitar]', form);
+        const todos = $('[data-marcar-todos]', form);
+        const premio = [monedas ? `${monedas} monedas` : '', xp ? `${xp} XP` : ''].filter(Boolean).join(' y ');
+
+        function pintar() {
+            const elegidos = casillas.filter(c => c.type === 'hidden' || c.checked);
+            const n = elegidos.length;
+            const cumplen = elegidos.filter(c => c.dataset.cumple === '1').length;
+            const descontar = premio && ($('input[name="devolver"]:checked', form)?.value ?? '1') === '1';
+            const puntos = [];
+            if (!n) {
+                puntos.push(['bi-hand-index', 'Marca a quién se lo quitas.']);
+            } else {
+                const quien = n === 1 ? `<b>${escapar(elegidos[0].dataset.nombre)}</b> deja` : `<b>${n} alumnos</b> dejan`;
+                puntos.push(['bi-award', `${quien} de tener la insignia en su vitrina de trofeos.`]);
+                if (premio) {
+                    puntos.push(descontar
+                        ? ['bi-arrow-counterclockwise', `Se ${n === 1 ? 'le' : 'les'} descuentan <b>${premio}</b>${n > 1 ? ' a cada uno' : ''}; queda anotado en su historial.`]
+                        : ['bi-gift', `${n === 1 ? 'Conserva' : 'Conservan'} el premio que recibió (${premio}).`]);
+                }
+                if (manual) {
+                    puntos.push(['bi-hand-thumbs-up', 'Es un logro manual: solo vuelve si tú se lo otorgas.']);
+                } else {
+                    if (cumplen) {
+                        puntos.push(['bi-lock', n === 1
+                            ? 'Ya cumple la condición, así que el sistema <b>no se lo volverá a dar solo</b>. Si cambias de opinión, otórgaselo a mano.'
+                            : `${plural(cumplen, 'ya cumple', 'ya cumplen')} la condición: el sistema <b>no se lo volverá a dar solo</b>. Si cambias de opinión, otórgaselo a mano.`]);
+                    }
+                    if (n - cumplen) {
+                        puntos.push(['bi-arrow-repeat', n === 1
+                            ? 'Aún no cumple la condición: lo podrá ganar de nuevo cuando la cumpla de verdad.'
+                            : `${n - cumplen} ${n - cumplen === 1 ? 'aún no la cumple: lo podrá' : 'aún no la cumplen: lo podrán'} ganar de nuevo cuando la cumpla${n - cumplen === 1 ? '' : 'n'} de verdad.`]);
+                    }
+                }
+            }
+            resumen.innerHTML = puntos.map(([i, t]) => `<li><i class="bi ${i}"></i><span>${t}</span></li>`).join('');
+            boton.disabled = !n;
+            $('span', boton).textContent = n > 1 ? `Quitar a ${n} alumnos` : 'Quitar logro';
+            if (todos) todos.textContent = marcables.length && marcables.every(c => c.checked) ? 'Desmarcar todos' : 'Marcar todos';
+            marcarPasos(form, [n > 0, true]);
+        }
+
+        buscar?.addEventListener('input', () => {
+            const q = normalizar(buscar.value.trim());
+            marcables.forEach(c => {
+                const fila = c.closest('.quitar-op');
+                fila.classList.toggle('d-none', !normalizar(fila.textContent).includes(q));
+            });
+        });
+        todos?.addEventListener('click', () => {
+            const visibles = marcables.filter(c => !c.closest('.quitar-op').classList.contains('d-none'));
+            const marcar = !visibles.every(c => c.checked);
+            visibles.forEach(c => { c.checked = marcar; });
+            pintar();
+        });
+        form.addEventListener('change', pintar);
+        pintar();
+    }
+
     function iniciarFormJuego(raiz = document) {
         const form = $('form[data-form="juego"]', raiz);
         if (!form || form.dataset.listo) return;
@@ -2224,7 +2295,7 @@
     const INICIADORES = [
         iniciarFormMision, iniciarFormLogro, iniciarFormDiaria, iniciarFormArticulo, iniciarFormClase, iniciarFormMundo,
         iniciarFormNivel, iniciarFormAlumno, iniciarFormMasiva, iniciarFormEquipo, iniciarFormMeta, iniciarFormConducta,
-        iniciarFormJuego,
+        iniciarFormJuego, iniciarFormQuitarLogro,
     ];
     function iniciarFormularios(raiz = document) {
         INICIADORES.forEach(iniciar => {
@@ -2354,6 +2425,70 @@
         Modal.abrir(enlace.getAttribute('href'), enlace.dataset.modal);
     });
 
+    // ---------- Credenciales para imprimir ----------
+    function iniciarCredenciales() {
+        const hoja = $('[data-credenciales]');
+        const opciones = $('[data-cred-opciones]');
+        if (!hoja || !opciones) return;
+        const guardar = (clave, valor) => { try { localStorage.setItem(`nl-cred-${clave}`, valor); } catch (e) { /* sin almacenamiento */ } };
+        const leer = clave => { try { return localStorage.getItem(`nl-cred-${clave}`); } catch (e) { return null; } };
+
+        const casillaQr = $('[data-cred-opcion="qr"]', opciones);
+        if (typeof window.qrcode === 'function') {
+            $$('[data-qr]', hoja).forEach(caja => {
+                try {
+                    const qr = window.qrcode(0, 'M');
+                    qr.addData(caja.dataset.qr);
+                    qr.make();
+                    caja.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 0, scalable: true });
+                } catch (e) { caja.closest('.cred-qr')?.classList.add('d-none'); }
+            });
+        } else if (casillaQr) {
+            // Sin internet no carga el generador: se imprimen sin QR
+            casillaQr.checked = false;
+            casillaQr.disabled = true;
+            casillaQr.closest('label').title = 'No se pudo cargar el generador de QR (revisa la conexión).';
+        }
+
+        const ayuda = $('[data-cred-ayuda]', opciones);
+        const textos = {
+            gafete: 'El tamaño gafete (8.6 × 5.4 cm) cabe en un porta-gafete de plástico.',
+            grande: 'El tamaño grande trae los pasos para entrar: ideal para pegarlo en el cuaderno.',
+        };
+        function tamano(valor) {
+            if (!textos[valor]) valor = 'gafete';
+            hoja.classList.toggle('grande', valor === 'grande');
+            $$('[data-cred-tamano]', opciones).forEach(b => {
+                b.classList.toggle('activo', b.dataset.credTamano === valor);
+                b.setAttribute('aria-pressed', b.dataset.credTamano === valor ? 'true' : 'false');
+            });
+            if (ayuda) ayuda.textContent = textos[valor];
+            guardar('tamano', valor);
+        }
+        opciones.addEventListener('click', e => {
+            const boton = e.target.closest('[data-cred-tamano]');
+            if (boton) tamano(boton.dataset.credTamano);
+        });
+        tamano(leer('tamano'));
+
+        $$('[data-cred-opcion]', opciones).forEach(casilla => {
+            const opcion = casilla.dataset.credOpcion;
+            const previo = leer(opcion);
+            if (previo !== null && !casilla.disabled) casilla.checked = previo === '1';
+            const aplicar = () => {
+                if (opcion === 'qr') hoja.classList.toggle('sin-qr', !casilla.checked);
+                else hoja.classList.toggle('tinta', casilla.checked);
+            };
+            casilla.addEventListener('change', () => { aplicar(); guardar(opcion, casilla.checked ? '1' : '0'); });
+            aplicar();
+        });
+
+        $('[data-cred-clase]', opciones)?.addEventListener('change', e => {
+            if (e.target.value === 'sel') return;
+            location.href = location.pathname + (e.target.value ? `?clase=${e.target.value}` : '');
+        });
+    }
+
     function abrirDesdeUrl() {
         const params = new URLSearchParams(location.search);
         const destino = params.get('abrir');
@@ -2376,6 +2511,7 @@
         iniciarStock();
         iniciarGrafica();
         iniciarCopiar();
+        iniciarCredenciales();
 
         const datos = $('#mensajes-data');
         if (datos) {

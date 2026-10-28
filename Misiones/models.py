@@ -475,6 +475,19 @@ class LogroAlumno(models.Model):
         return f"{self.alumno} · {self.logro}"
 
 
+class LogroRetirado(models.Model):
+    """Logro automático que el profe le quitó a un alumno: el sistema no se lo vuelve a dar solo."""
+    alumno = models.ForeignKey(Alumno, on_delete=models.CASCADE, related_name="logros_retirados")
+    logro = models.ForeignKey(Logro, on_delete=models.CASCADE, related_name="retirados")
+    fecha = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('alumno', 'logro')
+
+    def __str__(self):
+        return f"{self.alumno} · sin {self.logro}"
+
+
 # ========================
 # MISIONES DEL DÍA
 # ========================

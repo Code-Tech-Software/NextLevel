@@ -38,7 +38,7 @@
                 </div>
 
                 <div class="modal fade modal-juego modal-pin" id="modalPIN{{ alumno.id }}" tabindex="-1" aria-label="Ingresar PIN de {{ alumno.nombre }}" aria-hidden="true"
-                     data-error="{% if pin_error == alumno.id %}1{% else %}0{% endif %}">
+                     data-error="{% if pin_error == alumno.id %}1{% else %}0{% endif %}"{% if jugador == alumno.id and not pin_error %} data-abrir="1"{% endif %}>
                     <div class="modal-dialog modal-dialog-centered" style="max-width:400px">
                         <div class="modal-content" tabindex="-1">
                             <div class="pin-cabeza">

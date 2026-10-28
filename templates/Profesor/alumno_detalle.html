@@ -114,8 +114,19 @@
         <section class="p-card mb-3">
             <div class="p-card-head"><h2>Logros</h2><span class="sub">{{ logros|length }}</span></div>
             <div class="p-card-body">
-                <div class="d-flex flex-wrap gap-2 mb-3">
-                    {% for la in logros %}<span class="p-badge" title="{{ la.logro.descripcion }} · {{ la.fecha|date:'d M Y' }}" style="font-size:.8rem">{{ la.logro.icono }} {{ la.logro.nombre }}</span>{% empty %}<span class="text-muted-p" style="font-size:.85rem">Aún no tiene logros.</span>{% endfor %}
+                <div class="logros-alumno mb-3">
+                    {% for la in logros %}
+                        <div class="logro-fila {{ la.logro.rareza }}" title="{{ la.logro.descripcion }}">
+                            <span class="disco">{{ la.logro.icono }}</span>
+                            <div class="min-w-0 flex-grow-1">
+                                <div class="n">{{ la.logro.nombre }}</div>
+                                <div class="f">{{ la.fecha|date:"d M Y" }}{% if la.logro.recompensa_monedas %} · +{{ la.logro.recompensa_monedas }} 🪙{% endif %}{% if la.logro.recompensa_xp %} · +{{ la.logro.recompensa_xp }} XP{% endif %}</div>
+                            </div>
+                            <a data-modal href="{% url 'quitar_logro' la.logro.id %}?alumno={{ alumno.id }}&amp;next={{ request.path|urlencode }}" class="p-btn xs icono fantasma quitar" title="Quitar este logro" aria-label="Quitar «{{ la.logro.nombre }}»"><i class="bi bi-x-lg"></i></a>
+                        </div>
+                    {% empty %}
+                        <span class="text-muted-p" style="font-size:.85rem">Aún no tiene logros.</span>
+                    {% endfor %}
                 </div>
                 {% if logros_disponibles %}
                     <form method="post" action="{% url 'otorgar_logro' %}" class="d-flex gap-2">

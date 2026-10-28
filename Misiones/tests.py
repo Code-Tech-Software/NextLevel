@@ -813,3 +813,122 @@ class CompatibilidadPostgresTests(BaseJuego):
             sql = sql_postgresql(query)
             self.assertIn('FOR UPDATE', sql)
             self.assertNotIn('LEFT OUTER JOIN', sql, f'PostgreSQL rechaza FOR UPDATE con uniones opcionales:\n{sql}')
+
+
+@override_settings(STORAGES=ALMACEN_PRUEBAS)
+class QuitarLogroTests(BaseJuego):
+    def setUp(self):
+        super().setUp()
+        from .models import Logro
+        # Sin los logros de ejemplo, para que las cuentas de monedas y XP sean exactas
+        Logro.objects.update(activo=False)
+        self.client.force_login(User.objects.create_superuser('profe9', 'p@x.com', 'x'))
+        self.modal = {'HTTP_X_MODAL': '1'}
+
+    def quitar(self, logro, datos, alumno=None):
+        url = f'/profesor/logros/{logro.id}/quitar/' + (f'?alumno={alumno.id}' if alumno else '')
+        return self.client.post(url, datos, **self.modal)
+
+    def test_quitar_logro_descuenta_el_premio_sin_dejar_negativos(self):
+        from .models import Logro, LogroAlumno, Movimiento, Notificacion
+        logro = Logro.objects.create(nombre='Ayudante', descripcion='x', condicion='manual',
+                                     recompensa_monedas=30, recompensa_xp=20)
+        juego.otorgar_logro(self.alumno, logro)
+        juego.ajustar_monedas(self.alumno, -25)  # ya gastó casi todo su premio
+        respuesta = self.quitar(logro, {'alumnos': [self.alumno.id], 'devolver': '1'}, self.alumno)
+        self.assertTrue(respuesta.json()['ok'])
+        self.alumno.refresh_from_db()
+        self.assertFalse(LogroAlumno.objects.filter(alumno=self.alumno, logro=logro).exists())
+        self.assertEqual((self.alumno.monedas, self.alumno.xp_total), (0, 0))
+        self.assertTrue(Movimiento.objects.filter(alumno=self.alumno, descripcion='Se retiró el logro: Ayudante',
+                                                  monedas=-5, xp=-20).exists())
+        # No le sale la celebración de un logro que ya no tiene
+        self.assertFalse(Notificacion.objects.filter(alumno=self.alumno, titulo='Logro desbloqueado: Ayudante').exists())
+
+    def test_dejarle_el_premio_solo_quita_la_insignia(self):
+        from .models import Logro, LogroAlumno
+        logro = Logro.objects.create(nombre='Ayudante', descripcion='x', condicion='manual', recompensa_monedas=10)
+        juego.otorgar_logro(self.alumno, logro)
+        self.quitar(logro, {'alumnos': [self.alumno.id], 'devolver': '0'})
+        self.alumno.refresh_from_db()
+        self.assertFalse(LogroAlumno.objects.filter(alumno=self.alumno, logro=logro).exists())
+        self.assertEqual(self.alumno.monedas, 10)
+
+    def test_si_aun_cumple_la_condicion_no_se_le_vuelve_a_dar_solo(self):
+        from .models import Logro, LogroAlumno, LogroRetirado
+        logro = Logro.objects.create(nombre='Primeros pasos', descripcion='x', condicion='xp', valor=10,
+                                     recompensa_monedas=5)
+        juego.otorgar(self.alumno, xp=50, descripcion='Misión')
+        self.assertTrue(LogroAlumno.objects.filter(alumno=self.alumno, logro=logro).exists())
+
+        resultado = juego.quitar_logro(self.alumno, logro)
+        self.assertTrue(resultado['apartado'])
+        juego.otorgar(self.alumno, xp=5, descripcion='Otra misión')
+        self.assertEqual(juego.entregar_logro_a_quienes_cumplen(logro), 0)
+        self.assertFalse(LogroAlumno.objects.filter(alumno=self.alumno, logro=logro).exists())
+        vitrina, _ = juego.progreso_logros(self.alumno)
+        self.assertNotIn(logro.id, [x['logro'].id for x in vitrina])
+
+        # Si el profe cambia de opinión y se lo otorga a mano, regresa y deja de estar apartado
+        self.client.post('/profesor/logros/otorgar/', {'logro': logro.id, 'alumnos': [self.alumno.id]})
+        self.assertTrue(LogroAlumno.objects.filter(alumno=self.alumno, logro=logro).exists())
+        self.assertFalse(LogroRetirado.objects.filter(alumno=self.alumno, logro=logro).exists())
+
+    def test_si_aun_no_cumple_lo_puede_ganar_de_nuevo(self):
+        from .models import Logro, LogroAlumno
+        logro = Logro.objects.create(nombre='Cien XP', descripcion='x', condicion='xp', valor=100)
+        juego.otorgar_logro(self.alumno, logro)  # se dio por error: tiene 0 XP
+        self.assertFalse(juego.quitar_logro(self.alumno, logro)['apartado'])
+        juego.otorgar(self.alumno, xp=150, descripcion='Misión')
+        self.assertTrue(LogroAlumno.objects.filter(alumno=self.alumno, logro=logro).exists())
+
+    def test_formulario_para_uno_o_varios_alumnos(self):
+        from .models import Logro
+        logro = Logro.objects.create(nombre='Ayudante', descripcion='x', condicion='manual', recompensa_monedas=10)
+        beto = Alumno.objects.create(nombre='Beto', apellido='Ruiz', pin='0000')
+        beto.clases.add(self.clase)
+        for alumno in (self.alumno, beto):
+            juego.otorgar_logro(alumno, logro)
+
+        uno = self.client.get(f'/profesor/logros/{logro.id}/quitar/?alumno={beto.id}', **self.modal)
+        self.assertContains(uno, 'Quitarle un logro a Beto')
+        self.assertContains(uno, f'name="alumnos" value="{beto.id}"')
+        self.assertNotContains(uno, 'Ana López')
+        self.assertContains(uno, 'Descontar el premio')
+
+        varios = self.client.get(f'/profesor/logros/{logro.id}/quitar/', **self.modal)
+        self.assertContains(varios, 'type="checkbox" name="alumnos"', count=2)
+
+        sin_elegir = self.quitar(logro, {'devolver': '1'})
+        self.assertContains(sin_elegir, 'Elige al menos un alumno.')
+
+        respuesta = self.quitar(logro, {'alumnos': [self.alumno.id, beto.id]})
+        self.assertTrue(respuesta.json()['ok'])
+        self.assertEqual(logro.alumnos.count(), 0)
+
+    def test_botones_para_quitar_en_la_ficha_y_en_logros(self):
+        from .models import Logro
+        logro = Logro.objects.create(nombre='Ayudante', descripcion='x', condicion='manual')
+        juego.otorgar_logro(self.alumno, logro)
+        ficha = self.client.get(f'/profesor/alumnos/{self.alumno.id}/')
+        self.assertContains(ficha, f'/profesor/logros/{logro.id}/quitar/?alumno={self.alumno.id}')
+        pagina = self.client.get('/profesor/logros/')
+        self.assertContains(pagina, 'Quitar a alguien')
+        self.assertContains(pagina, f'/profesor/logros/{logro.id}/quitar/?alumno={self.alumno.id}')
+
+
+@override_settings(STORAGES=ALMACEN_PRUEBAS)
+class CredencialesTests(BaseJuego):
+    def test_credencial_con_color_de_clase_pin_y_qr_directo_a_su_tarjeta(self):
+        self.clase.color = 'esmeralda'
+        self.clase.save()
+        self.client.force_login(User.objects.create_superuser('profe10', 'p@x.com', 'x'))
+        respuesta = self.client.get(f'/profesor/alumnos/credenciales/?clase={self.clase.id}')
+        self.assertContains(respuesta, '--c1: #10b981; --c2: #047857')
+        self.assertContains(respuesta, '<span>1</span><span>2</span><span>3</span><span>4</span>')
+        self.assertContains(respuesta, f'data-qr="http://testserver/clase/{self.clase.id}/?jugador={self.alumno.id}"')
+        self.assertContains(respuesta, 'Pase de jugador')
+
+    def test_el_qr_abre_la_tarjeta_del_alumno(self):
+        respuesta = self.client.get(f'/clase/{self.clase.id}/?jugador={self.alumno.id}')
+        self.assertContains(respuesta, 'data-abrir="1"', count=1)
