@@ -95,7 +95,25 @@
                     <li><a data-modal="xl" class="dropdown-item" href="{% url 'alta_logro' %}"><i class="bi bi-award"></i> Logro</a></li>
                 </ul>
             </div>
-            <a href="{% url 'seleccionar_clase' %}" class="icon-btn" title="Ver la plataforma como alumno" aria-label="Ver como alumno"><i class="bi bi-controller"></i></a>
+            <div class="dropdown">
+                <button type="button" class="icon-btn" data-bs-toggle="dropdown" title="Ver la plataforma como alumno" aria-label="Ver como alumno"><i class="bi bi-controller"></i></button>
+                <div class="dropdown-menu dropdown-menu-end menu-vista-alumno">
+                    <div class="titulo">Entrar como alumno a…</div>
+                    {% clases_vista_alumno as clases_vista %}
+                    {% for c in clases_vista %}
+                        <a class="dropdown-item" href="{% url 'vista_alumno' c.id %}">
+                            <span class="e">{{ c.icono|default:'🚀' }}</span>
+                            <span class="min-w-0 flex-grow-1 text-truncate">{{ c.nombre }} <small>{{ c.grado }}{{ c.grupo }}</small></span>
+                            {% if not c.acceso_abierto %}<i class="bi bi-lock-fill candado" title="Cerrada para los alumnos"></i>{% endif %}
+                        </a>
+                    {% empty %}
+                        <div class="dropdown-item-text text-muted-p" style="font-size:.85rem">Aún no tienes clases activas.</div>
+                    {% endfor %}
+                    <div class="dropdown-item-text pie">Todo abierto, aunque esté cerrada. Nada se guarda.</div>
+                    <hr class="dropdown-divider">
+                    <a class="dropdown-item" href="{% url 'seleccionar_clase' %}"><i class="bi bi-door-open"></i> Lobby de los alumnos</a>
+                </div>
+            </div>
             <button type="button" class="icon-btn" id="btn-tema" title="Cambiar tema claro/oscuro" aria-label="Cambiar tema"><i class="bi bi-circle-half"></i></button>
         </div>
     </header>

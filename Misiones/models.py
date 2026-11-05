@@ -122,6 +122,14 @@ class Clase(models.Model):
 # ========================
 # ALUMNOS
 # ========================
+class AlumnoManager(models.Manager):
+    """Los alumnos reales. El alumno de prueba (la «vista de alumno» del profe) no aparece en listas,
+    rankings, estadísticas ni credenciales; para encontrarlo se usa Alumno.todos."""
+
+    def get_queryset(self):
+        return super().get_queryset().filter(es_prueba=False)
+
+
 class Alumno(models.Model):
     nombre = models.CharField(max_length=100)
     apellido = models.CharField(max_length=100)
@@ -135,9 +143,23 @@ class Alumno(models.Model):
     racha_maxima = models.IntegerField(default=0)
     ultima_actividad = models.DateField(null=True, blank=True)
     fecha_registro = models.DateTimeField(default=timezone.now)
+    # El profe recorre la plataforma con este alumno: no pertenece a ninguna clase y nunca guarda progreso
+    es_prueba = models.BooleanField(default=False, editable=False)
+
+    objects = AlumnoManager()
+    todos = models.Manager()
 
     def __str__(self):
         return f"{self.nombre} {self.apellido}"
+
+    @classmethod
+    def de_prueba(cls):
+        """El alumno con el que el profe entra a la «vista de alumno» (se crea la primera vez)."""
+        alumno = cls.todos.filter(es_prueba=True).order_by('id').first()
+        if not alumno:
+            alumno = cls.todos.create(nombre='Profe', apellido='(vista de alumno)', pin='', activo=False,
+                                      es_prueba=True)
+        return alumno
 
     # --- Nivel del jugador (derivado de la XP) ---
     @property

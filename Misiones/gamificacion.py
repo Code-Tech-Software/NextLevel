@@ -56,7 +56,7 @@ def notificar(alumno, tipo, titulo, mensaje='', icono='🔔', celebrar=False):
 
 def otorgar(alumno, xp=0, monedas=0, tipo='ajuste', descripcion='', clase=None):
     """Suma (o resta) XP y monedas, lo registra en el historial y revisa subidas de nivel y logros."""
-    if not xp and not monedas:
+    if (not xp and not monedas) or alumno.es_prueba:
         return
 
     with transaction.atomic():
@@ -105,7 +105,7 @@ def actualizar_racha(alumno, clase=None):
     Si la clase solo abre en su horario, cuentan los días de clase seguidos (no los de calendario).
     """
     hoy = timezone.localdate()
-    if alumno.ultima_actividad == hoy:
+    if alumno.ultima_actividad == hoy or alumno.es_prueba:
         return False
 
     anterior = clase.dia_de_clase_anterior(hoy) if clase else hoy - timedelta(days=1)
@@ -164,6 +164,8 @@ def misiones_del_dia(alumno, clase):
 
 
 def registrar_evento(alumno, objetivo, cantidad=1, clase=None):
+    if alumno.es_prueba:
+        return
     hoy = timezone.localdate()
     clases = [clase] if clase else list(alumno.clases.all())
     candidatas = {}
@@ -259,6 +261,8 @@ def otorgar_logro(alumno, logro):
 
 
 def verificar_logros(alumno):
+    if alumno.es_prueba:
+        return
     desbloqueados = LogroAlumno.objects.filter(alumno=alumno).values_list('logro_id', flat=True)
     pendientes = list(
         Logro.objects.filter(activo=True).exclude(condicion='manual').exclude(id__in=list(desbloqueados))
@@ -393,7 +397,9 @@ def construir_ruta(alumno, clase):
     """
     Arma el mapa del alumno. LA REGLA DE ORO se mantiene: si una misión no está
     aprobada, todas las que siguen quedan bloqueadas.
+    En la vista de alumno del profe (alumno de prueba) todo está desbloqueado.
     """
+    todo_abierto = alumno.es_prueba
     misiones = list(Mision.objects.filter(clase=clase, activa=True).select_related('nivel', 'nivel__mundo'))
     misiones.sort(key=lambda m: (
         m.nivel.mundo.orden if m.nivel.mundo else 10 ** 6,
@@ -434,7 +440,7 @@ def construir_ruta(alumno, clase):
             item['actual'] = True
             actual = item
         if estado != 'aprobado':
-            desbloqueada = False
+            desbloqueada = todo_abierto
         else:
             aprobadas_total += 1
         total += 1

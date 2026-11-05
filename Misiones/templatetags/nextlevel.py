@@ -5,7 +5,7 @@ from django import template
 
 from Misiones.gamificacion import TEMA_INFO, TIPO_INFO
 from Misiones.minijuegos import juegos_arcade
-from Misiones.models import ArticuloTienda, CompraAlumno, ProgresoMision
+from Misiones.models import ArticuloTienda, Clase, CompraAlumno, ProgresoMision
 
 register = template.Library()
 
@@ -155,6 +155,12 @@ def contadores_profesor():
         'pedidos': CompraAlumno.objects.filter(estado='pendiente').count(),
         'stock_bajo': ArticuloTienda.objects.filter(activo=True, stock__isnull=False, stock__lte=3).count(),
     }
+
+
+@register.simple_tag
+def clases_vista_alumno():
+    """Las clases que el profe puede recorrer como alumno desde el encabezado del panel."""
+    return Clase.objects.filter(activa=True).order_by('anio', 'grado', 'grupo', 'nombre')
 
 
 @register.filter

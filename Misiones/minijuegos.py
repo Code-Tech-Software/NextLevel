@@ -466,7 +466,7 @@ def _premio_cobrado_hoy(alumno, juego, excluir=None):
 
 def bloqueado_en_arcade(alumno, clase, juego):
     """Con desbloqueo «por misión», el juego se abre al aprobar su misión del mapa en esta clase."""
-    if juego.desbloqueo != 'mision':
+    if juego.desbloqueo != 'mision' or alumno.es_prueba:
         return False
     misiones = Mision.objects.filter(clase=clase, juego=juego, activa=True)
     if not misiones.exists():

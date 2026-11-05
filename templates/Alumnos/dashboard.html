@@ -102,7 +102,7 @@
                             {% if m.cofres_disponibles %}<span class="cofre-aviso" title="¡Tienes cofres por abrir!">🎁</span>{% endif %}
                             <span class="estado">
                                 {% if m.estado == 'completado' %}⭐ Completado
-                                {% elif m.estado == 'actual' %}▶ Aquí estás
+                                {% elif m.estado == 'actual' %}{% if alumno.es_prueba and not m.tiene_actual %}🔓 Abierto{% else %}▶ Aquí estás{% endif %}
                                 {% elif m.estado == 'bloqueado' %}🔒 Bloqueado
                                 {% else %}🛠️ En construcción{% endif %}
                             </span>

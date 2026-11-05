@@ -38,6 +38,7 @@
                 <button class="p-btn xs icono fantasma" data-bs-toggle="dropdown" aria-label="Opciones de la misión"><i class="bi bi-three-dots-vertical"></i></button>
                 <ul class="dropdown-menu dropdown-menu-end">
                     <li><a data-modal="xl" class="dropdown-item" href="{% url 'editar_mision' mision.id %}"><i class="bi bi-pencil"></i> Editar</a></li>
+                    <li><a class="dropdown-item" href="{% url 'vista_alumno' mision.clase_id %}?mision={{ mision.id }}"><i class="bi bi-eye"></i> Ver como alumno</a></li>
                     <li><a data-modal="xl" class="dropdown-item" href="{% url 'calificar_mision' mision.id %}"><i class="bi bi-check2-square"></i> Calificar a todos</a></li>
                     <li>
                         <form method="post" action="{% url 'duplicar_mision' mision.id %}">{% csrf_token %}<button class="dropdown-item"><i class="bi bi-copy"></i> Duplicar</button></form>

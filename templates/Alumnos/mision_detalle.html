@@ -24,15 +24,35 @@
     </section>
 
     <div class="contenedor angosto mision-cuerpo">
+        {% if alumno.es_prueba and not mision.activa %}
+            <div class="aviso-oculta mb-4"><span aria-hidden="true">🙈</span> Esta misión está <b>oculta</b>: tus alumnos todavía no la ven en su mapa.</div>
+        {% endif %}
         {% if resultado %}
             <section class="g-card text-center mb-4" id="resultado-mision" style="border-color:#fde047;box-shadow:0 6px 0 #facc15">
-                <div class="fw-black text-uppercase" style="letter-spacing:2px;color:var(--morado);font-size:.85rem">¡Misión completada!</div>
+                <div class="fw-black text-uppercase" style="letter-spacing:2px;color:var(--morado);font-size:.85rem">{% if resultado.prueba %}👀 Así le saldría a un alumno{% else %}¡Misión completada!{% endif %}</div>
                 <div class="estrellas-grandes my-2">{% for e in resultado.estrellas|estrellas %}<span class="{% if not e %}apagada{% endif %}">⭐</span>{% endfor %}</div>
                 <h2 class="mb-1" style="color:var(--navy)">Calificación: {{ resultado.calificacion }}</h2>
                 <div class="botin mt-3">
                     <span class="botin-item"><i class="bi bi-coin ico" style="color:var(--moneda)"></i> +{{ resultado.monedas }}</span>
                     <span class="botin-item"><i class="bi bi-lightning-charge-fill ico" style="color:var(--azul)"></i> +{{ resultado.xp }} XP</span>
                 </div>
+                {% if resultado.prueba %}
+                    <div class="nota-prueba mt-3">Vista de alumno: no se guardó la calificación ni el botín, y el mapa no avanza.</div>
+                    {% if resultado.respuestas %}
+                        <div class="text-start mt-3">
+                            {% for r in resultado.respuestas %}
+                                <div class="revision-respuesta {% if r.bien %}bien{% else %}mal{% endif %}">
+                                    <span class="ico">{% if r.bien %}✅{% else %}❌{% endif %}</span>
+                                    <div>
+                                        <div class="p">{{ forloop.counter }}. {{ r.pregunta }}</div>
+                                        <div class="r">Respondiste: {{ r.respondio|default:"(sin respuesta)" }}</div>
+                                        {% if not r.bien and r.correcta %}<div class="r">Correcta: <b>{{ r.correcta }}</b></div>{% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                {% endif %}
                 <a href="{% url 'dashboard_alumno' clase.id %}" class="g-btn grande mt-4">¡Continuar! <i class="bi bi-arrow-right"></i></a>
             </section>
         {% endif %}
@@ -99,7 +119,7 @@
                             <button type="button" class="g-btn " data-jugar="juego-data" data-recargar data-mision="{{ mision.id }}"
                                 data-url-iniciar="{% url 'iniciar_partida' clase.id juego_datos.id %}"
                                 data-url-terminar="{% url 'terminar_partida' clase.id 0 %}"
-                                data-csrf="{{ csrf_token }}" data-alumno="{{ alumno.id }}" data-texto-salir="Volver a la misión"><i class="bi bi-arrow-repeat"></i> Jugar otra vez</button>
+                                data-csrf="{{ csrf_token }}" data-alumno="{{ alumno.id }}" data-texto-salir="Volver a la misión"{% if alumno.es_prueba %} data-demo{% endif %}><i class="bi bi-arrow-repeat"></i> Jugar otra vez</button>
                             {% if progreso.estrellas < 3 %}<div class="mt-2 fw-bold" style="font-size:.85rem">¡Mejora tu resultado para ganar más estrellas y monedas!</div>{% endif %}
                         </div>
                     {% endif %}
@@ -161,7 +181,7 @@
                     <button type="button" class="g-btn ancho grande" data-jugar="juego-data" data-recargar data-mision="{{ mision.id }}"
                                 data-url-iniciar="{% url 'iniciar_partida' clase.id juego_datos.id %}"
                                 data-url-terminar="{% url 'terminar_partida' clase.id 0 %}"
-                                data-csrf="{{ csrf_token }}" data-alumno="{{ alumno.id }}" data-texto-salir="Volver a la misión"><i class="bi bi-play-fill"></i> ¡Jugar!</button>
+                                data-csrf="{{ csrf_token }}" data-alumno="{{ alumno.id }}" data-texto-salir="Volver a la misión"{% if alumno.es_prueba %} data-demo{% endif %}><i class="bi bi-play-fill"></i> ¡Jugar!</button>
                 {% else %}
                     <div class="estado-caja presencial">
                         <div class="grande">🛠️</div>

@@ -277,6 +277,23 @@ def acceso_clase(request, clase_id):
 
 
 @login_required
+def vista_alumno(request, clase_id):
+    """Entra a la clase como la ve un alumno: aunque esté cerrada, con todas las misiones abiertas y sin guardar nada."""
+    clase = get_object_or_404(Clase, id=clase_id)
+    request.session['alumno_id'] = Alumno.de_prueba().id
+    request.session['clase_id'] = clase.id
+    request.session['vista_alumno'] = clase.id
+    regreso = request.headers.get('referer')
+    seguro = regreso and url_has_allowed_host_and_scheme(regreso, allowed_hosts={request.get_host()},
+                                                          require_https=request.is_secure())
+    request.session['vista_alumno_regreso'] = regreso if seguro and '/clase/' not in regreso else None
+    mision = request.GET.get('mision', '')
+    if mision.isdigit() and Mision.objects.filter(id=mision, clase=clase).exists():
+        return redirect('ver_mision', clase_id=clase.id, mision_id=int(mision))
+    return redirect('dashboard_alumno', clase_id=clase.id)
+
+
+@login_required
 def clase_detalle(request, clase_id):
     clase = get_object_or_404(Clase, id=clase_id)
     alumnos_ids = list(clase.alumnos.filter(activo=True).values_list('id', flat=True))

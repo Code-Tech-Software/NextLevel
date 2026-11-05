@@ -1,0 +1,18 @@
+{% comment %}Franja que ve el profe mientras recorre la clase como alumno (alumno de prueba).{% endcomment %}
+{% if alumno.es_prueba %}
+<div class="barra-vista-alumno" role="status">
+    <div class="contenido">
+        <span class="ojo" aria-hidden="true">👀</span>
+        <div class="min-w-0 flex-grow-1">
+            <div class="t">Vista de alumno<span class="clase-nombre"> · {{ clase.icono }} {{ clase.nombre }} {{ clase.grado }}{{ clase.grupo }}</span></div>
+            <div class="d">Todas las misiones abiertas{% if not clase.acceso_abierto %}, aunque la clase está cerrada para tus alumnos{% endif %}. Nada se guarda.</div>
+        </div>
+        {% if request.resolver_match.url_name == 'cuenta_cerrada' %}
+            <a href="{% url 'dashboard_alumno' clase.id %}" class="accion"><i class="bi bi-map"></i><span>Ver el mapa</span></a>
+        {% else %}
+            <a href="{% url 'cuenta_cerrada' clase.id %}" class="accion" title="Lo que ven tus alumnos cuando la clase está cerrada"><i class="bi bi-lock"></i><span>Clase cerrada</span></a>
+        {% endif %}
+        <a href="{% url 'salir_alumno' %}" class="accion fuerte"><i class="bi bi-box-arrow-left"></i><span>Volver al panel</span></a>
+    </div>
+</div>
+{% endif %}

@@ -26,6 +26,7 @@
         </form>
         <hr class="dropdown-divider">
         <a data-modal href="{% url 'editar_clase' clase.id %}" class="dropdown-item"><i class="bi bi-calendar-week"></i><span><b>Configurar horario…</b></span></a>
+        <a href="{% url 'vista_alumno' clase.id %}" class="dropdown-item"><i class="bi bi-eye"></i><span><b>Entrar como alumno</b><small>Tú sí entras aunque esté cerrada. Nada se guarda.</small></span></a>
     </div>
 </div>
 {% endwith %}

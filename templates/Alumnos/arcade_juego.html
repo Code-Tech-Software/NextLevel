@@ -30,7 +30,7 @@
                         data-url-iniciar="{% url 'iniciar_partida' clase.id juego.id %}"
                         data-url-terminar="{% url 'terminar_partida' clase.id 0 %}"
                         data-csrf="{{ csrf_token }}" data-alumno="{{ alumno.id }}" data-monedas-arcade="{{ juego.monedas_arcade }}"
-                        data-recargar data-texto-salir="Volver al Arcade">
+                        data-recargar data-texto-salir="Volver al Arcade"{% if alumno.es_prueba %} data-demo{% endif %}>
                     <i class="bi bi-play-fill"></i> ¡Jugar!
                 </button>
             </section>

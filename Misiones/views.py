@@ -9,6 +9,7 @@ from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from . import gamificacion as juego
@@ -27,21 +28,47 @@ def home_redirect(request):
     return HttpResponseRedirect('/seleccionar-clase/')
 
 
+MENSAJE_VISTA_PREVIA = '👀 Estás en la vista de alumno: puedes verlo y probarlo todo, pero aquí no se guarda nada.'
+
+
+def alumno_en_sesion(request, clase):
+    """El alumno que entró con su PIN o, si el profe abrió la «vista de alumno» de esta clase, el alumno de prueba."""
+    alumno_id = request.session.get('alumno_id')
+    if not alumno_id:
+        return None
+    if request.session.get('vista_alumno') == clase.id and request.user.is_authenticated:
+        return Alumno.todos.filter(id=alumno_id, es_prueba=True).first()
+    return Alumno.objects.filter(id=alumno_id, activo=True, clases=clase).first()
+
+
+def permite_vista_previa(vista):
+    """Marca las acciones POST que la vista de alumno sí puede usar (las simula sin guardar)."""
+    vista.permite_vista_previa = True
+    return vista
+
+
 def alumno_requerido(vista):
     """Inyecta (alumno, clase) y regresa a la selección de jugador si no hay sesión válida.
 
     Si el profe cerró la clase (o está fuera de su horario), el alumno solo puede ver la pantalla de su cuenta.
+    En la vista de alumno del profe todo está abierto, pero las acciones que guardan algo no se hacen.
     """
 
     @wraps(vista)
     def envoltura(request, clase_id, *args, **kwargs):
         clase = get_object_or_404(Clase, id=clase_id)
-        alumno_id = request.session.get('alumno_id')
-        alumno = Alumno.objects.filter(id=alumno_id, activo=True, clases=clase).first() if alumno_id else None
+        alumno = alumno_en_sesion(request, clase)
         if not alumno:
             if _es_ajax(request):
                 return JsonResponse({'ok': False, 'mensaje': 'Tu sesión terminó.'}, status=403)
             return redirect('lista_alumnos', clase_id=clase.id)
+        if alumno.es_prueba:
+            if request.method == 'POST' and not getattr(vista, 'permite_vista_previa', False):
+                if _es_ajax(request):
+                    return JsonResponse({'ok': False, 'mensaje': MENSAJE_VISTA_PREVIA}, status=403)
+                messages.info(request, MENSAJE_VISTA_PREVIA)
+                return redirect(_volver(request, reverse('dashboard_alumno', args=[clase.id])))
+            return vista(request, alumno, clase, *args, **kwargs)
         if not clase.acceso_abierto():
             if _es_ajax(request):
                 return JsonResponse({'ok': False, 'mensaje': '🔒 La plataforma está cerrada por ahora.'}, status=403)
@@ -54,6 +81,15 @@ def alumno_requerido(vista):
 
 def _es_ajax(request):
     return request.headers.get('x-requested-with') == 'XMLHttpRequest'
+
+
+def _volver(request, por_defecto):
+    """La página de donde vino la petición (si es de este sitio)."""
+    for destino in (request.POST.get('next'), request.headers.get('referer')):
+        if destino and url_has_allowed_host_and_scheme(destino, allowed_hosts={request.get_host()},
+                                                       require_https=request.is_secure()):
+            return destino
+    return por_defecto
 
 
 # ========================
@@ -112,11 +148,11 @@ def ingresar_pin(request, clase_id, alumno_id):
 def cuenta_cerrada(request, clase_id):
     """Lo único que ve el alumno mientras la clase está cerrada: el resumen de su cuenta, sin poder jugar."""
     clase = get_object_or_404(Clase, id=clase_id)
-    alumno_id = request.session.get('alumno_id')
-    alumno = Alumno.objects.filter(id=alumno_id, activo=True, clases=clase).first() if alumno_id else None
+    alumno = alumno_en_sesion(request, clase)
     if not alumno:
         return redirect('lista_alumnos', clase_id=clase.id)
-    if clase.acceso_abierto():
+    # En la vista de alumno el profe puede ver esta pantalla aunque la clase esté abierta
+    if clase.acceso_abierto() and not alumno.es_prueba:
         return redirect('dashboard_alumno', clase_id=clase.id)
 
     misiones = list(Mision.objects.filter(clase=clase, activa=True).select_related('nivel'))
@@ -149,6 +185,11 @@ def cuenta_cerrada(request, clase_id):
 def salir_alumno(request):
     clase_id = request.session.pop('clase_id', None)
     request.session.pop('alumno_id', None)
+    vista = request.session.pop('vista_alumno', None)
+    regreso = request.session.pop('vista_alumno_regreso', None)
+    if vista and request.user.is_authenticated:
+        # El profe termina la vista de alumno y vuelve a su panel
+        return redirect(regreso or reverse('clase_detalle', args=[vista]))
     if clase_id:
         return redirect('lista_alumnos', clase_id=clase_id)
     return redirect('seleccionar_clase')
@@ -213,6 +254,10 @@ def ver_mision(request, alumno, clase, mision_id):
     mision = get_object_or_404(Mision.objects.select_related('nivel', 'nivel__mundo'), id=mision_id, clase=clase)
     ruta = juego.construir_ruta(alumno, clase)
     mundo, nivel, item = juego.buscar_en_ruta(ruta, mision.id)
+    if not item and alumno.es_prueba:
+        # Misión oculta: el profe puede ver cómo quedará antes de publicarla
+        mundo = next((m for m in ruta['mundos'] if m['mundo'] and m['mundo'].id == mision.nivel.mundo_id), None)
+        item = {'progreso': None, 'estado': 'nuevo', 'desbloqueada': True}
     if not item or (not item['desbloqueada'] and item['estado'] != 'aprobado'):
         messages.warning(request, '🔒 Esta misión aún está bloqueada. ¡Completa las anteriores primero!')
         return redirect('dashboard_alumno', clase_id=clase.id)
@@ -242,7 +287,10 @@ def ver_mision(request, alumno, clase, mision_id):
 
 @require_POST
 @alumno_requerido
+@permite_vista_previa
 def marcar_completada(request, alumno, clase, mision_id):
+    if alumno.es_prueba:
+        return _simular_mision(request, clase, get_object_or_404(Mision, id=mision_id, clase=clase))
     mision = get_object_or_404(Mision, id=mision_id, clase=clase, activa=True)
     ruta = juego.construir_ruta(alumno, clase)
     _, _, item = juego.buscar_en_ruta(ruta, mision.id)
@@ -308,6 +356,43 @@ def marcar_completada(request, alumno, clase, mision_id):
     juego.registrar_evento(alumno, 'evidencias', clase=clase)
     messages.success(request, f'¡Excelente! "{mision.nombre}" fue enviada a revisión. 🚀')
     return redirect('dashboard_alumno', clase_id=clase.id)
+
+
+def _simular_mision(request, clase, mision):
+    """Vista de alumno: el profe ve lo que le saldría a un alumno, sin guardar progreso ni mandar nada a revisión."""
+    volver = redirect('ver_mision', clase_id=clase.id, mision_id=mision.id)
+    if mision.tipo == 'cuestionario':
+        respuestas, obtenidos, totales = [], 0, 0
+        for pregunta in mision.preguntas.prefetch_related('opciones'):
+            opciones = list(pregunta.opciones.all())
+            elegida = next((o for o in opciones if str(o.id) == request.POST.get(f'pregunta_{pregunta.id}')), None)
+            correcta = next((o for o in opciones if o.es_correcta), None)
+            totales += pregunta.puntos
+            if elegida and elegida.es_correcta:
+                obtenidos += pregunta.puntos
+            respuestas.append({
+                'pregunta': pregunta.texto,
+                'respondio': elegida.texto if elegida else '',
+                'bien': bool(elegida and elegida.es_correcta),
+                'correcta': correcta.texto if correcta else '',
+            })
+        porcentaje = int(obtenidos * 100 / totales) if totales else 0
+    elif mision.tipo == 'video':
+        porcentaje, respuestas = 100, []
+    else:
+        # Las misiones que revisa el profe (foto, texto, enlace), las del salón y los minijuegos
+        messages.info(request, '👀 Vista de alumno: así se ve esta misión. No se envió nada a Revisiones.')
+        return volver
+
+    request.session['resultado_mision'] = {
+        'estrellas': 3 if porcentaje >= 90 else 2 if porcentaje >= 70 else 1,
+        'monedas': int(porcentaje / 100 * mision.monedas_recompensa),
+        'xp': mision.xp_recompensa,
+        'calificacion': f'{porcentaje / 10:.1f}',
+        'prueba': True,
+        'respuestas': respuestas,
+    }
+    return volver
 
 
 def _resolver_cuestionario(request, alumno, clase, mision, progreso):
@@ -384,6 +469,7 @@ def reclamar_diaria(request, alumno, clase, diaria_id):
 
 @require_POST
 @alumno_requerido
+@permite_vista_previa
 def leer_notificaciones(request, alumno, clase):
     ids = request.POST.getlist('ids')
     notificaciones = alumno.notificaciones.filter(leida=False)

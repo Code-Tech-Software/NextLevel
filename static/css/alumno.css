@@ -1352,3 +1352,37 @@ a.maquina:hover { transform: translateY(-6px); color: var(--texto); box-shadow: 
 .pendiente-fila { display: flex; align-items: center; gap: .6rem; padding: .55rem 0; font-weight: 700; border-bottom: 2px dashed var(--borde); min-width: 0; }
 .pendiente-fila:last-child { border-bottom: 0; }
 .pendiente-fila .e { font-size: 1.3rem; line-height: 1; }
+
+
+/* ---------- Vista de alumno (el profe recorre la clase como alumno) ---------- */
+.barra-vista-alumno { background: var(--navy); color: #fff; }
+.barra-vista-alumno .contenido {
+    max-width: 1180px; margin: 0 auto; padding: .55rem 1rem;
+    display: flex; align-items: center; gap: .75rem;
+}
+.barra-vista-alumno .ojo { font-size: 1.5rem; line-height: 1; }
+.barra-vista-alumno .t { font-weight: 900; font-size: .92rem; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.barra-vista-alumno .d { font-weight: 700; font-size: .78rem; opacity: .8; line-height: 1.25; }
+.barra-vista-alumno .accion {
+    flex-shrink: 0; display: inline-flex; align-items: center; gap: .4rem; text-decoration: none;
+    color: #fff; font-weight: 800; font-size: .82rem; padding: .4rem .75rem; border-radius: 999px;
+    border: 2px solid rgba(255, 255, 255, .3);
+}
+.barra-vista-alumno .accion:hover { background: rgba(255, 255, 255, .12); color: #fff; }
+.barra-vista-alumno .accion.fuerte { background: #fff; color: var(--navy); border-color: #fff; }
+.barra-vista-alumno .accion.fuerte:hover { background: #e2e8f0; color: var(--navy); }
+@media (max-width: 575.98px) {
+    .barra-vista-alumno .contenido { gap: .5rem; padding: .5rem .75rem; }
+    .barra-vista-alumno .d, .barra-vista-alumno .clase-nombre { display: none; }
+    .barra-vista-alumno .accion { padding: .4rem .6rem; }
+    .barra-vista-alumno .accion span { display: none; }
+    .barra-vista-alumno .accion.fuerte span { display: inline; }
+}
+.aviso-oculta {
+    font-weight: 800; font-size: .92rem; background: #f1f5f9; color: var(--navy);
+    border: 2px dashed #cbd5e1; border-radius: 16px; padding: .7rem 1rem;
+}
+.nota-prueba {
+    display: inline-block; font-weight: 800; font-size: .85rem; color: #6d28d9;
+    background: #f5f3ff; border: 2px solid #ddd6fe; border-radius: 12px; padding: .45rem .85rem;
+}

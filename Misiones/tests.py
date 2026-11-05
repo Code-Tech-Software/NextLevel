@@ -1133,3 +1133,80 @@ class AccesoClaseTests(BaseJuego):
         self.assertEqual(self.clase.acceso, 'horario')
         # Al editarla otra vez, los días vienen marcados
         self.assertContains(self.client.get(url, HTTP_X_MODAL='1'), 'id="id_dias_2" checked')
+
+
+@override_settings(STORAGES=ALMACEN_PRUEBAS)
+class VistaAlumnoTests(BaseJuego):
+    def entrar_como_profe(self, **parametros):
+        self.client.force_login(User.objects.create_superuser('profe13', 'p@x.com', 'x'))
+        return self.client.get(f'/profesor/clases/{self.clase.id}/vista-alumno/', parametros,
+                               HTTP_REFERER='http://testserver/profesor/clases/')
+
+    def test_el_profe_entra_aunque_la_clase_este_cerrada_y_todo_esta_abierto(self):
+        self.clase.acceso = 'cerrado'
+        self.clase.save()
+        base = f'/clase/{self.clase.id}'
+        self.assertRedirects(self.entrar_como_profe(), f'{base}/dashboard/', fetch_redirect_response=False)
+        self.assertContains(self.client.get(f'{base}/dashboard/'), 'Vista de alumno')
+        # La misión 2 está bloqueada por la regla de oro para un alumno, pero el profe la puede abrir
+        self.assertContains(self.client.get(f'{base}/mision/{self.m2.id}/'), '¿2+2?')
+        for ruta in ['tienda/', 'ranking/', 'progreso/', 'arcade/', 'mi-cuenta/', f'mundo/{self.mundo.id}/']:
+            self.assertEqual(self.client.get(f'{base}/{ruta}').status_code, 200, ruta)
+
+        # Una misión oculta también se puede revisar antes de publicarla
+        self.m1.activa = False
+        self.m1.save()
+        self.assertContains(self.client.get(f'{base}/mision/{self.m1.id}/'), 'está <b>oculta</b>')
+
+        # El alumno de prueba no aparece en ninguna lista de alumnos
+        prueba = Alumno.todos.get(es_prueba=True)
+        self.assertEqual(list(Alumno.objects.all()), [self.alumno])
+        self.assertNotContains(self.client.get(f'{base}/'), 'vista de alumno')
+        self.assertNotContains(self.client.get('/profesor/alumnos/'), 'vista de alumno')
+        self.assertEqual(prueba.clases.count(), 0)
+
+        # Salir regresa al panel desde donde entró
+        self.assertRedirects(self.client.get('/salir/'), 'http://testserver/profesor/clases/', fetch_redirect_response=False)
+        self.assertRedirects(self.client.get(f'{base}/dashboard/'), f'{base}/', fetch_redirect_response=False)
+
+    def test_en_la_vista_de_alumno_no_se_guarda_nada(self):
+        self.entrar_como_profe(mision=self.m2.id)
+        base = f'/clase/{self.clase.id}'
+        respuesta = self.client.post(f'{base}/mision/{self.m2.id}/completar/', {f'pregunta_{self.pregunta.id}': self.incorrecta.id})
+        self.assertRedirects(respuesta, f'{base}/mision/{self.m2.id}/', fetch_redirect_response=False)
+        pagina = self.client.get(f'{base}/mision/{self.m2.id}/')
+        self.assertContains(pagina, 'Así le saldría a un alumno')
+        self.assertContains(pagina, 'Calificación: 0.0')
+        self.assertContains(pagina, 'Correcta: <b>4</b>', html=False)
+
+        # Las misiones que revisa el profe no llegan a Revisiones
+        self.client.post(f'{base}/mision/{self.m1.id}/completar/', {'respuesta_texto': 'hola'})
+        # Comprar, jugar y abrir cofres tampoco hacen nada
+        articulo = ArticuloTienda.objects.create(nombre='Llavero', descripcion='x', costo_monedas=0)
+        self.assertRedirects(self.client.post(f'{base}/tienda/comprar/{articulo.id}/', HTTP_REFERER=f'http://testserver{base}/tienda/'),
+                             f'http://testserver{base}/tienda/', fetch_redirect_response=False)
+        accion = self.client.post(f'{base}/cofre/{self.nivel.id}/', HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(accion.status_code, 403)
+
+        from .models import Movimiento, Notificacion, PartidaJuego, ProgresoDiario
+        self.assertEqual(ProgresoMision.objects.count(), 0)
+        self.assertEqual(CompraAlumno.objects.count(), 0)
+        for modelo in (Movimiento, Notificacion, PartidaJuego, ProgresoDiario):
+            self.assertEqual(modelo.objects.count(), 0, modelo.__name__)
+        prueba = Alumno.todos.get(es_prueba=True)
+        self.assertEqual((prueba.xp_total, prueba.monedas, prueba.racha_actual), (0, 0, 0))
+
+    def test_sin_el_profe_nadie_entra_como_alumno_de_prueba(self):
+        prueba = Alumno.de_prueba()
+        sesion = self.client.session
+        sesion.update({'alumno_id': prueba.id, 'clase_id': self.clase.id, 'vista_alumno': self.clase.id})
+        sesion.save()
+        base = f'/clase/{self.clase.id}'
+        self.assertRedirects(self.client.get(f'{base}/dashboard/'), f'{base}/', fetch_redirect_response=False)
+        # Tampoco con PIN: no es alumno de la clase ni aparece en la lista
+        self.assertEqual(self.client.post(f'{base}/alumno/{prueba.id}/ingresar/', {'pin': ''}).status_code, 404)
+        # Un alumno real sigue viendo la clase cerrada aunque el profe la esté recorriendo
+        self.clase.acceso = 'cerrado'
+        self.clase.save()
+        self.entrar()
+        self.assertRedirects(self.client.get(f'{base}/dashboard/'), f'{base}/mi-cuenta/', fetch_redirect_response=False)
