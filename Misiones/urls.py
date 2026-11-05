@@ -12,6 +12,7 @@ urlpatterns = [
     path('clase/<int:clase_id>/', views.lista_alumnos, name='lista_alumnos'),
     path('clase/<int:clase_id>/alumno/<int:alumno_id>/ingresar/', views.ingresar_pin, name='ingresar_pin'),
     path('clase/<int:clase_id>/dashboard/', views.dashboard_alumno, name='dashboard_alumno'),
+    path('clase/<int:clase_id>/mi-cuenta/', views.cuenta_cerrada, name='cuenta_cerrada'),
     path('clase/<int:clase_id>/mundo/<int:mundo_id>/', views.ver_mundo, name='ver_mundo'),
     path('clase/<int:clase_id>/mision/<int:mision_id>/', views.ver_mision, name='ver_mision'),
     path('clase/<int:clase_id>/mision/<int:mision_id>/completar/', views.marcar_completada, name='marcar_completada'),
@@ -42,6 +43,7 @@ urlpatterns = [
     path('profesor/clases/<int:pk>/editar/', profe.alta_clase, name='editar_clase'),
     path('profesor/clases/<int:clase_id>/', profe.clase_detalle, name='clase_detalle'),
     path('profesor/clases/<int:clase_id>/proyector/', profe.proyector, name='proyector'),
+    path('profesor/clases/<int:clase_id>/acceso/', profe.acceso_clase, name='acceso_clase'),
 
     path('profesor/mundos/nuevo/', profe.mundo_form, name='alta_mundo'),
     path('profesor/mundos/<int:pk>/editar/', profe.mundo_form, name='editar_mundo'),

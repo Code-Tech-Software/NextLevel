@@ -86,8 +86,51 @@
                 </section>
 
                 <!-- Paso 3 -->
+                <section class="p-card paso mb-3">
+                    <div class="paso-cabeza"><span class="paso-num">3</span><div><h3>¿Cuándo pueden entrar los alumnos?</h3><p>Evita que jueguen desde casa: con la clase cerrada solo ven la información de su cuenta.</p></div></div>
+                    <div class="p-card-body pt-0">
+                        <div class="condiciones-grid accesos-grid">
+                            {% for valor, texto in form.fields.acceso.choices %}
+                                <label class="tipo-op">
+                                    <input type="radio" name="acceso" value="{{ valor }}" {% if form.acceso.value == valor %}checked{% endif %}>
+                                    <span class="caja d-block">
+                                        <span class="e d-block">{% if valor == 'abierto' %}🔓{% elif valor == 'horario' %}🕒{% else %}🔒{% endif %}</span>
+                                        <span class="n d-block">{{ texto }}</span>
+                                        <span class="d d-block">{% if valor == 'abierto' %}A cualquier hora, también desde casa{% elif valor == 'horario' %}Se abre y se cierra sola{% else %}Hasta que tú la abras{% endif %}</span>
+                                    </span>
+                                </label>
+                            {% endfor %}
+                        </div>
+                        <div class="horario-clase mt-3" data-horario>
+                            <span class="etiqueta-campo">Días con clase</span>
+                            <div class="dias-semana" role="group" aria-label="Días con clase">
+                                {% for op in form.dias %}<label class="dia-op">{{ op.tag }}<span>{{ op.choice_label }}</span></label>{% endfor %}
+                            </div>
+                            {% for e in form.dias.errors %}<div class="error mt-1" style="color:var(--danger);font-size:.8rem">{{ e }}</div>{% endfor %}
+                            <div class="row gx-3 mt-3">
+                                <div class="col-6">
+                                    <div class="campo mb-0 {% if form.horario_inicio.errors %}con-error{% endif %}">
+                                        <label for="{{ form.horario_inicio.id_for_label }}">Se abre a las</label>
+                                        {{ form.horario_inicio }}
+                                        {% for e in form.horario_inicio.errors %}<div class="error"><i class="bi bi-exclamation-circle"></i> {{ e }}</div>{% endfor %}
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="campo mb-0 {% if form.horario_fin.errors %}con-error{% endif %}">
+                                        <label for="{{ form.horario_fin.id_for_label }}">Se cierra a las</label>
+                                        {{ form.horario_fin }}
+                                        {% for e in form.horario_fin.errors %}<div class="error"><i class="bi bi-exclamation-circle"></i> {{ e }}</div>{% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="explicacion-tipo" data-ayuda-acceso></div>
+                    </div>
+                </section>
+
+                <!-- Paso 4 -->
                 <section class="p-card paso">
-                    <div class="paso-cabeza"><span class="paso-num">3</span><div><h3>Detalles</h3><p>Opcional.</p></div></div>
+                    <div class="paso-cabeza"><span class="paso-num">4</span><div><h3>Detalles</h3><p>Opcional.</p></div></div>
                     <div class="p-card-body pt-0">
                         <div class="campo">
                             <label for="{{ form.descripcion.id_for_label }}">Descripción <span class="text-muted-p fw-normal">(solo la ves tú)</span></label>
@@ -119,6 +162,7 @@
                             </div>
                             <div class="entrar">Entrar <i class="bi bi-arrow-right-circle-fill ms-1"></i></div>
                             <div class="oculta d-none" data-previa-oculta><span>🙈 Oculta del lobby</span></div>
+                            <span class="candado-previa d-none" data-previa-candado>🔒 Cerrada</span>
                         </div>
                         <div class="vp-flujo mt-3">
                             {% if clase %}

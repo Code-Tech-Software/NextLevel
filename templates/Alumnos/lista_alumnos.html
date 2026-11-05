@@ -10,6 +10,9 @@
         <div style="font-size:3.2rem;line-height:1">{{ clase.icono|default:'🚀' }}</div>
         <h1 class="titulo-juego mt-2 mb-1" style="font-size:clamp(2rem,6vw,3rem);color:var(--navy)">¡Elige tu jugador!</h1>
         <div class="chip azul" style="font-size:.9rem">{{ clase.grado }} {{ clase.grupo }} · {{ clase.nombre }}</div>
+        {% if not clase.acceso_abierto %}
+            <div><span class="aviso-roster">🔒 La plataforma está cerrada: al entrar solo verás tu cuenta.</span></div>
+        {% endif %}
     </div>
 
     {% if alumnos|length > 8 %}

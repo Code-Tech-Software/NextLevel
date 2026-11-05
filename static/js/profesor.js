@@ -1304,9 +1304,45 @@
                 normalizar(c.nombre) === normalizar(nombre.value.trim()) && normalizar(c.grado) === normalizar(grado.value.trim())
                 && normalizar(c.grupo) === normalizar(grupo.value.trim()) && String(c.anio) === anio.value.trim());
             $('[data-aviso-duplicado]', form).classList.toggle('d-none', !repetida);
+            const horarioOk = pintarAcceso();
             marcarAtajos(form);
             marcarPasos(form, [!!(nombre.value.trim() && grado.value.trim() && grupo.value.trim() && anio.value.trim()),
-                !!(icono.value.trim() && color)]);
+                !!(icono.value.trim() && color), horarioOk]);
+        }
+
+        // Acceso de los alumnos: explica qué pasará y si ahora mismo estaría abierta
+        const DIAS = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'];
+        function pintarAcceso() {
+            const acceso = $('input[name=acceso]:checked', form)?.value || 'abierto';
+            const dias = $$('input[name=dias]:checked', form).map(c => Number(c.value));   // 0 = lunes
+            const inicio = campo('horario_inicio').value;
+            const fin = campo('horario_fin').value;
+            const horarioValido = dias.length > 0 && !!inicio && !!fin && inicio < fin;
+            $('[data-horario]', form).classList.toggle('d-none', acceso !== 'horario');
+
+            let abierta = acceso === 'abierto';
+            let texto;
+            if (acceso === 'abierto') {
+                texto = '<span class="e">🔓</span><div>Los alumnos pueden entrar <b>a cualquier hora</b>, también desde su casa.</div>';
+            } else if (acceso === 'cerrado') {
+                texto = '<span class="e">🔒</span><div>Al escribir su PIN solo verán <b>la información de su cuenta</b> (nivel, monedas, '
+                    + 'avance e insignias). Ábrela desde el candado de la clase cuando empiece tu sesión.</div>';
+            } else if (!horarioValido) {
+                texto = '<span class="e">🕒</span><div>Elige los días y una hora de apertura <b>antes</b> de la hora de cierre.</div>';
+            } else {
+                const ahora = new Date();
+                const hoy = (ahora.getDay() + 6) % 7;   // getDay: 0 = domingo; aquí 0 = lunes
+                const hora = String(ahora.getHours()).padStart(2, '0') + ':' + String(ahora.getMinutes()).padStart(2, '0');
+                abierta = dias.includes(hoy) && inicio <= hora && hora < fin;
+                const nombres = dias.map(d => DIAS[d]);
+                const lista = nombres.length > 1 ? nombres.slice(0, -1).join(', ') + ' y ' + nombres[nombres.length - 1] : nombres[0];
+                texto = '<span class="e">🕒</span><div>Se abre sola los <b>' + lista + '</b> de <b>' + inicio + '</b> a <b>' + fin
+                    + '</b>; el resto del tiempo solo ven su cuenta. Su racha cuenta días de clase seguidos. '
+                    + 'Ahora mismo estaría <b>' + (abierta ? 'abierta' : 'cerrada') + '</b>.</div>';
+            }
+            $('[data-ayuda-acceso]', form).innerHTML = texto;
+            $('[data-previa-candado]', form).classList.toggle('d-none', abierta);
+            return acceso !== 'horario' || horarioValido;
         }
 
         enlazarAtajos(form);

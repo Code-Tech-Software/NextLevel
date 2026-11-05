@@ -932,3 +932,204 @@ class CredencialesTests(BaseJuego):
     def test_el_qr_abre_la_tarjeta_del_alumno(self):
         respuesta = self.client.get(f'/clase/{self.clase.id}/?jugador={self.alumno.id}')
         self.assertContains(respuesta, 'data-abrir="1"', count=1)
+
+
+class CursoTics4Tests(BaseJuego):
+    def test_carga_el_curso_al_final_del_mapa_sin_duplicar(self):
+        from io import StringIO
+
+        from django.core.management import call_command
+
+        from . import cursos, minijuegos
+        from .models import Juego
+
+        call_command('cargar_curso', 'tics4', '--clase', str(self.clase.id), stdout=StringIO())
+        curso = cursos.obtener('tics4')
+        nuevos = self.clase.mundos.exclude(pk=self.mundo.pk)
+        self.assertEqual(nuevos.count(), len(curso['mundos']))
+        self.assertEqual(nuevos.order_by('orden').first().orden, self.mundo.orden + 1)
+        self.assertEqual(self.clase.misiones.filter(es_jefe=True).count(), len(curso['mundos']))
+
+        # Cada minijuego queda ligado a su misión y su configuración es la del curso (no la de respaldo)
+        juegos = Juego.objects.filter(clase=self.clase)
+        self.assertEqual(juegos.count(), len(curso['juegos']))
+        for juego in juegos:
+            self.assertTrue(juego.misiones.exists(), juego.nombre)
+            if juego.plantilla == 'clasifica':
+                cfg = minijuegos.configuracion(juego)
+                self.assertEqual([c['nombre'] for c in cfg['categorias']],
+                                 [c['nombre'] for c in juego.configuracion['categorias']])
+        for mision in self.clase.misiones.filter(tipo='cuestionario').exclude(pk=self.m2.pk):
+            for pregunta in mision.preguntas.all():
+                self.assertEqual(pregunta.opciones.filter(es_correcta=True).count(), 1)
+
+        # Volver a cargarlo no duplica nada
+        antes = self.clase.misiones.count()
+        call_command('cargar_curso', 'tics4', '--clase', str(self.clase.id), stdout=StringIO())
+        self.assertEqual(self.clase.misiones.count(), antes)
+        self.assertEqual(Juego.objects.filter(clase=self.clase).count(), len(curso['juegos']))
+
+        # Y el alumno ya ve los mundos nuevos en su mapa
+        self.entrar()
+        self.assertContains(self.client.get(f'/clase/{self.clase.id}/dashboard/'), 'Estación Despegue')
+
+    def test_simular_no_guarda_nada(self):
+        from io import StringIO
+
+        from django.core.management import call_command
+
+        salida = StringIO()
+        call_command('cargar_curso', 'tics4', '--clase', str(self.clase.id), '--simular', stdout=salida)
+        self.assertIn('Se cargaría', salida.getvalue())
+        self.assertEqual(self.clase.mundos.count(), 1)
+
+
+class CursoRoboticaBajaTests(BaseJuego):
+    def test_curso_de_robotica_con_pocos_minijuegos(self):
+        from io import StringIO
+
+        from django.core.management import call_command
+
+        from . import cursos
+
+        call_command('cargar_curso', 'robotica-baja', '--clase', str(self.clase.id), stdout=StringIO())
+        curso = cursos.obtener('robotica-baja')
+        nuevas = self.clase.misiones.filter(nivel__mundo__nombre__in=[m['nombre'] for m in curso['mundos']])
+        self.assertEqual(nuevas.filter(es_jefe=True).count(), len(curso['mundos']))
+        # Casi todo es en clase o sin pantalla: los minijuegos son la excepción
+        self.assertEqual(nuevas.filter(tipo='juego').count(), 2)
+        self.assertGreater(nuevas.filter(tipo='presencial').count(), nuevas.count() // 2)
+        for mision in nuevas.filter(tipo='cuestionario'):
+            for pregunta in mision.preguntas.all():
+                self.assertEqual(pregunta.opciones.filter(es_correcta=True).count(), 1)
+
+
+class CursoRoboticaAltaTests(BaseJuego):
+    def test_cada_practica_trae_su_codigo(self):
+        from io import StringIO
+
+        from django.core.management import call_command
+
+        from . import cursos
+
+        call_command('cargar_curso', 'robotica-alta', '--clase', str(self.clase.id), stdout=StringIO())
+        curso = cursos.obtener('robotica-alta')
+        nuevas = self.clase.misiones.filter(nivel__mundo__nombre__in=[m['nombre'] for m in curso['mundos']])
+        practicas = nuevas.filter(tipo='arduino')
+        self.assertGreater(practicas.count(), 40)
+        self.assertFalse(practicas.filter(codigo__isnull=True).exists())
+        for practica in practicas:
+            self.assertIn('void setup()', practica.codigo, practica.nombre)
+            self.assertIn('void loop()', practica.codigo, practica.nombre)
+        # El primer mundo es sin kit: Tinkercad o actividades desconectadas
+        primero = nuevas.filter(nivel__mundo__nombre=curso['mundos'][0]['nombre'])
+        self.assertFalse(primero.filter(tipo='arduino').exclude(link__contains='tinkercad').exists())
+        self.assertEqual(nuevas.filter(es_jefe=True).count(), len(curso['mundos']))
+
+
+@override_settings(STORAGES=ALMACEN_PRUEBAS)
+class AccesoClaseTests(BaseJuego):
+    def poner_horario(self):
+        from datetime import time
+        self.clase.acceso = 'horario'
+        self.clase.horario_dias = '0,2'   # lunes y miércoles
+        self.clase.horario_inicio = time(10, 0)
+        self.clase.horario_fin = time(11, 0)
+        self.clase.save()
+
+    def test_clase_cerrada_solo_muestra_la_cuenta(self):
+        self.clase.acceso = 'cerrado'
+        self.clase.save()
+        base = f'/clase/{self.clase.id}'
+        respuesta = self.client.post(f'{base}/alumno/{self.alumno.id}/ingresar/', {'pin': '1234'})
+        self.assertRedirects(respuesta, f'{base}/mi-cuenta/', fetch_redirect_response=False)
+        cuenta = self.client.get(f'{base}/mi-cuenta/')
+        self.assertContains(cuenta, 'La plataforma está cerrada')
+        self.assertContains(cuenta, 'Ana')
+
+        # Ninguna otra página: mapa, tienda, misiones ni arcade
+        for ruta in ['dashboard/', 'tienda/', f'mision/{self.m1.id}/', 'arcade/', 'progreso/']:
+            self.assertRedirects(self.client.get(f'{base}/{ruta}'), f'{base}/mi-cuenta/', fetch_redirect_response=False)
+        # Ni las acciones que se mandan desde el juego
+        accion = self.client.post(f'{base}/mision/{self.m1.id}/completar/', HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(accion.status_code, 403)
+        # Entrar con la clase cerrada no cuenta como visita (ni racha ni misión del día)
+        self.alumno.refresh_from_db()
+        self.assertIsNone(self.alumno.ultima_actividad)
+
+        # Al abrirla vuelve a entrar normal
+        self.clase.acceso = 'abierto'
+        self.clase.save()
+        self.assertEqual(self.client.get(f'{base}/dashboard/').status_code, 200)
+        self.assertRedirects(self.client.get(f'{base}/mi-cuenta/'), f'{base}/dashboard/', fetch_redirect_response=False)
+
+    def test_el_horario_abre_y_cierra_solo(self):
+        from datetime import datetime, timedelta
+
+        from django.utils import timezone
+
+        self.poner_horario()
+        lunes = timezone.make_aware(datetime(2026, 11, 2, 10, 30))
+        self.assertTrue(self.clase.acceso_abierto(lunes))
+        self.assertFalse(self.clase.acceso_abierto(lunes.replace(hour=11, minute=0)))   # a las 11:00 ya cerró
+        self.assertFalse(self.clase.acceso_abierto(lunes + timedelta(days=1)))          # martes
+        self.assertEqual(self.clase.proxima_apertura(lunes.replace(hour=12)),
+                         timezone.make_aware(datetime(2026, 11, 4, 10, 0)))
+        self.assertEqual(self.clase.texto_horario, 'Lun, Mié · 10:00 a 11:00')
+
+    def test_la_racha_cuenta_dias_de_clase(self):
+        from datetime import date
+        from unittest import mock
+
+        self.poner_horario()
+        Alumno.objects.filter(pk=self.alumno.pk).update(ultima_actividad=date(2026, 11, 2), racha_actual=3)
+        self.alumno.refresh_from_db()
+        with mock.patch('django.utils.timezone.localdate', return_value=date(2026, 11, 4)):
+            juego.actualizar_racha(self.alumno, self.clase)
+        self.alumno.refresh_from_db()
+        self.assertEqual(self.alumno.racha_actual, 4)   # lunes -> miércoles son clases seguidas
+
+        # Abierta siempre, saltarse un día sí rompe la racha
+        self.clase.acceso = 'abierto'
+        self.clase.save()
+        with mock.patch('django.utils.timezone.localdate', return_value=date(2026, 11, 6)):
+            juego.actualizar_racha(self.alumno, self.clase)
+        self.alumno.refresh_from_db()
+        self.assertEqual(self.alumno.racha_actual, 1)
+
+    def test_candado_del_profe(self):
+        self.client.force_login(User.objects.create_superuser('profe11', 'p@x.com', 'x'))
+        url = f'/profesor/clases/{self.clase.id}/acceso/'
+        respuesta = self.client.post(url, {'acceso': 'cerrado', 'next': '/profesor/clases/'})
+        self.assertRedirects(respuesta, '/profesor/clases/', fetch_redirect_response=False)
+        self.clase.refresh_from_db()
+        self.assertEqual(self.clase.acceso, 'cerrado')
+
+        # Sin horario configurado no se puede elegir "solo en horario"
+        self.client.post(url, {'acceso': 'horario'})
+        self.clase.refresh_from_db()
+        self.assertEqual(self.clase.acceso, 'cerrado')
+
+        self.assertContains(self.client.get('/profesor/clases/'), '¿Pueden entrar los alumnos?')
+        self.assertContains(self.client.get(f'/profesor/clases/{self.clase.id}/'), 'acceso-btn cerrada')
+        self.client.logout()
+        self.assertContains(self.client.get('/seleccionar-clase/'), '🔒 Cerrada')
+        self.assertContains(self.client.get(f'/clase/{self.clase.id}/'), 'solo verás tu cuenta')
+
+    def test_formulario_de_clase_valida_el_horario(self):
+        self.client.force_login(User.objects.create_superuser('profe12', 'p@x.com', 'x'))
+        url = f'/profesor/clases/{self.clase.id}/editar/'
+        datos = {'nombre': 'Robótica', 'grado': '4', 'grupo': 'A', 'anio': 2026, 'icono': '🤖', 'color': 'indigo',
+                 'activa': 'on', 'acceso': 'horario', 'horario_inicio': '11:00', 'horario_fin': '10:00'}
+        respuesta = self.client.post(url, datos, HTTP_X_MODAL='1')
+        self.assertContains(respuesta, 'Elige al menos un día de clase.')
+        self.assertContains(respuesta, 'Debe ser después de la hora de inicio.')
+
+        respuesta = self.client.post(url, {**datos, 'dias': ['2', '0'], 'horario_inicio': '10:00', 'horario_fin': '11:00'},
+                                     HTTP_X_MODAL='1')
+        self.assertTrue(respuesta.json()['ok'])
+        self.clase.refresh_from_db()
+        self.assertEqual(self.clase.horario_dias, '0,2')
+        self.assertEqual(self.clase.acceso, 'horario')
+        # Al editarla otra vez, los días vienen marcados
+        self.assertContains(self.client.get(url, HTTP_X_MODAL='1'), 'id="id_dias_2" checked')

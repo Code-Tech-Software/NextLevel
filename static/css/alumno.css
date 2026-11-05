@@ -1321,3 +1321,34 @@ a.maquina:hover { transform: translateY(-6px); color: var(--texto); box-shadow: 
 .lista-ranking-juego .pos { width: 2rem; text-align: center; font-size: 1.1rem; }
 .lista-ranking-juego .n { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lista-ranking-juego .vacio { text-align: center; color: var(--texto-suave); font-weight: 700; padding: 1.2rem .5rem; }
+
+/* ---------- Plataforma cerrada (el profe bloqueó el acceso al grupo) ---------- */
+.portal { position: relative; }
+.portal-candado {
+    position: absolute; top: .9rem; right: .9rem; z-index: 2; font-weight: 900; font-size: .78rem;
+    background: #fff7ed; color: #9a3412; border: 2px solid #fdba74; padding: .2rem .65rem; border-radius: 999px;
+}
+.aviso-roster {
+    display: inline-flex; align-items: center; gap: .5rem; margin-top: .8rem; font-weight: 800; font-size: .9rem;
+    background: #fff7ed; color: #9a3412; border: 2px solid #fdba74; padding: .45rem 1rem; border-radius: 999px;
+}
+.cuenta-cerrada { max-width: 1000px; padding-top: 1.5rem; padding-bottom: 2.5rem; }
+.aviso-cerrada {
+    display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+    background: #fff7ed; border: 2px solid #fed7aa; border-radius: 22px; padding: 1rem 1.2rem; box-shadow: 0 6px 0 #fdba74;
+}
+.aviso-cerrada .candado { font-size: 2.4rem; line-height: 1; animation: candado-mueve 2.6s ease-in-out infinite; }
+.aviso-cerrada .t { font-family: var(--fuente-titulo); font-size: 1.25rem; color: #9a3412; line-height: 1.2; }
+.aviso-cerrada .d { font-weight: 700; color: #7c2d12; font-size: .92rem; margin-top: .15rem; }
+@keyframes candado-mueve { 0%, 30%, 100% { transform: rotate(0); } 10% { transform: rotate(-12deg); } 20% { transform: rotate(10deg); } }
+@media (prefers-reduced-motion: reduce) { .aviso-cerrada .candado { animation: none; } }
+.avance-mundo { display: flex; align-items: center; gap: .75rem; padding: .6rem 0; border-bottom: 2px dashed var(--borde); }
+.avance-mundo:last-child { border-bottom: 0; }
+.avance-mundo .e { font-size: 1.6rem; line-height: 1; }
+.avance-mundo .n { font-weight: 800; }
+.avance-mundo .v { font-weight: 800; color: var(--texto-suave); font-size: .85rem; flex-shrink: 0; }
+.avance-mundo .barra { margin-top: .35rem; }
+.avance-mundo .ok { font-size: 1.2rem; }
+.pendiente-fila { display: flex; align-items: center; gap: .6rem; padding: .55rem 0; font-weight: 700; border-bottom: 2px dashed var(--borde); min-width: 0; }
+.pendiente-fila:last-child { border-bottom: 0; }
+.pendiente-fila .e { font-size: 1.3rem; line-height: 1; }

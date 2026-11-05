@@ -28,7 +28,10 @@ def home_redirect(request):
 
 
 def alumno_requerido(vista):
-    """Inyecta (alumno, clase) y regresa a la selección de jugador si no hay sesión válida."""
+    """Inyecta (alumno, clase) y regresa a la selección de jugador si no hay sesión válida.
+
+    Si el profe cerró la clase (o está fuera de su horario), el alumno solo puede ver la pantalla de su cuenta.
+    """
 
     @wraps(vista)
     def envoltura(request, clase_id, *args, **kwargs):
@@ -36,10 +39,14 @@ def alumno_requerido(vista):
         alumno_id = request.session.get('alumno_id')
         alumno = Alumno.objects.filter(id=alumno_id, activo=True, clases=clase).first() if alumno_id else None
         if not alumno:
-            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            if _es_ajax(request):
                 return JsonResponse({'ok': False, 'mensaje': 'Tu sesión terminó.'}, status=403)
             return redirect('lista_alumnos', clase_id=clase.id)
-        juego.actualizar_racha(alumno)
+        if not clase.acceso_abierto():
+            if _es_ajax(request):
+                return JsonResponse({'ok': False, 'mensaje': '🔒 La plataforma está cerrada por ahora.'}, status=403)
+            return redirect('cuenta_cerrada', clase_id=clase.id)
+        juego.actualizar_racha(alumno, clase)
         return vista(request, alumno, clase, *args, **kwargs)
 
     return envoltura
@@ -88,7 +95,10 @@ def ingresar_pin(request, clase_id, alumno_id):
         request.session.pop(clave, None)
         request.session['alumno_id'] = alumno.id
         request.session['clase_id'] = clase.id
-        juego.actualizar_racha(alumno)
+        if not clase.acceso_abierto():
+            # Con la clase cerrada no cuenta como visita: ni racha ni misión del día
+            return redirect('cuenta_cerrada', clase_id=clase.id)
+        juego.actualizar_racha(alumno, clase)
         juego.registrar_evento(alumno, 'login', clase=clase)
         return redirect('dashboard_alumno', clase_id=clase.id)
 
@@ -97,6 +107,43 @@ def ingresar_pin(request, clase_id, alumno_id):
     request.session[clave] = [fallos + 1, time.time()]
     request.session['pin_error'] = alumno.id
     return redirect('lista_alumnos', clase_id=clase.id)
+
+
+def cuenta_cerrada(request, clase_id):
+    """Lo único que ve el alumno mientras la clase está cerrada: el resumen de su cuenta, sin poder jugar."""
+    clase = get_object_or_404(Clase, id=clase_id)
+    alumno_id = request.session.get('alumno_id')
+    alumno = Alumno.objects.filter(id=alumno_id, activo=True, clases=clase).first() if alumno_id else None
+    if not alumno:
+        return redirect('lista_alumnos', clase_id=clase.id)
+    if clase.acceso_abierto():
+        return redirect('dashboard_alumno', clase_id=clase.id)
+
+    misiones = list(Mision.objects.filter(clase=clase, activa=True).select_related('nivel'))
+    aprobadas = set(ProgresoMision.objects.filter(alumno=alumno, mision__clase=clase, mision__activa=True,
+                                                  estado='aprobado').values_list('mision_id', flat=True))
+    mundos = []
+    for mundo in clase.mundos.all():
+        ids = [m.id for m in misiones if m.nivel.mundo_id == mundo.id]
+        if ids:
+            hechas = sum(1 for i in ids if i in aprobadas)
+            mundos.append({'mundo': mundo, 'tema': juego.TEMA_INFO.get(mundo.tema), 'hechas': hechas,
+                           'total': len(ids), 'pct': round(hechas * 100 / len(ids))})
+
+    return render(request, 'Alumnos/cuenta_cerrada.html', {
+        'alumno': alumno,
+        'clase': clase,
+        'rango': alumno.rango,
+        'aprobadas': len(aprobadas),
+        'total_misiones': len(misiones),
+        'mundos': mundos,
+        'en_revision': ProgresoMision.objects.filter(alumno=alumno, mision__clase=clase, estado='pendiente').count(),
+        'premios_pendientes': alumno.compras.filter(estado='pendiente').select_related('articulo')[:5],
+        'logros': alumno.logros.select_related('logro')[:8],
+        'total_logros': alumno.logros.count(),
+        'equipo': juego.equipo_de(alumno, clase),
+        'proxima': clase.proxima_apertura(),
+    })
 
 
 def salir_alumno(request):

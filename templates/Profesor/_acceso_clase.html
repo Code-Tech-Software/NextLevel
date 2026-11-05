@@ -1,0 +1,31 @@
+{% comment %}Botón del candado: abre o cierra la plataforma para los alumnos de `clase`.{% endcomment %}
+{% with abierta=clase.acceso_abierto %}
+<div class="dropdown acceso-clase">
+    {# strategy fixed: el menú flota por encima aunque la tarjeta recorte lo que se sale (overflow hidden) #}
+    <button type="button" class="p-btn sm acceso-btn {% if abierta %}abierta{% else %}cerrada{% endif %}" data-bs-toggle="dropdown"
+            data-bs-popper-config='{"strategy": "fixed"}'
+            aria-label="Acceso de los alumnos: {% if abierta %}abierta{% else %}cerrada{% endif %}" title="Acceso de los alumnos">
+        <i class="bi {% if abierta %}bi-unlock{% else %}bi-lock-fill{% endif %}"></i>
+        <span>{% if clase.acceso == 'horario' %}<i class="bi bi-clock"></i> {% if abierta %}Abierta{% else %}Cerrada{% endif %}{% elif abierta %}Abierta{% else %}Cerrada{% endif %}</span>
+        <i class="bi bi-chevron-down"></i>
+    </button>
+    <div class="dropdown-menu dropdown-menu-end acceso-menu">
+        <div class="acceso-titulo">¿Pueden entrar los alumnos?</div>
+        <form method="post" action="{% url 'acceso_clase' clase.id %}">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <button name="acceso" value="abierto" class="dropdown-item {% if clase.acceso == 'abierto' %}active{% endif %}">
+                <i class="bi bi-unlock"></i><span><b>Abierta siempre</b><small>Pueden entrar a cualquier hora, también desde casa.</small></span>
+            </button>
+            <button name="acceso" value="horario" class="dropdown-item {% if clase.acceso == 'horario' %}active{% endif %}" {% if not clase.tiene_horario %}disabled{% endif %}>
+                <i class="bi bi-clock"></i><span><b>Solo en horario de clase</b><small>{% if clase.tiene_horario %}{{ clase.texto_horario }}{% else %}Primero configura el horario.{% endif %}</small></span>
+            </button>
+            <button name="acceso" value="cerrado" class="dropdown-item {% if clase.acceso == 'cerrado' %}active{% endif %}">
+                <i class="bi bi-lock"></i><span><b>Cerrada</b><small>Solo ven la información de su cuenta.</small></span>
+            </button>
+        </form>
+        <hr class="dropdown-divider">
+        <a data-modal href="{% url 'editar_clase' clase.id %}" class="dropdown-item"><i class="bi bi-calendar-week"></i><span><b>Configurar horario…</b></span></a>
+    </div>
+</div>
+{% endwith %}

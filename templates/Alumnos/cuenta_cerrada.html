@@ -1,0 +1,114 @@
+{% extends 'Alumnos/base_publica.html' %}
+{% load nextlevel %}
+{% block title %}Mi cuenta · {{ alumno.nombre }}{% endblock %}
+
+{% block cuerpo %}
+<div class="contenedor cuenta-cerrada">
+    <div class="aviso-cerrada">
+        <span class="candado" aria-hidden="true">🔒</span>
+        <div class="min-w-0 flex-grow-1">
+            <div class="t">La plataforma está cerrada por ahora</div>
+            <div class="d">
+                {% if proxima %}
+                    Se abre en tu horario de clase: <b>{{ clase.texto_horario }}</b>.
+                    Próxima vez: <b>{{ proxima|date:"l j \d\e F, H:i"|lower }}</b>.
+                {% else %}
+                    Tu profe la abrirá en la próxima clase. Mientras tanto, aquí puedes ver cómo va tu cuenta.
+                {% endif %}
+            </div>
+        </div>
+        <a href="{% url 'salir_alumno' %}" class="g-btn blanco chico flex-shrink-0"><i class="bi bi-box-arrow-right"></i> Salir</a>
+    </div>
+
+    <section class="heroe mt-4">
+        <div class="estrellitas"></div>
+        <div class="heroe-contenido">
+            <div class="avatar-wrap">
+                <img src="{{ alumno|avatar_url }}" alt="" class="avatar anillo-{{ rango.color }}">
+                <span class="nivel-badge">{{ alumno.nivel }}</span>
+            </div>
+            <div>
+                <div class="heroe-saludo">{{ clase.icono }} {{ clase.nombre }} · {{ clase.grado }}{{ clase.grupo }}</div>
+                <div class="heroe-nombre">{{ alumno.nombre }}</div>
+                <div class="heroe-rango">{{ rango.emoji }} {{ rango.nombre }}</div>
+            </div>
+            <div class="heroe-xp">
+                <div class="etiquetas">
+                    <span><i class="bi bi-lightning-charge-fill text-warning"></i> Nivel {{ alumno.nivel }}</span>
+                    <span>{{ alumno.xp_nivel_actual }} / {{ alumno.xp_siguiente_nivel }} XP</span>
+                </div>
+                <div class="barra oro"><span style="width:0" data-ancho="{{ alumno.progreso_nivel }}"></span></div>
+                <div class="mt-2" style="font-size:.8rem;font-weight:800;opacity:.8">
+                    Te faltan <b>{{ alumno.xp_faltante }} XP</b> para el nivel {{ alumno.nivel|add:1 }}
+                </div>
+            </div>
+        </div>
+        <div class="heroe-stats">
+            <div class="heroe-stat"><div class="v">🪙 {{ alumno.monedas }}</div><div class="l">Monedas</div></div>
+            <div class="heroe-stat"><div class="v">🔥 {{ alumno.racha_actual }}</div><div class="l">Racha (récord {{ alumno.racha_maxima }})</div></div>
+            <div class="heroe-stat"><div class="v">🏆 {{ aprobadas }}<small style="font-size:.9rem;opacity:.7">/{{ total_misiones }}</small></div><div class="l">Misiones</div></div>
+        </div>
+    </section>
+
+    <div class="row g-4 mt-1">
+        <div class="col-lg-7">
+            <section class="g-card h-100">
+                <div class="g-card-titulo"><span>🗺️</span> Tu avance en cada mundo</div>
+                {% for m in mundos %}
+                    <div class="avance-mundo">
+                        <span class="e">{{ m.tema.emoji|default:'🌍' }}</span>
+                        <div class="min-w-0 flex-grow-1">
+                            <div class="d-flex justify-content-between gap-2">
+                                <span class="n text-truncate">{{ m.mundo.nombre }}</span>
+                                <span class="v">{{ m.hechas }}/{{ m.total }}</span>
+                            </div>
+                            <div class="barra delgada{% if m.pct == 100 %} verde{% endif %}"><span style="width:0" data-ancho="{{ m.pct }}"></span></div>
+                        </div>
+                        {% if m.pct == 100 %}<span class="ok" title="Mundo completado">✅</span>{% endif %}
+                    </div>
+                {% empty %}
+                    <div class="vacio-juego py-2"><span class="e" style="font-size:2.2rem">🗺️</span>Tu profe aún no publica mundos.</div>
+                {% endfor %}
+            </section>
+        </div>
+
+        <div class="col-lg-5">
+            <section class="g-card mb-4">
+                <div class="g-card-titulo"><span>📋</span> Pendientes</div>
+                <div class="pendiente-fila">
+                    <span class="e">⏳</span>
+                    <span class="flex-grow-1">Misiones en revisión del profe</span>
+                    <b>{{ en_revision }}</b>
+                </div>
+                {% if equipo %}
+                    <div class="pendiente-fila">
+                        <span class="e">{{ equipo.emoji }}</span>
+                        <span class="flex-grow-1">Tu equipo</span>
+                        <b>{{ equipo.nombre }}</b>
+                    </div>
+                {% endif %}
+                {% for compra in premios_pendientes %}
+                    <div class="pendiente-fila">
+                        <span class="e">🎁</span>
+                        <span class="flex-grow-1 text-truncate">Por entregar: {{ compra.articulo.nombre }}</span>
+                    </div>
+                {% endfor %}
+            </section>
+
+            <section class="g-card">
+                <div class="g-card-titulo"><span>🏅</span> Tus insignias <span class="extra">{{ total_logros }}</span></div>
+                {% for la in logros %}
+                    <div class="logro-mini">
+                        <span class="ico">{{ la.logro.icono }}</span>
+                        <div><div class="t">{{ la.logro.nombre }}</div><div class="f">hace {{ la.fecha|timesince }}</div></div>
+                    </div>
+                {% empty %}
+                    <div class="vacio-juego py-2"><span class="e" style="font-size:2.2rem">🎯</span>Completa misiones para ganar tus primeras insignias.</div>
+                {% endfor %}
+            </section>
+        </div>
+    </div>
+
+    <p class="text-center texto-suave fw-bold mt-4 mb-0">💡 Repasa en tu cuaderno lo que aprendiste: ¡en la próxima clase vas por más!</p>
+</div>
+{% endblock %}

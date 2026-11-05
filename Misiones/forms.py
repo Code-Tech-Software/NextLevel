@@ -59,11 +59,16 @@ def _opciones_niveles():
 
 
 class ClaseForm(EstiloMixin, forms.ModelForm):
+    dias = forms.MultipleChoiceField(choices=[(str(i), dia) for i, dia in enumerate(Clase.DIAS)], required=False,
+                                     widget=forms.CheckboxSelectMultiple(), label='Días con clase')
+
     class Meta:
         model = Clase
-        fields = ['nombre', 'grado', 'grupo', 'anio', 'icono', 'color', 'descripcion', 'activa']
+        fields = ['nombre', 'grado', 'grupo', 'anio', 'icono', 'color', 'descripcion', 'activa',
+                  'acceso', 'horario_inicio', 'horario_fin']
         labels = {'anio': 'Año escolar', 'icono': 'Ícono (emoji)', 'descripcion': 'Descripción',
-                  'activa': 'Visible en el lobby'}
+                  'activa': 'Visible en el lobby', 'acceso': 'Acceso de los alumnos',
+                  'horario_inicio': 'Desde', 'horario_fin': 'Hasta'}
         widgets = {
             'nombre': forms.TextInput(attrs={'placeholder': 'Ej. Robótica'}),
             'grado': forms.TextInput(attrs={'placeholder': 'Ej. 4°'}),
@@ -71,10 +76,38 @@ class ClaseForm(EstiloMixin, forms.ModelForm):
             'descripcion': forms.Textarea(attrs={'rows': 2, 'placeholder': 'Opcional: de qué trata la clase'}),
             'icono': forms.TextInput(attrs={'maxlength': 10, 'placeholder': '🚀'}),
             'color': forms.RadioSelect(),
+            'acceso': forms.RadioSelect(),
+            'horario_inicio': forms.TimeInput(attrs={'type': 'time'}, format='%H:%M'),
+            'horario_fin': forms.TimeInput(attrs={'type': 'time'}, format='%H:%M'),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['acceso'].required = False   # si no viene, se conserva el que tenía
+        if self.instance.pk:
+            self.initial['dias'] = [str(d) for d in self.instance.dias_horario]
 
     def clean_grupo(self):
         return (self.cleaned_data.get('grupo') or '').strip().upper()
+
+    def clean(self):
+        datos = super().clean()
+        datos['acceso'] = datos.get('acceso') or self.instance.acceso or 'abierto'
+        inicio, fin = datos.get('horario_inicio'), datos.get('horario_fin')
+        if inicio and fin and inicio >= fin:
+            self.add_error('horario_fin', 'Debe ser después de la hora de inicio.')
+        if datos.get('acceso') == 'horario':
+            if not datos.get('dias'):
+                self.add_error('dias', 'Elige al menos un día de clase.')
+            if not inicio:
+                self.add_error('horario_inicio', 'Indica a qué hora se abre.')
+            if not fin:
+                self.add_error('horario_fin', 'Indica a qué hora se cierra.')
+        return datos
+
+    def save(self, commit=True):
+        self.instance.horario_dias = ','.join(sorted(self.cleaned_data.get('dias') or [], key=int))
+        return super().save(commit)
 
 
 class AlumnoForm(EstiloMixin, forms.ModelForm):

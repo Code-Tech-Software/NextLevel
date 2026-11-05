@@ -48,6 +48,7 @@
                     <a href="{% url 'clase_detalle' clase.id %}" class="p-btn sm primario">Abrir</a>
                     <a href="{% url 'matriz_calificaciones' clase.id %}" class="p-btn sm">Calificaciones</a>
                     <a href="{% url 'alumnos_lista' %}?clase={{ clase.id }}" class="p-btn sm">Alumnos</a>
+                    <div class="ms-auto">{% include 'Profesor/_acceso_clase.html' %}</div>
                 </div>
             </div>
         </div>

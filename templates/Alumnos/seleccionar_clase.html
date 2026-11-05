@@ -22,6 +22,7 @@
                     <a href="{% url 'lista_alumnos' clase.id %}" class="portal"
                        style="--c1: {{ clase.color|color_clase:0 }}; --c2: {{ clase.color|color_clase:1 }}; animation-delay: {{ forloop.counter0 }}00ms">
                         <div class="cielo"></div>
+                        {% if not clase.acceso_abierto %}<span class="portal-candado">🔒 Cerrada</span>{% endif %}
                         <div class="planeta">{{ clase.icono|default:'🚀' }}</div>
                         <div class="grado">{{ clase.grado }} {{ clase.grupo }}</div>
                         <div class="nombre">{{ clase.nombre }}</div>

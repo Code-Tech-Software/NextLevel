@@ -252,6 +252,30 @@ def alta_clase(request, pk=None):
     })
 
 
+@require_POST
+@login_required
+def acceso_clase(request, clase_id):
+    """Abre o cierra la plataforma para los alumnos de un grupo (el botón del candado)."""
+    clase = get_object_or_404(Clase, id=clase_id)
+    acceso = request.POST.get('acceso')
+    if acceso not in dict(Clase.ACCESOS):
+        messages.error(request, 'Elige una opción de acceso válida.')
+    elif acceso == 'horario' and not clase.tiene_horario:
+        messages.warning(request, f'Primero configura el horario de «{clase.nombre}» (Editar clase).')
+    else:
+        clase.acceso = acceso
+        clase.save(update_fields=['acceso'])
+        if acceso == 'abierto':
+            messages.success(request, f'🔓 «{clase.nombre}» quedó abierta: sus alumnos pueden entrar a cualquier hora.')
+        elif acceso == 'cerrado':
+            messages.success(request, f'🔒 «{clase.nombre}» quedó cerrada: sus alumnos solo ven la información de su cuenta.')
+        else:
+            ahora = 'abierta' if clase.acceso_abierto() else 'cerrada'
+            messages.success(request, f'🕒 «{clase.nombre}» se abrirá solo en su horario ({clase.texto_horario}). '
+                                      f'Ahora mismo está {ahora}.')
+    return redirect(_siguiente(request, reverse('clases_lista')))
+
+
 @login_required
 def clase_detalle(request, clase_id):
     clase = get_object_or_404(Clase, id=clase_id)

@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta
+
 from django.db import models
 from django.utils import timezone
 
@@ -49,11 +51,72 @@ class Clase(models.Model):
     anio = models.IntegerField()
     descripcion = models.TextField(blank=True, default='')
     icono = models.CharField(max_length=10, default='🚀', help_text='Un emoji que represente la clase')
+    ACCESOS = [
+        ('abierto', 'Abierta siempre'),
+        ('horario', 'Solo en horario de clase'),
+        ('cerrado', 'Cerrada'),
+    ]
+    DIAS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
+
     color = models.CharField(max_length=20, choices=COLORES, default='indigo')
     activa = models.BooleanField(default=True, help_text='Las clases inactivas no aparecen en el lobby')
+    # Cerrada (o fuera de horario) los alumnos entran con su PIN pero solo ven la información de su cuenta
+    acceso = models.CharField(max_length=10, choices=ACCESOS, default='abierto')
+    horario_dias = models.CharField(max_length=20, blank=True, default='',
+                                    help_text='Días con clase: 0 = lunes … 6 = domingo, separados por comas')
+    horario_inicio = models.TimeField(null=True, blank=True)
+    horario_fin = models.TimeField(null=True, blank=True)
 
     def __str__(self):
         return f"{self.grado} {self.grupo} - {self.nombre}"
+
+    # --- Acceso de los alumnos ---
+    @property
+    def dias_horario(self):
+        return sorted({int(d) for d in self.horario_dias.split(',') if d.strip().isdigit() and int(d) <= 6})
+
+    @property
+    def tiene_horario(self):
+        return bool(self.dias_horario and self.horario_inicio and self.horario_fin
+                    and self.horario_inicio < self.horario_fin)
+
+    @property
+    def texto_horario(self):
+        if not self.tiene_horario:
+            return ''
+        dias = ', '.join(self.DIAS[d] for d in self.dias_horario)
+        return f"{dias} · {self.horario_inicio:%H:%M} a {self.horario_fin:%H:%M}"
+
+    def acceso_abierto(self, momento=None):
+        if self.acceso == 'abierto':
+            return True
+        if self.acceso == 'cerrado' or not self.tiene_horario:
+            return False
+        ahora = timezone.localtime(momento)
+        return ahora.weekday() in self.dias_horario and self.horario_inicio <= ahora.time() < self.horario_fin
+
+    def proxima_apertura(self, momento=None):
+        """Cuándo vuelve a abrir según el horario (None si está cerrada a mano o no tiene horario)."""
+        if self.acceso != 'horario' or not self.tiene_horario:
+            return None
+        ahora = timezone.localtime(momento)
+        for dias in range(8):
+            fecha = ahora.date() + timedelta(days=dias)
+            if fecha.weekday() in self.dias_horario:
+                inicio = timezone.make_aware(datetime.combine(fecha, self.horario_inicio))
+                if inicio > ahora:
+                    return inicio
+        return None
+
+    def dia_de_clase_anterior(self, fecha):
+        """El último día con clase antes de `fecha` (para que la racha cuente días de clase, no de calendario)."""
+        if self.acceso != 'horario' or not self.dias_horario:
+            return fecha - timedelta(days=1)
+        for dias in range(1, 8):
+            anterior = fecha - timedelta(days=dias)
+            if anterior.weekday() in self.dias_horario:
+                return anterior
+        return fecha - timedelta(days=1)
 
 
 # ========================

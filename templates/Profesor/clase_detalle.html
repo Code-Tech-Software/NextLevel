@@ -13,6 +13,7 @@
         </div>
     </div>
     <div class="acciones">
+        {% include 'Profesor/_acceso_clase.html' %}
         <a href="{% url 'modo_clase' clase.id %}" class="p-btn"><i class="bi bi-phone"></i> Modo clase</a>
         <a href="{% url 'equipos_clase' clase.id %}" class="p-btn"><i class="bi bi-shield"></i> Equipos</a>
         <a href="{% url 'proyector' clase.id %}" target="_blank" class="p-btn"><i class="bi bi-display"></i> Proyectar</a>

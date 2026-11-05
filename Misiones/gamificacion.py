@@ -99,13 +99,17 @@ def otorgar(alumno, xp=0, monedas=0, tipo='ajuste', descripcion='', clase=None):
 # ========================
 # RACHA DIARIA
 # ========================
-def actualizar_racha(alumno):
-    """Cuenta los días seguidos que el alumno entra. Devuelve True la primera visita del día."""
+def actualizar_racha(alumno, clase=None):
+    """Cuenta los días seguidos que el alumno entra. Devuelve True la primera visita del día.
+
+    Si la clase solo abre en su horario, cuentan los días de clase seguidos (no los de calendario).
+    """
     hoy = timezone.localdate()
     if alumno.ultima_actividad == hoy:
         return False
 
-    if alumno.ultima_actividad == hoy - timedelta(days=1):
+    anterior = clase.dia_de_clase_anterior(hoy) if clase else hoy - timedelta(days=1)
+    if alumno.ultima_actividad and alumno.ultima_actividad >= anterior:
         alumno.racha_actual += 1
     else:
         alumno.racha_actual = 1
