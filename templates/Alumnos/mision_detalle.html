@@ -27,7 +27,21 @@
         {% if alumno.es_prueba and not mision.activa %}
             <div class="aviso-oculta mb-4"><span aria-hidden="true">🙈</span> Esta misión está <b>oculta</b>: tus alumnos todavía no la ven en su mapa.</div>
         {% endif %}
-        {% if avance %}{% include 'Alumnos/_avance_mision.html' %}{% endif %}
+        {% if avance %}
+            {# Radar del profe: una sola línea; el detalle se abre en el panel flotante para no empujar la misión #}
+            <button type="button" class="radar-tira mb-4" data-radar="m{{ mision.id }}">
+                <span class="anillo-mini {% if avance.pct == 100 %}lleno{% endif %}" style="--pct: {{ avance.pct }}"><b>{{ avance.pct }}%</b></span>
+                <span class="texto">
+                    <span class="linea"><b>{{ avance.completaron|length }} de {{ avance.total }}</b> la completaron</span>
+                    <span class="linea suave">{% if avance.pendientes %}⏳ {{ avance.pendientes|length }} en revisión · {% endif %}{% if avance.por_corregir %}🔧 {{ avance.por_corregir|length }} corrigiendo · {% endif %}📍 {{ avance.aqui|length }} va{{ avance.aqui|length|pluralize:"n" }} aquí</span>
+                </span>
+                {% if avance.aqui %}
+                    <span class="caritas">{% for d in avance.aqui|slice:":4" %}<img src="{{ d.alumno|avatar_url }}" alt="" class="carita">{% endfor %}{% if avance.aqui|length > 4 %}<span class="mas">+{{ avance.aqui|length|restar:4 }}</span>{% endif %}</span>
+                {% endif %}
+                <span class="ver">Ver quién <i class="bi bi-chevron-right"></i></span>
+            </button>
+            {% include 'Alumnos/_radar_contenido.html' with r=avance enlace=False %}
+        {% endif %}
         {% if resultado %}
             <section class="g-card text-center mb-4" id="resultado-mision" style="border-color:#fde047;box-shadow:0 6px 0 #facc15">
                 <div class="fw-black text-uppercase" style="letter-spacing:2px;color:var(--morado);font-size:.85rem">{% if resultado.prueba %}👀 Así le saldría a un alumno{% else %}¡Misión completada!{% endif %}</div>
@@ -308,4 +322,5 @@
         </div>
     </div>
 </div>
+{% if avance %}{% include 'Alumnos/_radar_panel.html' %}{% endif %}
 {% endblock %}

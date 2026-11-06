@@ -1363,19 +1363,21 @@ class AvanceDelGrupoTests(BaseJuego):
     def test_solo_el_profe_lo_ve_en_la_vista_de_alumno(self):
         base = f'/clase/{self.clase.id}'
         self.entrar()
-        self.assertNotContains(self.client.get(f'{base}/mundo/{self.mundo.id}/'), 'avance-nodo')
-        self.assertNotContains(self.client.get(f'{base}/mision/{self.m1.id}/'), 'Avance del grupo')
+        self.assertNotContains(self.client.get(f'{base}/mundo/{self.mundo.id}/'), 'radar-grupo')
+        self.assertNotContains(self.client.get(f'{base}/mision/{self.m1.id}/'), 'radar-tira')
 
         self.client.force_login(User.objects.create_superuser('profe14', 'p@x.com', 'x'))
         self.client.get(f'/profesor/clases/{self.clase.id}/vista-alumno/')
         mapa = self.client.get(f'{base}/mundo/{self.mundo.id}/')
-        self.assertContains(mapa, '✅ 2/3')          # la misión 1 la completaron 2 de 3
-        self.assertContains(mapa, 'Beto Ruiz')
+        self.assertContains(mapa, 'id="radar-grupo"', count=1)     # un solo panel flotante por página
+        self.assertContains(mapa, '>2/3</button>')                    # la misión 1 la completaron 2 de 3
+        self.assertContains(mapa, 'Van aquí: Beto')                  # Beto está parado en la misión 2
+        self.assertContains(mapa, '<template id="radar-m%d">' % self.m2.id)
         self.assertContains(mapa, '⏳ En revisión')
         self.assertNotContains(mapa, '¡Empieza!')    # el globo del alumno no aplica al profe
 
         mision = self.client.get(f'{base}/mision/{self.m2.id}/')
-        self.assertContains(mision, 'Avance del grupo')
+        self.assertContains(mision, 'radar-tira')
+        self.assertContains(mision, '<b>1 de 3</b> la completaron')
         self.assertContains(mision, 'Caro Díaz')
-        self.assertContains(mision, '1</b> de 3 la completaron (33%)')
         self.assertContains(self.client.get(f'{base}/dashboard/'), '3 aquí')

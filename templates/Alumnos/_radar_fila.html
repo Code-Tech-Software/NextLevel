@@ -1,0 +1,5 @@
+{% load nextlevel %}<a class="radar-fila" href="{% url 'alumno_detalle' alumno.id %}">
+    <img src="{{ alumno|avatar_url }}" alt="" class="carita">
+    <span class="nombre">{{ alumno.nombre }} {{ alumno.apellido }}</span>
+    <span class="etq {{ tipo }}">{{ etiqueta }}</span>
+</a>

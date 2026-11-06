@@ -421,7 +421,7 @@ def avance_del_grupo(clase):
         (p.alumno_id, p.mision_id): p
         for p in ProgresoMision.objects.filter(mision__clase=clase, alumno__in=alumnos)
     }
-    por_mision = {m.id: {'completaron': [], 'aqui': []} for m in misiones}
+    por_mision = {m.id: {'mision': m, 'completaron': [], 'aqui': []} for m in misiones}
     por_mundo = {}
     for mision in misiones:
         por_mundo.setdefault(mision.nivel.mundo_id or 0, {'aqui': [], 'terminaron': 0, 'misiones': 0})['misiones'] += 1
@@ -444,7 +444,23 @@ def avance_del_grupo(clase):
             if aprobadas == por_mundo[clave]['misiones']:
                 por_mundo[clave]['terminaron'] += 1
 
+    for datos in por_mision.values():
+        resumir_avance(datos, len(alumnos))
     return {'total': len(alumnos), 'misiones': por_mision, 'mundos': por_mundo}
+
+
+def resumir_avance(datos, total):
+    """Completa el avance de una misión con los grupos y cifras que muestra el radar del profe."""
+    hechos = len(datos['completaron'])
+    datos.update({
+        'total': total,
+        'pendientes': [d for d in datos['aqui'] if d['estado'] == 'pendiente'],
+        'por_corregir': [d for d in datos['aqui'] if d['estado'] == 'rechazado'],
+        'empezando': [d for d in datos['aqui'] if d['estado'] not in ('pendiente', 'rechazado')],
+        'no_llegan': max(total - hechos - len(datos['aqui']), 0),
+        'pct': int(hechos * 100 / total) if total else 0,
+    })
+    return datos
 
 
 def construir_ruta(alumno, clase):
@@ -886,7 +902,7 @@ def metas_visibles(clase, dias=7):
 __all__ = [
     'TIPO_INFO', 'TEMA_INFO', 'notificar', 'otorgar', 'actualizar_racha', 'seleccionar_diarias',
     'misiones_del_dia', 'registrar_evento', 'reclamar_diaria', 'estadisticas_alumno', 'verificar_logros',
-    'otorgar_logro', 'progreso_logros', 'misiones_en_orden', 'avance_del_grupo', 'construir_ruta', 'buscar_en_ruta',
+    'otorgar_logro', 'progreso_logros', 'misiones_en_orden', 'avance_del_grupo', 'resumir_avance', 'construir_ruta', 'buscar_en_ruta',
     'abrir_cofre', 'calificar',
     'rechazar', 'comprar', 'entregar_compra', 'cancelar_compra', 'ajustar_monedas', 'ranking_clase',
     'calcular_nivel', 'info_rangos', 'equipo_de', 'sumar_puntos_equipo', 'dar_puntos_equipo', 'ranking_equipos',

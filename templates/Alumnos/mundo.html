@@ -58,9 +58,10 @@
                         </span>
                     {% endif %}
 
+                    <div class="nodo-caja">
                     {% if item.desbloqueada or item.estado == 'aprobado' %}
                         <a href="{% url 'ver_mision' clase.id m.id %}" title="{{ m.nombre }}"
-                           class="nodo {{ item.estado }} {% if item.actual %}actual{% endif %} {% if m.es_jefe %}jefe{% endif %}">
+                           class="nodo {{ item.estado }} {% if item.actual and not avance %}actual{% endif %} {% if m.es_jefe %}jefe{% endif %}">
                     {% else %}
                         <div class="nodo bloqueado {% if m.es_jefe %}jefe{% endif %}" title="Bloqueada: completa las misiones anteriores">
                     {% endif %}
@@ -71,13 +72,27 @@
                         {% elif item.estado == 'rechazado' %}<i class="bi bi-wrench-adjustable"></i>
                         {% else %}<i class="bi {{ item.info.icono }}"></i>{% endif %}
                     {% if item.desbloqueada or item.estado == 'aprobado' %}</a>{% else %}</div>{% endif %}
+                    {% if avance %}{% with r=avance.misiones|get_item:m.id %}{% if r %}
+                        {# Radar del profe: anillo con el % del grupo, contador y los alumnos parados junto a su misión #}
+                        <span class="anillo-grupo {% if r.pct == 100 %}lleno{% endif %}" style="--pct: {{ r.pct }}" aria-hidden="true"></span>
+                        <button type="button" class="radar-insignia {% if r.pct == 100 %}lleno{% endif %}" data-radar="m{{ m.id }}"
+                                title="{{ r.completaron|length }} de {{ r.total }} la completaron · toca para ver quién">{{ r.completaron|length }}/{{ r.total }}</button>
+                        {% if r.aqui %}
+                            <button type="button" class="radar-tropa {% if zz > 0 %}izquierda{% endif %}" data-radar="m{{ m.id }}"
+                                    title="Van aquí: {% for d in r.aqui %}{{ d.alumno.nombre }}{% if not forloop.last %}, {% endif %}{% endfor %}">
+                                {% for d in r.aqui|slice:":3" %}<img src="{{ d.alumno|avatar_url }}" alt="" class="carita">{% endfor %}
+                                {% if r.aqui|length > 3 %}<span class="mas">+{{ r.aqui|length|restar:3 }}</span>{% endif %}
+                                {% if r.pendientes %}<span class="aviso" title="Hay entregas por revisar">⏳</span>{% endif %}
+                            </button>
+                        {% endif %}
+                        {% include 'Alumnos/_radar_contenido.html' with enlace=True %}
+                    {% endif %}{% endwith %}{% endif %}
+                    </div>
 
                     {% if item.estado == 'aprobado' %}
                         <div class="nodo-estrellas">{% for e in item.estrellas|estrellas %}<span class="{% if not e %}apagada{% endif %}">⭐</span>{% endfor %}</div>
                     {% endif %}
                     <div class="nodo-nombre">{{ item.info.emoji }} {{ m.nombre }}</div>
-
-                    {% if avance %}{% include 'Alumnos/_avance_nodo.html' with datos_avance=avance.misiones|get_item:m.id total=avance.total %}{% endif %}
 
                     {% if item.actual and not avance %}
                         <span class="nodo-avatar"><img src="{{ alumno|avatar_url }}" alt="Tú" class="avatar anillo-{{ alumno.rango.color }}"></span>
@@ -118,4 +133,5 @@
         {% endif %}
     </div>
 </div>
+{% if avance %}{% include 'Alumnos/_radar_panel.html' %}{% endif %}
 {% endblock %}

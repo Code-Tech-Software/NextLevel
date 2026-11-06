@@ -1,0 +1,12 @@
+{% load static %}{% comment %}
+El radar del grupo: un panel flotante (a la derecha en computadora, desde abajo en el celular) que el profe abre en la
+vista de alumno. Flota encima de la página, así que no empuja nada. Se llena con los <template id="radar-m…">.
+{% endcomment %}
+<aside class="radar" id="radar-grupo" hidden aria-label="Radar del grupo">
+    <div class="radar-cabeza">
+        <span class="radar-kicker"><span aria-hidden="true">📡</span> Radar del grupo <span class="solo-profe">Solo lo ves tú</span></span>
+        <button type="button" class="radar-cerrar" aria-label="Cerrar el radar"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="radar-cuerpo"></div>
+</aside>
+<script src="{% static 'js/radar_grupo.js' %}" defer></script>

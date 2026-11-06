@@ -289,25 +289,18 @@ def ver_mision(request, alumno, clase, mision_id):
 
 
 def _avance_de_mision(clase, mision):
-    """Quién completó la misión y quién va en ella, para el panel que ve el profe en la vista de alumno."""
+    """Quién completó la misión y quién va en ella, para el radar que ve el profe en la vista de alumno."""
     grupo = juego.avance_del_grupo(clase)
     datos = grupo['misiones'].get(mision.id)
     if datos is None:
         # Misión oculta: nadie «va» en ella, pero puede haber alumnos que ya la hicieron
-        datos = {'aqui': [], 'completaron': [
+        completaron = [
             {'alumno': p.alumno, 'progreso': p}
             for p in ProgresoMision.objects.filter(mision=mision, estado='aprobado', alumno__activo=True,
-                                                   alumno__clases=clase).select_related('alumno')]}
-    pendientes = [d for d in datos['aqui'] if d['estado'] == 'pendiente']
-    por_corregir = [d for d in datos['aqui'] if d['estado'] == 'rechazado']
-    empezando = [d for d in datos['aqui'] if d['estado'] not in ('pendiente', 'rechazado')]
-    hechos = len(datos['completaron'])
-    return {
-        'total': grupo['total'], 'completaron': datos['completaron'], 'pendientes': pendientes,
-        'por_corregir': por_corregir, 'empezando': empezando,
-        'no_llegan': max(grupo['total'] - hechos - len(datos['aqui']), 0),
-        'pct': int(hechos * 100 / grupo['total']) if grupo['total'] else 0,
-    }
+                                                   alumno__clases=clase).select_related('alumno')
+        ]
+        datos = juego.resumir_avance({'mision': mision, 'aqui': [], 'completaron': completaron}, grupo['total'])
+    return datos
 
 
 @require_POST

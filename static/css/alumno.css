@@ -1405,63 +1405,141 @@ a.maquina:hover { transform: translateY(-6px); color: var(--texto); box-shadow: 
     border-bottom: 2px dashed #e2e8f0;
 }
 
-/* ---------- Avance del grupo (solo en la vista de alumno del profe) ---------- */
-.avance-nodo { margin-top: .4rem; position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; }
-.avance-nodo summary {
-    list-style: none; cursor: pointer; user-select: none;
-    display: inline-flex; align-items: center; gap: .4rem;
-    background: rgba(255, 255, 255, .95); color: var(--navy);
-    border: 2px solid rgba(15, 23, 42, .12); border-radius: 999px;
-    padding: .2rem .55rem; font-weight: 900; font-size: .78rem; white-space: nowrap;
-    box-shadow: 0 3px 0 rgba(0, 0, 0, .12);
+/* ---------- Radar del grupo (solo en la vista de alumno del profe) ---------- */
+.nodo-caja { position: relative; display: flex; justify-content: center; }
+.carita { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; background: #e2e8f0; flex-shrink: 0; }
+
+/* Anillo alrededor de la misión: se llena con el % del grupo que ya la completó */
+.anillo-grupo {
+    position: absolute; inset: -9px -9px -1px; border-radius: 50%; pointer-events: none; z-index: 0;
+    background: conic-gradient(#4ade80 calc(var(--pct, 0) * 1%), rgba(148, 163, 184, .35) 0);
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 5px));
+    mask: radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 5px));
 }
-.avance-nodo summary::-webkit-details-marker { display: none; }
-.avance-nodo[open] summary { background: var(--navy); color: #fff; }
-.avance-nodo .caritas { display: inline-flex; align-items: center; }
-.avance-nodo .caritas .carita { margin-left: -7px; border: 2px solid #fff; }
-.avance-nodo .caritas .carita:first-child { margin-left: 0; }
-.avance-nodo .mas { margin-left: 3px; font-size: .72rem; }
-.carita { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; background: #e2e8f0; flex-shrink: 0; }
-.avance-panel {
-    margin-top: .4rem; width: min(270px, 82vw); max-height: 260px; overflow-y: auto;
-    background: #fff; color: var(--texto); text-align: left;
-    border-radius: 16px; padding: .6rem .7rem; box-shadow: 0 8px 24px rgba(0, 0, 0, .25);
+.anillo-grupo.lleno { background: #fbbf24; }
+.nodo-caja .nodo { z-index: 1; }
+
+/* Contador «7/9» pegado a la misión */
+.radar-insignia {
+    position: absolute; top: -10px; right: -18px; z-index: 3;
+    border: 2px solid #4ade80; background: #fff; color: var(--navy);
+    font-weight: 900; font-size: .74rem; line-height: 1; padding: .3rem .45rem; border-radius: 999px;
+    box-shadow: 0 3px 0 rgba(0, 0, 0, .15); cursor: pointer; transition: transform .12s;
 }
-.avance-panel .titulo, .grupo-avance .titulo {
-    font-weight: 900; font-size: .76rem; text-transform: uppercase; letter-spacing: .5px; color: var(--navy);
-    margin: .35rem 0 .25rem;
+.radar-insignia.lleno { background: #fbbf24; border-color: #fff; color: #78350f; }
+.radar-insignia:hover { transform: scale(1.08); }
+
+/* Los alumnos «parados» junto a la misión en la que van, como fichas de un juego de mesa */
+.radar-tropa {
+    position: absolute; top: 50%; left: calc(100% + 16px); z-index: 3;
+    transform: translateY(-50%); display: inline-flex; align-items: center;
+    background: rgba(255, 255, 255, .95); border: 2px solid rgba(15, 23, 42, .1); border-radius: 999px;
+    padding: 3px 7px 3px 3px; box-shadow: 0 4px 0 rgba(0, 0, 0, .15); cursor: pointer;
+    transition: transform .12s;
 }
-.avance-panel .titulo:first-child, .grupo-avance .titulo:first-child { margin-top: 0; }
-.avance-panel .fila, .grupo-avance .fila {
-    display: flex; align-items: center; gap: .45rem; padding: .22rem 0;
-    font-weight: 700; font-size: .84rem; color: var(--texto); text-decoration: none;
+.radar-tropa.izquierda { left: auto; right: calc(100% + 16px); }
+.radar-tropa:hover { transform: translateY(-50%) scale(1.08); }
+.radar-tropa::before {
+    content: ''; position: absolute; top: 50%; left: -8px; transform: translateY(-50%);
+    border: 6px solid transparent; border-right-color: rgba(255, 255, 255, .95); border-left: 0;
 }
-.avance-panel .nombre, .grupo-avance .nombre { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.avance-panel .vacio, .grupo-avance .vacio { font-size: .82rem; font-weight: 700; color: #94a3b8; padding: .2rem 0; }
-.avance-panel .estrellas-mini { font-size: .7rem; white-space: nowrap; }
-.avance-panel .estrellas-mini .apagada { filter: grayscale(1); opacity: .35; }
+.radar-tropa.izquierda::before {
+    left: auto; right: -8px; border-right: 0; border-left: 6px solid rgba(255, 255, 255, .95);
+}
+.radar-tropa .carita { width: 30px; height: 30px; border: 2px solid #fff; margin-left: -10px; }
+.radar-tropa .carita:first-child { margin-left: 0; }
+.radar-tropa .mas { margin-left: 4px; font-weight: 900; font-size: .75rem; color: var(--navy); }
+.radar-tropa .aviso {
+    position: absolute; top: -9px; right: -7px; font-size: .8rem; line-height: 1;
+    background: #fff7ed; border: 2px solid #fdba74; border-radius: 999px; padding: 2px 3px;
+}
+.nodo-caja.seleccionada .anillo-grupo { filter: drop-shadow(0 0 6px #4ade80); }
+.nodo-caja.seleccionada .radar-insignia { background: var(--navy); color: #fff; }
+
+/* Tira de una línea en la página de la misión */
+.radar-tira {
+    width: 100%; display: flex; align-items: center; gap: .8rem; text-align: left;
+    background: #fff; border: 2px solid #ddd6fe; border-radius: 20px; padding: .6rem .9rem;
+    box-shadow: 0 4px 0 #c4b5fd; color: var(--texto); cursor: pointer; transition: transform .12s;
+}
+.radar-tira:hover { transform: translateY(-2px); }
+.radar-tira .texto { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.25; }
+.radar-tira .linea { font-weight: 800; font-size: .92rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.radar-tira .linea.suave { font-size: .8rem; color: var(--texto-suave); }
+.radar-tira .caritas { display: inline-flex; align-items: center; }
+.radar-tira .caritas .carita { border: 2px solid #fff; margin-left: -9px; }
+.radar-tira .caritas .carita:first-child { margin-left: 0; }
+.radar-tira .mas { margin-left: 4px; font-weight: 900; font-size: .75rem; }
+.radar-tira .ver { font-weight: 900; font-size: .8rem; color: #6d28d9; white-space: nowrap; }
+@media (max-width: 575.98px) { .radar-tira .caritas { display: none; } }
+
+/* Anillo pequeño con el porcentaje */
+.anillo-mini {
+    --tam: 46px; width: var(--tam); height: var(--tam); flex-shrink: 0; border-radius: 50%;
+    display: grid; place-items: center; position: relative;
+    background: conic-gradient(#22c55e calc(var(--pct, 0) * 1%), #e2e8f0 0);
+}
+.anillo-mini::before { content: ''; position: absolute; inset: 5px; border-radius: 50%; background: #fff; }
+.anillo-mini b { position: relative; font-size: .72rem; font-weight: 900; color: var(--navy); }
+.anillo-mini.lleno { background: #fbbf24; }
+
+/* Panel flotante: a la derecha en computadora, desde abajo en el celular. No empuja nada. */
+.radar {
+    position: fixed; z-index: 1060; right: 16px; top: calc(var(--hud-alto) + 14px);
+    width: min(350px, calc(100vw - 32px)); max-height: calc(100vh - var(--hud-alto) - 30px);
+    display: flex; flex-direction: column; background: #fff; color: var(--texto);
+    border-radius: 24px; box-shadow: 0 20px 60px rgba(15, 23, 42, .35); overflow: hidden;
+    opacity: 0; transform: translateX(30px); transition: opacity .2s, transform .2s;
+}
+.radar.abierto { opacity: 1; transform: none; }
+.radar-cabeza { display: flex; align-items: center; gap: .5rem; padding: .7rem .9rem; background: var(--navy); color: #fff; }
+.radar-kicker { flex: 1; font-weight: 900; font-size: .82rem; display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; }
+.radar .solo-profe {
+    font-size: .64rem; font-weight: 900; text-transform: uppercase; letter-spacing: .5px;
+    background: rgba(255, 255, 255, .15); border-radius: 999px; padding: .15rem .5rem;
+}
+.radar-cerrar {
+    border: 0; background: rgba(255, 255, 255, .12); color: #fff; width: 32px; height: 32px; border-radius: 10px;
+    display: grid; place-items: center; cursor: pointer;
+}
+.radar-cerrar:hover { background: rgba(255, 255, 255, .25); }
+.radar-cuerpo { overflow-y: auto; padding: .9rem 1rem 1rem; overscroll-behavior: contain; }
+.radar-titulo { font-family: var(--fuente-titulo); font-weight: 700; font-size: 1.1rem; line-height: 1.15; color: var(--navy); }
+.radar-resumen { display: flex; align-items: center; gap: .75rem; margin: .7rem 0 .4rem; }
+.radar-cifra { font-weight: 800; font-size: .92rem; }
+.radar-chips { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .3rem; }
+.radar-seccion {
+    display: flex; align-items: center; justify-content: space-between;
+    font-weight: 900; font-size: .74rem; text-transform: uppercase; letter-spacing: .5px; color: var(--navy);
+    margin: .9rem 0 .3rem; padding-bottom: .25rem; border-bottom: 2px dashed #e2e8f0;
+}
+.radar-seccion span { background: #f1f5f9; border-radius: 999px; padding: .05rem .5rem; }
+.radar-fila {
+    display: flex; align-items: center; gap: .5rem; padding: .3rem .4rem; margin: 0 -.4rem; border-radius: 10px;
+    font-weight: 700; font-size: .86rem; color: var(--texto); text-decoration: none;
+}
+.radar-fila:hover { background: #eef2ff; color: var(--texto); }
+.radar-fila .nombre { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.radar-fila .estrellas-mini { font-size: .66rem; white-space: nowrap; }
+.radar-fila .estrellas-mini .apagada { filter: grayscale(1); opacity: .35; }
+.radar-fila .calif { font-weight: 900; font-size: .76rem; border-radius: 8px; padding: .05rem .4rem; background: #f1f5f9; }
+.radar-fila .calif.a { background: #dcfce7; color: #15803d; }
+.radar-fila .calif.b { background: #e0f2fe; color: #0369a1; }
+.radar-fila .calif.c { background: #fef9c3; color: #a16207; }
+.radar-fila .calif.d { background: #fee2e2; color: #b91c1c; }
+.radar-vacio { font-size: .84rem; font-weight: 700; color: #94a3b8; padding: .2rem 0; }
+.radar-acciones { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; }
+.radar-acciones:empty { display: none; }
 .etq {
-    font-size: .7rem; font-weight: 900; white-space: nowrap; border-radius: 999px; padding: .1rem .45rem;
+    font-size: .7rem; font-weight: 900; white-space: nowrap; border-radius: 999px; padding: .12rem .5rem;
     background: #f1f5f9; color: #475569;
 }
 .etq.revision { background: #fff7ed; color: #c2410c; }
 .etq.corregir { background: #fef2f2; color: #b91c1c; }
-
-.avance-mision { border-color: #ddd6fe; box-shadow: 0 6px 0 #c4b5fd; }
-.avance-mision .g-card-titulo { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
-.avance-mision .solo-profe {
-    margin-left: auto; font-size: .7rem; font-weight: 900; text-transform: uppercase; letter-spacing: .5px;
-    color: #6d28d9; background: #f5f3ff; border-radius: 999px; padding: .2rem .6rem;
+@media (max-width: 575.98px) {
+    .radar {
+        left: 0; right: 0; top: auto; bottom: 0; width: auto; max-height: 75vh;
+        border-radius: 24px 24px 0 0; transform: translateY(40px);
+    }
+    .radar-cuerpo { padding-bottom: calc(1rem + env(safe-area-inset-bottom)); }
 }
-.barra-avance { height: 12px; border-radius: 999px; background: #e2e8f0; overflow: hidden; margin: .2rem 0 .6rem; }
-.barra-avance span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #22c55e, #16a34a); }
-.resumen-avance { display: flex; flex-wrap: wrap; gap: .35rem 1rem; font-size: .88rem; font-weight: 700; margin-bottom: 1rem; }
-.grupo-avance { background: #f8fafc; border-radius: 16px; padding: .7rem .8rem; height: 100%; }
-.grupo-avance .fila { border-radius: 10px; padding: .25rem .35rem; margin: 0 -.35rem; }
-.grupo-avance a.fila:hover { background: #eef2ff; }
-.grupo-avance .carita { width: 26px; height: 26px; }
-.grupo-avance .calif { font-weight: 900; font-size: .8rem; border-radius: 8px; padding: .05rem .4rem; background: #f1f5f9; }
-.grupo-avance .calif.a { background: #dcfce7; color: #15803d; }
-.grupo-avance .calif.b { background: #e0f2fe; color: #0369a1; }
-.grupo-avance .calif.c { background: #fef9c3; color: #a16207; }
-.grupo-avance .calif.d { background: #fee2e2; color: #b91c1c; }

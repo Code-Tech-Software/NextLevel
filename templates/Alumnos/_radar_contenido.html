@@ -1,0 +1,43 @@
+{% load nextlevel %}{% comment %}
+Contenido del radar del grupo para una misión (solo en la vista de alumno del profe). Va dentro de un <template>:
+no se ve ni ocupa lugar hasta que el profe abre el radar. Recibe «r» (ver gamificacion.resumir_avance) y «enlace»
+(True para mostrar «Abrir misión», útil desde el mapa).
+{% endcomment %}
+<template id="radar-m{{ r.mision.id }}">
+    <div class="radar-titulo">{{ r.mision.nombre }}</div>
+    <div class="radar-resumen">
+        <span class="anillo-mini" style="--pct: {{ r.pct }}"><b>{{ r.pct }}%</b></span>
+        <div class="min-w-0">
+            <div class="radar-cifra"><b>{{ r.completaron|length }}</b> de {{ r.total }} la completaron</div>
+            <div class="radar-chips">
+                {% if r.pendientes %}<span class="etq revision">⏳ {{ r.pendientes|length }} en revisión</span>{% endif %}
+                {% if r.por_corregir %}<span class="etq corregir">🔧 {{ r.por_corregir|length }} corrigiendo</span>{% endif %}
+                {% if r.empezando %}<span class="etq">📍 {{ r.empezando|length }} empezando</span>{% endif %}
+                {% if r.no_llegan %}<span class="etq">🔒 {{ r.no_llegan }} aún no llega{{ r.no_llegan|pluralize:"n" }}</span>{% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="radar-seccion">📍 Van aquí <span>{{ r.aqui|length }}</span></div>
+    {% for d in r.pendientes %}{% include 'Alumnos/_radar_fila.html' with alumno=d.alumno etiqueta='⏳ En revisión' tipo='revision' %}{% endfor %}
+    {% for d in r.por_corregir %}{% include 'Alumnos/_radar_fila.html' with alumno=d.alumno etiqueta='🔧 Corrigiendo' tipo='corregir' %}{% endfor %}
+    {% for d in r.empezando %}{% include 'Alumnos/_radar_fila.html' with alumno=d.alumno etiqueta='Empezando' tipo='' %}{% endfor %}
+    {% if not r.aqui %}<div class="radar-vacio">Nadie va en esta misión ahora.</div>{% endif %}
+
+    <div class="radar-seccion">✅ La completaron <span>{{ r.completaron|length }}</span></div>
+    {% for d in r.completaron %}
+        <a class="radar-fila" href="{% url 'alumno_detalle' d.alumno.id %}">
+            <img src="{{ d.alumno|avatar_url }}" alt="" class="carita">
+            <span class="nombre">{{ d.alumno.nombre }} {{ d.alumno.apellido }}</span>
+            <span class="estrellas-mini">{% for e in d.progreso.estrellas|estrellas %}<span class="{% if not e %}apagada{% endif %}">⭐</span>{% endfor %}</span>
+            <span class="calif {{ d.progreso.puntuacion|nivel_calif }}">{{ d.progreso.puntuacion|calif10 }}</span>
+        </a>
+    {% empty %}
+        <div class="radar-vacio">Todavía nadie.</div>
+    {% endfor %}
+
+    <div class="radar-acciones">
+        {% if r.pendientes %}<a href="{% url 'revisiones' %}" class="g-btn chico"><i class="bi bi-check2-square"></i> Revisar entregas</a>{% endif %}
+        {% if enlace %}<a href="{% url 'ver_mision' clase.id r.mision.id %}" class="g-btn blanco chico">Abrir misión <i class="bi bi-arrow-right"></i></a>{% endif %}
+    </div>
+</template>
