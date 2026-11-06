@@ -59,12 +59,14 @@
                     {% endif %}
 
                     <div class="nodo-caja">
+                    {% with r=avance.misiones|get_item:m.id %}
                     {% if item.desbloqueada or item.estado == 'aprobado' %}
                         <a href="{% url 'ver_mision' clase.id m.id %}" title="{{ m.nombre }}"
                            class="nodo {{ item.estado }} {% if item.actual and not avance %}actual{% endif %} {% if m.es_jefe %}jefe{% endif %}">
                     {% else %}
                         <div class="nodo bloqueado {% if m.es_jefe %}jefe{% endif %}" title="Bloqueada: completa las misiones anteriores">
                     {% endif %}
+                        {% if r %}<span class="anillo-grupo {% if r.pct == 100 %}lleno{% endif %}" style="--pct: {{ r.pct }}" aria-hidden="true"></span>{% endif %}
                         {% if m.es_jefe %}<span class="corona">{% if item.estado == 'aprobado' %}👑{% else %}👾{% endif %}</span>{% endif %}
                         {% if item.estado == 'aprobado' %}<i class="bi bi-star-fill"></i>
                         {% elif not item.desbloqueada %}<i class="bi bi-lock-fill"></i>
@@ -72,9 +74,8 @@
                         {% elif item.estado == 'rechazado' %}<i class="bi bi-wrench-adjustable"></i>
                         {% else %}<i class="bi {{ item.info.icono }}"></i>{% endif %}
                     {% if item.desbloqueada or item.estado == 'aprobado' %}</a>{% else %}</div>{% endif %}
-                    {% if avance %}{% with r=avance.misiones|get_item:m.id %}{% if r %}
-                        {# Radar del profe: anillo con el % del grupo, contador y los alumnos parados junto a su misión #}
-                        <span class="anillo-grupo {% if r.pct == 100 %}lleno{% endif %}" style="--pct: {{ r.pct }}" aria-hidden="true"></span>
+                    {% if r %}
+                        {# Radar del profe: el anillo dorado del borde de la bolita (arriba), el contador y los alumnos parados junto a su misión #}
                         <button type="button" class="radar-insignia {% if r.pct == 100 %}lleno{% endif %}" data-radar="m{{ m.id }}"
                                 title="{{ r.completaron|length }} de {{ r.total }} la completaron · toca para ver quién">{{ r.completaron|length }}/{{ r.total }}</button>
                         {% if r.aqui %}
@@ -86,7 +87,8 @@
                             </button>
                         {% endif %}
                         {% include 'Alumnos/_radar_contenido.html' with enlace=True %}
-                    {% endif %}{% endwith %}{% endif %}
+                    {% endif %}
+                    {% endwith %}
                     </div>
 
                     {% if item.estado == 'aprobado' %}

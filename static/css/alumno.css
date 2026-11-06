@@ -1409,20 +1409,20 @@ a.maquina:hover { transform: translateY(-6px); color: var(--texto); box-shadow: 
 .nodo-caja { position: relative; display: flex; justify-content: center; }
 .carita { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; background: #e2e8f0; flex-shrink: 0; }
 
-/* Anillo alrededor de la misión: se llena con el % del grupo que ya la completó */
+/* Borde de la bolita de la misión: se va llenando de dorado con el % del grupo que ya la completó.
+   Vive DENTRO de la bolita (misma forma y tamaño), así que siempre queda centrado y se hunde con ella al tocarla. */
 .anillo-grupo {
-    position: absolute; inset: -9px -9px -1px; border-radius: 50%; pointer-events: none; z-index: 0;
-    background: conic-gradient(#4ade80 calc(var(--pct, 0) * 1%), rgba(148, 163, 184, .35) 0);
-    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 5px));
-    mask: radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 5px));
+    position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
+    background: conic-gradient(#fde047 calc(var(--pct, 0) * 1%), rgba(255, 255, 255, .35) 0);
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px));
+    mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px));
 }
-.anillo-grupo.lleno { background: #fbbf24; }
-.nodo-caja .nodo { z-index: 1; }
+.anillo-grupo.lleno { background: #fde047; }
 
 /* Contador «7/9» pegado a la misión */
 .radar-insignia {
     position: absolute; top: -10px; right: -18px; z-index: 3;
-    border: 2px solid #4ade80; background: #fff; color: var(--navy);
+    border: 2px solid #facc15; background: #fff; color: var(--navy);
     font-weight: 900; font-size: .74rem; line-height: 1; padding: .3rem .45rem; border-radius: 999px;
     box-shadow: 0 3px 0 rgba(0, 0, 0, .15); cursor: pointer; transition: transform .12s;
 }
@@ -1453,7 +1453,7 @@ a.maquina:hover { transform: translateY(-6px); color: var(--texto); box-shadow: 
     position: absolute; top: -9px; right: -7px; font-size: .8rem; line-height: 1;
     background: #fff7ed; border: 2px solid #fdba74; border-radius: 999px; padding: 2px 3px;
 }
-.nodo-caja.seleccionada .anillo-grupo { filter: drop-shadow(0 0 6px #4ade80); }
+.nodo-caja.seleccionada .nodo { box-shadow: 0 8px 0 var(--n2), 0 0 0 5px rgba(253, 224, 71, .55), 0 14px 20px rgba(0, 0, 0, .12); }
 .nodo-caja.seleccionada .radar-insignia { background: var(--navy); color: #fff; }
 
 /* Tira de una línea en la página de la misión */
@@ -1477,7 +1477,7 @@ a.maquina:hover { transform: translateY(-6px); color: var(--texto); box-shadow: 
 .anillo-mini {
     --tam: 46px; width: var(--tam); height: var(--tam); flex-shrink: 0; border-radius: 50%;
     display: grid; place-items: center; position: relative;
-    background: conic-gradient(#22c55e calc(var(--pct, 0) * 1%), #e2e8f0 0);
+    background: conic-gradient(#facc15 calc(var(--pct, 0) * 1%), #e2e8f0 0);
 }
 .anillo-mini::before { content: ''; position: absolute; inset: 5px; border-radius: 50%; background: #fff; }
 .anillo-mini b { position: relative; font-size: .72rem; font-weight: 900; color: var(--navy); }
