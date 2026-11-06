@@ -1,0 +1,142 @@
+{% extends 'Profesor/baseProfesor.html' %}
+{% load nextlevel static %}
+{% block title %}{{ app.nombre }} · {{ clase.nombre }}{% endblock %}
+{% block migas %}<a href="{% url 'apps_lista' %}">Apps y accesos</a><i class="bi bi-chevron-right"></i><span class="actual">{{ app.nombre }} · {{ clase.nombre }}</span>{% endblock %}
+
+{% block content %}
+<form method="post" action="{{ request.get_full_path }}" class="accesos-form" data-accesos autocomplete="off">
+    {% csrf_token %}
+    <div class="page-head">
+        <div class="d-flex align-items-center gap-3 min-w-0">
+            <span class="app-icono grande">{{ app.icono }}</span>
+            <div class="min-w-0">
+                <h1 class="text-truncate">{{ app.nombre }}</h1>
+                <p>{{ clase.icono }} {{ clase.nombre }} · {{ clase.grado }} {{ clase.grupo }}
+                    {% if app.es_personal %} · <b data-contador-listos>{{ listos }}</b>/{{ filas|length }} alumnos con acceso{% endif %}</p>
+            </div>
+        </div>
+        <div class="acciones">
+            {% if otras_clases %}
+                <div class="dropdown">
+                    <button type="button" class="p-btn fantasma dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-arrow-left-right"></i> Otra clase</button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        {% for o in otras_clases %}<li><a class="dropdown-item" href="{% url 'app_accesos' app.id o.clase.id %}">{{ o.clase.icono }} {{ o.clase.nombre }}</a></li>{% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+            <a data-modal="xl" href="{% url 'editar_app' app.id %}" class="p-btn fantasma"><i class="bi bi-pencil"></i> Editar app</a>
+            <button type="submit" class="p-btn primario"><i class="bi bi-check2"></i> Guardar</button>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-xl-8 order-2 order-xl-1">
+            {% if app.es_personal %}
+                <section class="p-card">
+                    <div class="p-card-head flex-wrap gap-2">
+                        <h2>Acceso de cada alumno</h2>
+                        <div class="d-flex align-items-center gap-2 ms-auto flex-wrap">
+                            <div class="segmentado" role="group" aria-label="Ordenar">
+                                <a href="?orden=apellido" class="{% if orden == 'apellido' %}activo{% endif %}">Por apellido</a>
+                                <a href="?orden=nombre" class="{% if orden == 'nombre' %}activo{% endif %}">Por nombre</a>
+                            </div>
+                            {% if app.etiqueta_contrasena %}
+                                <button type="button" class="p-btn xs fantasma" data-mostrar-secretos aria-pressed="false"><i class="bi bi-eye"></i> <span>Mostrar {{ app.etiqueta_contrasena|lower }}s</span></button>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="aviso-pegar">
+                        <i class="bi bi-clipboard-check"></i>
+                        <div><b>¿Los tienes en Excel o en la lista de {{ app.nombre }}?</b> Copia la columna completa (o las dos columnas juntas) y pégala en la primera casilla: se reparte sola hacia abajo.
+                            Revisa que tu lista esté en el mismo orden: <b>{% if orden == 'nombre' %}por nombre{% else %}por apellido{% endif %}</b>.</div>
+                    </div>
+                    <div class="aviso-pegado d-none" data-aviso-pegado role="status"></div>
+                    <div class="p-table-wrap">
+                        <table class="p-table tabla-accesos">
+                            <thead>
+                                <tr>
+                                    <th class="num">#</th>
+                                    <th>Alumno</th>
+                                    {% if app.etiqueta_usuario %}<th>{{ app.etiqueta_usuario }}</th>{% endif %}
+                                    {% if app.etiqueta_contrasena %}<th>{{ app.etiqueta_contrasena }}</th>{% endif %}
+                                    <th class="num"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            {% for f in filas %}
+                                <tr data-fila>
+                                    <td class="num text-muted-p">{{ forloop.counter }}</td>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2 nombre-alumno">
+                                            <img src="{{ f.alumno|avatar_url }}" alt="" class="av-mini">
+                                            <span class="text-truncate">{% if orden == 'nombre' %}{{ f.alumno.nombre }} {{ f.alumno.apellido }}{% else %}{{ f.alumno.apellido }} {{ f.alumno.nombre }}{% endif %}</span>
+                                        </div>
+                                    </td>
+                                    {% if app.etiqueta_usuario %}
+                                        <td><input type="text" name="usuario_{{ f.alumno.id }}" value="{{ f.acceso.usuario|default:'' }}" class="nl-input celda"
+                                                   autocomplete="off" spellcheck="false" maxlength="150" aria-label="{{ app.etiqueta_usuario }} de {{ f.alumno.nombre }}"></td>
+                                    {% endif %}
+                                    {% if app.etiqueta_contrasena %}
+                                        <td><input type="password" name="contrasena_{{ f.alumno.id }}" value="{{ f.acceso.contrasena|default:'' }}" class="nl-input celda secreto"
+                                                   autocomplete="new-password" spellcheck="false" maxlength="150" aria-label="{{ app.etiqueta_contrasena }} de {{ f.alumno.nombre }}"></td>
+                                    {% endif %}
+                                    <td class="num"><i class="bi bi-check-circle-fill marca-lista {% if not f.acceso %}d-none{% endif %}" title="Tiene acceso"></i></td>
+                                </tr>
+                            {% empty %}
+                                <tr><td colspan="5"><div class="vacio-p"><i class="bi bi-people"></i>Esta clase aún no tiene alumnos.</div></td></tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            {% else %}
+                <section class="p-card">
+                    <div class="p-card-body">
+                        <div class="vacio-p"><i class="bi bi-link-45deg"></i>{{ app.nombre }} no usa datos personales: tus alumnos solo verán el botón para abrirla{% if app.etiqueta_codigo %} y el {{ app.etiqueta_codigo|lower }}{% endif %}.</div>
+                    </div>
+                </section>
+            {% endif %}
+        </div>
+
+        <div class="col-xl-4 order-1 order-xl-2">
+            <section class="p-card">
+                <div class="p-card-head"><h2>Datos de toda la clase</h2><span class="sub">Los ve todo el grupo</span></div>
+                <div class="p-card-body">
+                    {% if app.etiqueta_codigo %}
+                        <div class="campo">
+                            <label for="codigo-clase">{{ app.etiqueta_codigo }}</label>
+                            <input type="text" id="codigo-clase" name="codigo" value="{{ enlace.codigo }}" class="nl-input" maxlength="120" autocomplete="off" spellcheck="false">
+                        </div>
+                    {% endif %}
+                    <div class="campo mb-0">
+                        <label for="nota-clase">Nota para el grupo <span class="text-muted-p fw-normal">(opcional)</span></label>
+                        <input type="text" id="nota-clase" name="nota" value="{{ enlace.nota }}" class="nl-input" maxlength="200" placeholder="Ej. Entren desde Chrome, no desde Edge">
+                    </div>
+                </div>
+            </section>
+            <section class="p-card mt-3">
+                <div class="p-card-body">
+                    <div class="vp-flujo">
+                        <div class="t">Cómo lo ven tus alumnos</div>
+                        <ol>
+                            <li>En su <b>Perfil</b>, arriba, aparece <b>🔑 Mi llavero de apps</b>.</li>
+                            <li>Cada quien ve solo sus datos, con botones para copiarlos y para abrir la app.</li>
+                            <li>La {{ app.etiqueta_contrasena|default:'contraseña'|lower }} sale oculta hasta que tocan el ojo.</li>
+                        </ol>
+                        <a href="{% url 'vista_alumno' clase.id %}" class="p-btn xs fantasma mt-2"><i class="bi bi-eye"></i> Entrar como alumno</a>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    {% if filas %}
+        <div class="barra-guardar">
+            <span data-estado-cambios class="text-muted-p">Sin cambios</span>
+            <button type="submit" class="p-btn primario"><i class="bi bi-check2"></i> Guardar accesos</button>
+        </div>
+    {% endif %}
+</form>
+{% endblock %}
+
+{% block extra_js %}<script src="{% static 'js/llavero_profe.js' %}"></script>{% endblock %}

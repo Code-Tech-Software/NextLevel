@@ -352,6 +352,52 @@
             } catch (e) { /* sin portapapeles */ }
         }));
 
+        // ---------- Llavero de apps: copiar un dato y mostrar u ocultar la contraseña ----------
+        async function copiarTexto(texto) {
+            try {
+                await navigator.clipboard.writeText(texto);
+                return true;
+            } catch (e) {
+                // Respaldo para navegadores sin portapapeles moderno
+                const area = document.createElement('textarea');
+                area.value = texto;
+                area.setAttribute('readonly', '');
+                area.style.position = 'fixed';
+                area.style.opacity = '0';
+                document.body.appendChild(area);
+                area.select();
+                let ok = false;
+                try { ok = document.execCommand('copy'); } catch (err) { ok = false; }
+                area.remove();
+                return ok;
+            }
+        }
+        function alternarSecreto(boton, mostrar) {
+            const valor = boton.parentElement.querySelector('[data-secreto]');
+            if (!valor) return;
+            valor.textContent = mostrar ? valor.dataset.secreto : '••••••••';
+            valor.classList.toggle('tapado', !mostrar);
+            boton.setAttribute('aria-pressed', mostrar ? 'true' : 'false');
+            boton.innerHTML = mostrar ? '<i class="bi bi-eye-slash"></i>' : '<i class="bi bi-eye"></i>';
+            clearTimeout(boton._ocultar);
+            // Se vuelve a ocultar sola, por si alguien está viendo la pantalla
+            if (mostrar) boton._ocultar = setTimeout(() => alternarSecreto(boton, false), 15000);
+        }
+        document.addEventListener('click', async e => {
+            const copiar = e.target.closest('[data-copiar]');
+            if (copiar) {
+                if (await copiarTexto(copiar.dataset.copiar)) {
+                    copiar.classList.add('copiado');
+                    copiar.innerHTML = '<i class="bi bi-check2"></i>';
+                    Sonido.play('pop');
+                    setTimeout(() => { copiar.classList.remove('copiado'); copiar.innerHTML = '<i class="bi bi-clipboard"></i>'; }, 1500);
+                }
+                return;
+            }
+            const revelar = e.target.closest('[data-revelar]');
+            if (revelar) alternarSecreto(revelar, revelar.getAttribute('aria-pressed') !== 'true');
+        });
+
         const resultado = $('#resultado-mision');
         if (resultado) {
             setTimeout(() => {

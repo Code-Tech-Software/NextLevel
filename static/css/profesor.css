@@ -1304,3 +1304,85 @@ body.modo-enfoque .contenido-p { max-width: none; }
 .menu-vista-alumno .dropdown-item small { color: var(--muted); font-weight: 600; }
 .menu-vista-alumno .candado { color: var(--warning); font-size: .8rem; }
 .menu-vista-alumno .pie { font-size: .74rem; color: var(--muted); padding: .35rem .6rem 0; }
+
+/* ---------- Apps y accesos (llavero de apps de los alumnos) ---------- */
+.apps-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+.app-card { display: flex; flex-direction: column; padding: 1rem; gap: .75rem; }
+.app-card.inactiva { opacity: .6; }
+.app-cabeza { display: flex; align-items: center; gap: .8rem; }
+.app-cabeza h2 { font-size: 1.05rem; font-weight: 700; margin: 0; }
+.app-icono {
+    width: 48px; height: 48px; border-radius: 14px; flex-shrink: 0; display: grid; place-items: center; font-size: 1.6rem;
+    background: var(--surface-2); border: 1px solid var(--border);
+}
+.app-icono.grande { width: 60px; height: 60px; font-size: 2rem; border-radius: 18px; }
+.app-datos { display: flex; flex-wrap: wrap; gap: .25rem .6rem; font-size: .76rem; color: var(--muted); margin-top: .15rem; }
+.app-url { font-size: .78rem; color: var(--info); text-decoration: none; display: block; }
+.app-url:hover { text-decoration: underline; }
+.app-clases { display: flex; flex-direction: column; gap: .45rem; }
+.app-clase {
+    display: flex; align-items: center; gap: .7rem; padding: .55rem .7rem; border-radius: var(--radius-sm);
+    border: 1px solid var(--border); background: var(--surface-2); color: var(--text); text-decoration: none;
+    transition: border-color .12s, transform .12s;
+}
+.app-clase:hover { border-color: var(--accent); color: var(--text); transform: translateX(2px); }
+.app-clase .ico { font-size: 1.3rem; }
+.app-clase .n { font-weight: 600; font-size: .88rem; }
+.app-clase .s { font-size: .74rem; color: var(--muted); }
+.mini-barra { display: block; height: 5px; border-radius: 99px; background: var(--border); margin-top: .35rem; overflow: hidden; }
+.mini-barra span { display: block; height: 100%; border-radius: inherit; background: var(--warning); }
+.mini-barra.lista span { background: var(--accent); }
+.app-pie { display: flex; gap: .4rem; justify-content: flex-end; margin-top: auto; }
+
+.plantillas-apps { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.plantilla-app {
+    display: inline-flex; align-items: center; gap: .45rem; padding: .45rem .8rem; border-radius: 999px;
+    border: 1px solid var(--border); background: var(--surface); color: var(--text); font-weight: 600; font-size: .85rem;
+    text-decoration: none; cursor: pointer; transition: border-color .12s, background .12s;
+}
+.plantilla-app:hover, .plantilla-app.activo { border-color: var(--accent); background: var(--accent-soft); color: var(--text); }
+.plantilla-app .e { font-size: 1.15rem; line-height: 1; }
+.plantilla-app.otra { border-style: dashed; }
+.plantillas-apps.compactas .plantilla-app { padding: .3rem .65rem; font-size: .8rem; }
+
+.dato-app { margin-bottom: 1rem; }
+.dato-app label { display: block; font-weight: 600; font-size: .85rem; margin-bottom: .35rem; }
+.dato-app label .e { margin-right: .2rem; }
+.dato-app .sugerencias { margin-top: .4rem; }
+
+/* Vista previa de la tarjeta del alumno */
+.llave-previa { border: 2px solid #e2e8f0; border-radius: 18px; padding: .8rem; background: #fff; color: #1e293b; }
+.llave-previa .cabeza { display: flex; align-items: center; gap: .5rem; margin-bottom: .6rem; }
+.llave-previa .ico { font-size: 1.6rem; }
+.llave-previa .n { flex: 1; min-width: 0; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.llave-previa .abrir { font-size: .72rem; font-weight: 800; background: #142c45; color: #fff; border-radius: 999px; padding: .25rem .6rem; }
+.llave-previa .dato {
+    display: flex; align-items: center; gap: .5rem; background: #f8fafc; border-radius: 10px; padding: .4rem .6rem;
+    margin-bottom: .35rem; font-size: .8rem;
+}
+.llave-previa .dato .etq { font-weight: 700; color: #64748b; min-width: 0; flex: 1; }
+.llave-previa .dato .val { font-family: ui-monospace, Consolas, monospace; font-weight: 700; }
+.llave-previa .ayuda { font-size: .76rem; font-weight: 700; color: #6d28d9; margin-top: .4rem; }
+
+/* Tabla de accesos */
+.segmentado { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; padding: 2px; background: var(--surface-2); }
+.segmentado a { padding: .25rem .7rem; border-radius: 999px; font-size: .78rem; font-weight: 600; color: var(--text-2); text-decoration: none; }
+.segmentado a.activo { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
+.aviso-pegar {
+    display: flex; gap: .7rem; align-items: flex-start; margin: 0 1rem .8rem; padding: .7rem .9rem;
+    border-radius: var(--radius-sm); background: var(--info-soft); color: var(--text-2); font-size: .82rem;
+}
+.aviso-pegar i { color: var(--info); font-size: 1.1rem; }
+.aviso-pegado { margin: 0 1rem .8rem; padding: .55rem .9rem; border-radius: var(--radius-sm); font-size: .82rem; font-weight: 600; background: var(--accent-soft); color: var(--accent-strong); }
+.aviso-pegado.advertencia { background: var(--warning-soft); color: var(--warning); }
+.tabla-accesos td { vertical-align: middle; padding-top: .35rem; padding-bottom: .35rem; }
+.tabla-accesos .nombre-alumno { min-width: 170px; max-width: 260px; font-weight: 500; }
+.tabla-accesos .celda { min-width: 150px; font-family: ui-monospace, Consolas, monospace; font-size: .85rem; padding-top: .35rem; padding-bottom: .35rem; }
+.tabla-accesos .celda.cambiada { border-color: var(--warning); background: var(--warning-soft); }
+.tabla-accesos .marca-lista { color: var(--accent); }
+.av-mini { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; background: var(--surface-2); flex-shrink: 0; }
+.barra-guardar {
+    position: sticky; bottom: 0; z-index: 5; margin-top: 1rem; display: flex; align-items: center; justify-content: flex-end; gap: 1rem;
+    padding: .75rem 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow);
+}
+.barra-guardar .hay-cambios { color: var(--warning); font-weight: 600; }

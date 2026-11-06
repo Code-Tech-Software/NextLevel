@@ -1381,3 +1381,81 @@ class AvanceDelGrupoTests(BaseJuego):
         self.assertContains(mision, '<b>1 de 3</b> la completaron')
         self.assertContains(mision, 'Caro Díaz')
         self.assertContains(self.client.get(f'{base}/dashboard/'), '3 aquí')
+
+
+class LlaveroAppsTests(BaseJuego):
+    """El profe guarda los accesos a apps de terceros y cada alumno ve solo los suyos en su perfil."""
+
+    def setUp(self):
+        super().setUp()
+        self.beto = Alumno.objects.create(nombre='Beto', apellido='Ruiz', pin='1234')
+        self.beto.clases.add(self.clase)
+        self.client.force_login(User.objects.create_superuser('profe15', 'p@x.com', 'x'))
+
+    def crear_app(self, **extra):
+        datos = {'nombre': 'Pinion Learn 6.1', 'icono': '🎓', 'url': 'https://pinion.example.com/',
+                 'etiqueta_codigo': 'Código de clase', 'etiqueta_usuario': 'Usuario', 'etiqueta_contrasena': 'Contraseña',
+                 'instrucciones': '1. Entra.', 'clases': [self.clase.id], 'activa': 'on', **extra}
+        self.client.post('/profesor/apps/nueva/', datos)
+        from .models import AppExterna
+        return AppExterna.objects.get(nombre=datos['nombre'])
+
+    def test_el_profe_llena_la_tabla_y_cada_alumno_ve_solo_lo_suyo(self):
+        from .models import AccesoAlumno, AppClase
+
+        app = self.crear_app()
+        self.assertTrue(AppClase.objects.filter(app=app, clase=self.clase).exists())
+        url = f'/profesor/apps/{app.id}/clase/{self.clase.id}/'
+        self.assertContains(self.client.get(url), 'Beto')
+        self.client.post(url, {'codigo': 'ABC123', 'nota': 'Usen Chrome',
+                               f'usuario_{self.alumno.id}': ' ana.lopez ', f'contrasena_{self.alumno.id}': 'Secreta1\r',
+                               f'usuario_{self.beto.id}': 'beto.ruiz', f'contrasena_{self.beto.id}': 'OtraClave9'})
+        ana = AccesoAlumno.objects.get(app=app, alumno=self.alumno)
+        self.assertEqual((ana.usuario, ana.contrasena), ('ana.lopez', 'Secreta1'))
+
+        # Ana ve el código de la clase y su acceso, pero nunca la contraseña de Beto
+        self.client.logout()
+        self.entrar()
+        perfil = self.client.get(f'/clase/{self.clase.id}/progreso/')
+        self.assertContains(perfil, 'Mi llavero de apps')
+        self.assertContains(perfil, 'ABC123')
+        self.assertContains(perfil, 'ana.lopez')
+        self.assertContains(perfil, 'data-secreto="Secreta1"')
+        self.assertContains(perfil, 'Usen Chrome')
+        self.assertNotContains(perfil, 'OtraClave9')
+        self.assertNotContains(perfil, 'beto.ruiz')
+
+        # Si la app se oculta, desaparece del llavero
+        app.activa = False
+        app.save()
+        self.assertNotContains(self.client.get(f'/clase/{self.clase.id}/progreso/'), 'Mi llavero de apps')
+
+    def test_vaciar_una_fila_borra_el_acceso_y_lo_que_no_viene_no_se_toca(self):
+        from .models import AccesoAlumno
+
+        app = self.crear_app()
+        AccesoAlumno.objects.create(app=app, alumno=self.alumno, usuario='ana', contrasena='x')
+        AccesoAlumno.objects.create(app=app, alumno=self.beto, usuario='beto', contrasena='y')
+        # Llega la fila de Ana vacía y la de Beto no viene (p. ej. se dio de alta después de abrir la página)
+        self.client.post(f'/profesor/apps/{app.id}/clase/{self.clase.id}/',
+                         {f'usuario_{self.alumno.id}': '', f'contrasena_{self.alumno.id}': ''})
+        self.assertFalse(AccesoAlumno.objects.filter(app=app, alumno=self.alumno).exists())
+        self.assertTrue(AccesoAlumno.objects.filter(app=app, alumno=self.beto).exists())
+
+    def test_quitar_la_clase_oculta_la_app_y_conserva_los_accesos(self):
+        from .models import AccesoAlumno, AppClase
+
+        app = self.crear_app()
+        AccesoAlumno.objects.create(app=app, alumno=self.alumno, usuario='ana', contrasena='x')
+        self.client.post(f'/profesor/apps/{app.id}/editar/', {
+            'nombre': app.nombre, 'icono': app.icono, 'url': app.url, 'etiqueta_usuario': 'Usuario',
+            'etiqueta_contrasena': 'Contraseña', 'activa': 'on'})
+        self.assertFalse(AppClase.objects.filter(app=app).exists())
+        self.assertTrue(AccesoAlumno.objects.filter(app=app, alumno=self.alumno).exists())
+        self.assertEqual(self.client.get(f'/profesor/apps/{app.id}/clase/{self.clase.id}/').status_code, 404)
+
+    def test_solo_el_profe_entra_a_los_accesos(self):
+        app = self.crear_app()
+        self.client.logout()
+        for url in ['/profesor/apps/', f'/profesor/apps/{app.id}/clase/{self.clase.id}/', '/profesor/apps/nueva/']:
+            self.assertEqual(self.client.get(url).status_code, 302, url)

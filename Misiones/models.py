@@ -800,3 +800,67 @@ class PartidaJuego(models.Model):
 
     def __str__(self):
         return f"{self.alumno} · {self.juego} · {self.puntaje}"
+
+
+# ========================
+# LLAVERO DE APPS (accesos a plataformas de terceros)
+# ========================
+class AppExterna(models.Model):
+    """Una app o plataforma de terceros que se usa en clase (Pinion, Tinkercad, MakeCode…).
+
+    Cada etiqueta en blanco significa que esa app no usa ese dato: p. ej. MakeCode no pide usuario, y en Tinkercad el
+    código de clase es el mismo para todo el grupo pero el apodo es de cada alumno.
+    """
+    nombre = models.CharField(max_length=80)
+    icono = models.CharField(max_length=10, default='🔑')
+    url = models.URLField(blank=True, default='', help_text='Dónde se entra a la app')
+    instrucciones = models.TextField(blank=True, default='', help_text='Cómo entrar, paso a paso')
+    etiqueta_codigo = models.CharField(max_length=40, blank=True, default='',
+                                       help_text='Dato que comparte toda la clase, p. ej. «Código de clase»')
+    etiqueta_usuario = models.CharField(max_length=40, blank=True, default='Usuario')
+    etiqueta_contrasena = models.CharField(max_length=40, blank=True, default='Contraseña')
+    clases = models.ManyToManyField(Clase, through='AppClase', related_name='apps_externas', blank=True)
+    activa = models.BooleanField(default=True)
+    creado = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['nombre', 'id']
+        verbose_name = 'app de clase'
+        verbose_name_plural = 'apps de clase'
+
+    def __str__(self):
+        return f"{self.icono} {self.nombre}"
+
+    @property
+    def es_personal(self):
+        """¿Cada alumno tiene su propio usuario o contraseña?"""
+        return bool(self.etiqueta_usuario or self.etiqueta_contrasena)
+
+
+class AppClase(models.Model):
+    """Una app usada en una clase, con el dato que comparte todo el grupo (código de clase) y una nota."""
+    app = models.ForeignKey(AppExterna, on_delete=models.CASCADE, related_name='en_clases')
+    clase = models.ForeignKey(Clase, on_delete=models.CASCADE, related_name='apps_de_clase')
+    codigo = models.CharField(max_length=120, blank=True, default='')
+    nota = models.CharField(max_length=200, blank=True, default='')
+
+    class Meta:
+        unique_together = [('app', 'clase')]
+
+    def __str__(self):
+        return f"{self.app} · {self.clase}"
+
+
+class AccesoAlumno(models.Model):
+    """El usuario y la contraseña de un alumno en una app de terceros. Solo los ven el alumno y el profe."""
+    app = models.ForeignKey(AppExterna, on_delete=models.CASCADE, related_name='accesos')
+    alumno = models.ForeignKey(Alumno, on_delete=models.CASCADE, related_name='accesos_apps')
+    usuario = models.CharField(max_length=150, blank=True, default='')
+    contrasena = models.CharField(max_length=150, blank=True, default='')
+    actualizado = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = [('app', 'alumno')]
+
+    def __str__(self):
+        return f"{self.alumno} · {self.app}"

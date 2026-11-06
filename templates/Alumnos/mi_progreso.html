@@ -22,6 +22,65 @@
         <a href="{% url 'salir_alumno' %}" class="g-btn blanco mt-3 d-lg-none"><i class="bi bi-box-arrow-right"></i> Salir / cambiar de jugador</a>
     </section>
 
+    {% if llavero %}
+        <section class="g-card mt-4 llavero" id="mis-apps">
+            <div class="g-card-titulo"><span>🔑</span> Mi llavero de apps</div>
+            <p class="llavero-sub">Tus accesos a las apps que usamos en clase. Son solo tuyos: no se los compartas a nadie.</p>
+            <div class="llavero-grid">
+                {% for item in llavero %}{% with app=item.app acceso=item.acceso %}
+                    <article class="llave">
+                        <div class="llave-cabeza">
+                            <span class="llave-icono">{{ app.icono }}</span>
+                            <div class="llave-nombre">{{ app.nombre }}</div>
+                            {% if app.url %}
+                                <a href="{{ app.url }}" target="_blank" rel="noopener noreferrer" class="g-btn chico llave-abrir">Abrir <i class="bi bi-box-arrow-up-right"></i></a>
+                            {% endif %}
+                        </div>
+
+                        {% if app.etiqueta_codigo %}
+                            <div class="llave-dato">
+                                <span class="etq">🏫 {{ app.etiqueta_codigo }}</span>
+                                {% if item.codigo %}
+                                    <code class="val">{{ item.codigo }}</code>
+                                    <button type="button" class="llave-btn" data-copiar="{{ item.codigo }}" aria-label="Copiar {{ app.etiqueta_codigo }}"><i class="bi bi-clipboard"></i></button>
+                                {% else %}<span class="falta">Tu profe aún no lo agrega</span>{% endif %}
+                            </div>
+                        {% endif %}
+                        {% if app.etiqueta_usuario %}
+                            <div class="llave-dato">
+                                <span class="etq">👤 {{ app.etiqueta_usuario }}</span>
+                                {% if acceso.usuario %}
+                                    <code class="val">{{ acceso.usuario }}</code>
+                                    <button type="button" class="llave-btn" data-copiar="{{ acceso.usuario }}" aria-label="Copiar {{ app.etiqueta_usuario }}"><i class="bi bi-clipboard"></i></button>
+                                {% elif alumno.es_prueba %}<span class="falta">Aquí cada alumno ve el suyo</span>
+                                {% else %}<span class="falta">Pídeselo a tu profe</span>{% endif %}
+                            </div>
+                        {% endif %}
+                        {% if app.etiqueta_contrasena %}
+                            <div class="llave-dato">
+                                <span class="etq">🔒 {{ app.etiqueta_contrasena }}</span>
+                                {% if acceso.contrasena %}
+                                    <code class="val tapado" data-secreto="{{ acceso.contrasena }}">••••••••</code>
+                                    <button type="button" class="llave-btn" data-revelar aria-label="Mostrar {{ app.etiqueta_contrasena }}" aria-pressed="false"><i class="bi bi-eye"></i></button>
+                                    <button type="button" class="llave-btn" data-copiar="{{ acceso.contrasena }}" aria-label="Copiar {{ app.etiqueta_contrasena }}"><i class="bi bi-clipboard"></i></button>
+                                {% elif alumno.es_prueba %}<span class="falta">Aquí cada alumno ve la suya</span>
+                                {% else %}<span class="falta">Pídesela a tu profe</span>{% endif %}
+                            </div>
+                        {% endif %}
+
+                        {% if item.nota %}<div class="llave-nota">📌 {{ item.nota }}</div>{% endif %}
+                        {% if app.instrucciones %}
+                            <details class="llave-ayuda">
+                                <summary>❓ ¿Cómo entro?</summary>
+                                <div>{{ app.instrucciones|linebreaksbr }}</div>
+                            </details>
+                        {% endif %}
+                    </article>
+                {% endwith %}{% endfor %}
+            </div>
+        </section>
+    {% endif %}
+
     <div class="stats-grid">
         <div class="stat-tile"><span class="ico">🏁</span><div><div class="v">{{ stats.misiones }}</div><div class="l">Misiones</div></div></div>
         <div class="stat-tile"><span class="ico">⭐</span><div><div class="v">{{ stats.estrellas }}</div><div class="l">Estrellas</div></div></div>

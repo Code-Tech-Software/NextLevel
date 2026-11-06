@@ -71,6 +71,11 @@ urlpatterns = [
     path('profesor/alumnos/<int:pk>/editar/', profe.alta_alumno, name='editar_alumno'),
     path('profesor/alumnos/<int:pk>/ajuste/', profe.alumno_ajuste, name='alumno_ajuste'),
 
+    path('profesor/apps/', profe.apps_lista, name='apps_lista'),
+    path('profesor/apps/nueva/', profe.app_form, name='alta_app'),
+    path('profesor/apps/<int:pk>/editar/', profe.app_form, name='editar_app'),
+    path('profesor/apps/<int:pk>/clase/<int:clase_id>/', profe.app_accesos, name='app_accesos'),
+
     path('profesor/tienda/', profe.tienda_admin, name='tienda_admin'),
     path('forja/tienda/nuevo/', profe.alta_articulo, name='alta_articulo'),
     path('profesor/tienda/<int:pk>/editar/', profe.alta_articulo, name='editar_articulo'),

@@ -2328,10 +2328,50 @@
         actualizar();
     }
 
+    // ---------- Llavero de apps: formulario de una app ----------
+    function iniciarFormApp(raiz = document) {
+        const form = $('form[data-form="app"]', raiz);
+        if (!form || form.dataset.listo) return;
+        form.dataset.listo = '1';
+        const campo = nombre => form.querySelector(`[name="${nombre}"]`);
+        enlazarAtajos(form);
+
+        const previa = {
+            icono: $('[data-previa-icono]', form), nombre: $('[data-previa-nombre]', form),
+            abrir: $('[data-previa-abrir]', form), ayuda: $('[data-previa-ayuda]', form),
+        };
+        function actualizar() {
+            previa.icono.textContent = campo('icono').value.trim() || '🔑';
+            previa.nombre.textContent = campo('nombre').value.trim() || 'Nombre de la app';
+            previa.abrir.classList.toggle('d-none', !campo('url').value.trim());
+            previa.ayuda.classList.toggle('d-none', !campo('instrucciones').value.trim());
+            $$('[data-previa-dato]', form).forEach(dato => {
+                const etiqueta = campo(dato.dataset.previaDato).value.trim();
+                dato.classList.toggle('d-none', !etiqueta);
+                $('.etq', dato).textContent = etiqueta;
+            });
+            marcarAtajos(form);
+        }
+        form.addEventListener('input', actualizar);
+
+        // Plantillas rápidas: llenan todo el formulario de un clic
+        const datos = $('#plantillas-apps', raiz);
+        const plantillas = datos ? JSON.parse(datos.textContent) : [];
+        $$('[data-plantilla]', form).forEach(boton => boton.addEventListener('click', () => {
+            const p = plantillas[Number(boton.dataset.plantilla)];
+            if (!p) return;
+            ['nombre', 'icono', 'url', 'instrucciones', 'etiqueta_codigo', 'etiqueta_usuario', 'etiqueta_contrasena']
+                .forEach(nombre => { if (campo(nombre)) campo(nombre).value = p[nombre] || ''; });
+            $$('[data-plantilla]', form).forEach(b => b.classList.toggle('activo', b === boton));
+            actualizar();
+        }));
+        actualizar();
+    }
+
     const INICIADORES = [
         iniciarFormMision, iniciarFormLogro, iniciarFormDiaria, iniciarFormArticulo, iniciarFormClase, iniciarFormMundo,
         iniciarFormNivel, iniciarFormAlumno, iniciarFormMasiva, iniciarFormEquipo, iniciarFormMeta, iniciarFormConducta,
-        iniciarFormJuego, iniciarFormQuitarLogro,
+        iniciarFormJuego, iniciarFormQuitarLogro, iniciarFormApp,
     ];
     function iniciarFormularios(raiz = document) {
         INICIADORES.forEach(iniciar => {

@@ -1,0 +1,78 @@
+{% extends 'Profesor/baseProfesor.html' %}
+{% load nextlevel %}
+{% block title %}Apps y accesos{% endblock %}
+{% block titulo_pagina %}Apps y accesos{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1>Apps y accesos</h1>
+        <p>El llavero de tus alumnos: usuarios, contraseñas y códigos de las apps que usan en clase. Cada alumno ve solo los suyos en <b>Perfil → Mi llavero de apps</b>.</p>
+    </div>
+    <div class="acciones"><a data-modal="xl" href="{% url 'alta_app' %}" class="p-btn primario"><i class="bi bi-plus-lg"></i> Nueva app</a></div>
+</div>
+
+{% if apps %}
+    <div class="apps-grid">
+        {% for item in apps %}{% with app=item.app %}
+            <section class="p-card app-card {% if not app.activa %}inactiva{% endif %}">
+                <div class="app-cabeza">
+                    <span class="app-icono">{{ app.icono }}</span>
+                    <div class="min-w-0 flex-grow-1">
+                        <h2 class="text-truncate">{{ app.nombre }}</h2>
+                        <div class="app-datos">
+                            {% if app.etiqueta_codigo %}<span>🏫 {{ app.etiqueta_codigo }}</span>{% endif %}
+                            {% if app.etiqueta_usuario %}<span>👤 {{ app.etiqueta_usuario }}</span>{% endif %}
+                            {% if app.etiqueta_contrasena %}<span>🔒 {{ app.etiqueta_contrasena }}</span>{% endif %}
+                            {% if not app.etiqueta_codigo and not app.es_personal %}<span>🔗 Solo enlace</span>{% endif %}
+                        </div>
+                    </div>
+                    <input type="checkbox" class="nl-switch" {% if app.activa %}checked{% endif %} data-alternar-url="{% url 'alternar_activo' 'app' app.id %}"
+                           aria-label="Visible para los alumnos" title="Visible para los alumnos">
+                </div>
+                {% if app.url %}<a href="{{ app.url }}" target="_blank" rel="noopener noreferrer" class="app-url text-truncate"><i class="bi bi-box-arrow-up-right"></i> {{ app.url }}</a>{% endif %}
+
+                <div class="app-clases">
+                    {% for c in item.clases %}
+                        <a href="{% url 'app_accesos' app.id c.enlace.clase.id %}" class="app-clase">
+                            <span class="ico">{{ c.enlace.clase.icono }}</span>
+                            <span class="min-w-0 flex-grow-1">
+                                <span class="n d-block text-truncate">{{ c.enlace.clase.nombre }}</span>
+                                <span class="s d-block">
+                                    {% if app.es_personal %}{{ c.listos }}/{{ c.total }} alumnos con acceso
+                                    {% elif c.enlace.codigo %}{{ app.etiqueta_codigo }}: {{ c.enlace.codigo }}
+                                    {% else %}Datos de la clase{% endif %}
+                                </span>
+                                {% if app.es_personal %}<span class="mini-barra {% if c.total and c.listos == c.total %}lista{% endif %}"><span style="width: {{ c.listos|porcentaje:c.total }}%"></span></span>{% endif %}
+                            </span>
+                            <i class="bi bi-chevron-right"></i>
+                        </a>
+                    {% empty %}
+                        <div class="aviso-suave mt-0"><i class="bi bi-info-circle"></i> Aún no está en ninguna clase. <a data-modal="xl" href="{% url 'editar_app' app.id %}">Elige sus clases</a>.</div>
+                    {% endfor %}
+                </div>
+
+                <div class="app-pie">
+                    <a data-modal="xl" href="{% url 'editar_app' app.id %}" class="p-btn xs fantasma"><i class="bi bi-pencil"></i> Editar</a>
+                    <form method="post" action="{% url 'eliminar' 'app' app.id %}" data-confirmar="Se borrarán también los usuarios y contraseñas guardados de todos los alumnos."
+                          data-titulo="¿Eliminar «{{ app.nombre }}»?" data-boton="Eliminar" data-peligro>
+                        {% csrf_token %}<button class="p-btn xs fantasma"><i class="bi bi-trash"></i> Eliminar</button>
+                    </form>
+                </div>
+            </section>
+        {% endwith %}{% endfor %}
+    </div>
+{% endif %}
+
+<section class="p-card {% if apps %}mt-3{% endif %}">
+    <div class="p-card-head"><h2>{% if apps %}Agregar otra app{% else %}Empieza con una app{% endif %}</h2><span class="sub">Plantillas listas: después puedes cambiar todo</span></div>
+    <div class="p-card-body">
+        <div class="plantillas-apps">
+            {% for p in plantillas %}
+                <a data-modal="xl" href="{% url 'alta_app' %}?plantilla={{ p.nombre|urlencode }}" class="plantilla-app"><span class="e">{{ p.icono }}</span><span class="n">{{ p.nombre }}</span></a>
+            {% endfor %}
+            <a data-modal="xl" href="{% url 'alta_app' %}" class="plantilla-app otra"><span class="e">➕</span><span class="n">Otra app</span></a>
+        </div>
+    </div>
+</section>
+{% endblock %}

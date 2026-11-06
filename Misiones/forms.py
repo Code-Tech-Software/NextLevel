@@ -7,7 +7,8 @@ from django.db.models import Max
 
 from . import minijuegos
 from .models import (
-    Alumno, ArticuloTienda, Clase, Comportamiento, Equipo, Juego, Logro, MetaGrupo, Mision, MisionDiaria, Mundo, Nivel,
+    Alumno, AppClase, AppExterna, ArticuloTienda, Clase, Comportamiento, Equipo, Juego, Logro, MetaGrupo, Mision,
+    MisionDiaria, Mundo, Nivel,
 )
 
 
@@ -707,3 +708,47 @@ class JuegoForm(EstiloMixin, forms.ModelForm):
     def save(self, commit=True):
         self.instance.configuracion = getattr(self, 'configuracion', self.instance.configuracion)
         return super().save(commit)
+
+
+class AppExternaForm(EstiloMixin, forms.ModelForm):
+    """Una app del llavero: qué datos pide y en qué clases se usa."""
+    clases = forms.ModelMultipleChoiceField(queryset=Clase.objects.none(), required=False,
+                                            widget=forms.CheckboxSelectMultiple, label='¿En qué clases se usa?')
+
+    class Meta:
+        model = AppExterna
+        fields = ['nombre', 'icono', 'url', 'instrucciones', 'etiqueta_codigo', 'etiqueta_usuario',
+                  'etiqueta_contrasena', 'activa']
+        widgets = {
+            'icono': forms.TextInput(attrs={'maxlength': 10}),
+            'url': forms.URLInput(attrs={'placeholder': 'https://…'}),
+            'instrucciones': forms.Textarea(attrs={'rows': 4, 'placeholder': '1. Entra a la página.\n2. …'}),
+            'etiqueta_codigo': forms.TextInput(attrs={'placeholder': 'Ej. Código de clase (déjalo vacío si no hay)'}),
+            'etiqueta_usuario': forms.TextInput(attrs={'placeholder': 'Ej. Usuario, Correo o Apodo'}),
+            'etiqueta_contrasena': forms.TextInput(attrs={'placeholder': 'Ej. Contraseña (vacío si no hay)'}),
+        }
+        labels = {
+            'nombre': 'Nombre de la app',
+            'icono': 'Ícono',
+            'url': 'Enlace para entrar',
+            'instrucciones': 'Cómo entrar (lo ve el alumno)',
+            'etiqueta_codigo': 'Dato de toda la clase',
+            'etiqueta_usuario': 'Dato personal 1',
+            'etiqueta_contrasena': 'Dato personal secreto',
+            'activa': 'Visible para los alumnos',
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['clases'].queryset = Clase.objects.order_by('-activa', 'grado', 'grupo', 'nombre')
+        if self.instance.pk and not self.is_bound:
+            self.initial['clases'] = list(self.instance.en_clases.values_list('clase_id', flat=True))
+
+    def save(self, commit=True):
+        app = super().save(commit=True)
+        elegidas = {clase.pk for clase in self.cleaned_data.get('clases') or []}
+        actuales = set(app.en_clases.values_list('clase_id', flat=True))
+        # Quitar una clase borra su código de clase; los accesos de los alumnos se conservan
+        AppClase.objects.filter(app=app, clase_id__in=actuales - elegidas).delete()
+        AppClase.objects.bulk_create([AppClase(app=app, clase_id=clase_id) for clase_id in elegidas - actuales])
+        return app

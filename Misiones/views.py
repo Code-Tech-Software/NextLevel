@@ -15,7 +15,7 @@ from django.views.decorators.http import require_POST
 from . import gamificacion as juego
 from .minijuegos import datos_juego
 from .models import (
-    Alumno, ArticuloTienda, Clase, CompraAlumno, Mision, Nivel, OpcionRespuesta, ProgresoMision,
+    AccesoAlumno, Alumno, AppClase, ArticuloTienda, Clase, CompraAlumno, Mision, Nivel, OpcionRespuesta, ProgresoMision,
     RespuestaAlumno,
 )
 
@@ -569,8 +569,17 @@ def mi_progreso(request, alumno, clase):
         'avatares': avatares_unicos,
         'rangos': juego.info_rangos(),
         'mi_equipo': juego.equipo_de(alumno, clase),
+        'llavero': _llavero(alumno, clase),
         'seccion': 'perfil',
     })
+
+
+def _llavero(alumno, clase):
+    """Las apps de terceros de la clase con el código del grupo y, si hay, el usuario y la contraseña del alumno."""
+    enlaces = list(AppClase.objects.filter(clase=clase, app__activa=True).select_related('app')
+                   .order_by('app__nombre', 'app_id'))
+    accesos = {a.app_id: a for a in AccesoAlumno.objects.filter(alumno=alumno, app_id__in=[e.app_id for e in enlaces])}
+    return [{'app': e.app, 'codigo': e.codigo, 'nota': e.nota, 'acceso': accesos.get(e.app_id)} for e in enlaces]
 
 
 @require_POST

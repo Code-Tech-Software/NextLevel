@@ -22,11 +22,11 @@ from openpyxl.utils import get_column_letter
 from . import gamificacion as juego
 from . import minijuegos
 from .forms import (
-    AltaMasivaForm, AlumnoForm, ArticuloTiendaForm, ClaseForm, LogroForm, MisionDiariaForm, MisionForm,
+    AltaMasivaForm, AlumnoForm, AppExternaForm, ArticuloTiendaForm, ClaseForm, LogroForm, MisionDiariaForm, MisionForm,
     MundoForm, NivelForm, OtorgarLogroForm, separar_nombre,
 )
 from .models import (
-    Alumno, ArticuloTienda, Clase, CompraAlumno, Comportamiento, Equipo, Juego, Logro, LogroAlumno, MetaGrupo, Mision,
+    AccesoAlumno, Alumno, AppClase, AppExterna, ArticuloTienda, Clase, CompraAlumno, Comportamiento, Equipo, Juego, Logro, LogroAlumno, MetaGrupo, Mision,
     MisionDiaria, Movimiento, Mundo, Nivel, OpcionRespuesta, Pregunta, ProgresoMision,
 )
 from .templatetags.nextlevel import COLORES_CLASE, avatar_url
@@ -628,6 +628,7 @@ MODELOS_ELIMINABLES = {
     'meta': (MetaGrupo, 'metas_lista'),
     'comportamiento': (Comportamiento, 'comportamientos_lista'),
     'juego': (Juego, 'juegos_lista'),
+    'app': (AppExterna, 'apps_lista'),
 }
 
 
@@ -1135,7 +1136,8 @@ def ajustar_stock(request, pk):
 @login_required
 def alternar_activo(request, modelo, pk):
     modelos = {'articulo': ArticuloTienda, 'diaria': MisionDiaria, 'logro': Logro, 'mision': Mision,
-               'clase': Clase, 'alumno': Alumno, 'meta': MetaGrupo, 'comportamiento': Comportamiento, 'juego': Juego}
+               'clase': Clase, 'alumno': Alumno, 'meta': MetaGrupo, 'comportamiento': Comportamiento, 'juego': Juego,
+               'app': AppExterna}
     if modelo not in modelos:
         return HttpResponse(status=404)
     objeto = get_object_or_404(modelos[modelo], pk=pk)
@@ -1375,3 +1377,123 @@ def cargar_niveles(request):
         niveles = Nivel.objects.filter(clase_id=clase_id).order_by('mundo__orden', 'orden')
         return JsonResponse(list(niveles.values('id', 'nombre')), safe=False)
     return JsonResponse([], safe=False)
+
+
+# ========================
+# LLAVERO DE APPS: accesos de los alumnos a plataformas de terceros
+# ========================
+ICONOS_APPS = ['🔑', '🎓', '🧊', '🎮', '🐱', '🎨', '📘', '📝', '📊', '🤖', '🧩', '🌐', '☁️', '🧪', '🛰️', '💻']
+
+# Plantillas rápidas para no empezar en blanco (el profe puede cambiar todo)
+PLANTILLAS_APPS = [
+    {'nombre': 'Pinion Learn 6.1', 'icono': '🎓', 'url': '', 'etiqueta_codigo': '', 'etiqueta_usuario': 'Usuario',
+     'etiqueta_contrasena': 'Contraseña',
+     'instrucciones': '1. Abre Pinion con el botón «Abrir».\n2. Escribe tu usuario y tu contraseña tal cual: respeta '
+                      'mayúsculas y minúsculas.\n3. Si no entra, revisa que Bloq Mayús esté apagado.'},
+    {'nombre': 'Tinkercad', 'icono': '🧊', 'url': 'https://www.tinkercad.com/joinclass',
+     'etiqueta_codigo': 'Código de clase', 'etiqueta_usuario': 'Apodo', 'etiqueta_contrasena': 'Contraseña',
+     'instrucciones': '1. Abre Tinkercad con el botón «Abrir».\n2. Escribe el código de clase.\n3. Escribe tu apodo '
+                      '(y tu contraseña si te la pide).'},
+    {'nombre': 'MakeCode Arcade', 'icono': '🎮', 'url': 'https://arcade.makecode.com/', 'etiqueta_codigo': '',
+     'etiqueta_usuario': '', 'etiqueta_contrasena': '',
+     'instrucciones': 'No necesita cuenta: tus proyectos se guardan en el navegador de esa computadora. Al terminar, '
+                      'descárgalo o guarda su enlace para compartir.'},
+    {'nombre': 'Scratch', 'icono': '🐱', 'url': 'https://scratch.mit.edu/', 'etiqueta_codigo': '',
+     'etiqueta_usuario': 'Usuario', 'etiqueta_contrasena': 'Contraseña',
+     'instrucciones': '1. Abre Scratch y haz clic en «Iniciar sesión».\n2. Escribe tu usuario y tu contraseña.'},
+    {'nombre': 'Google Classroom', 'icono': '📘', 'url': 'https://classroom.google.com/',
+     'etiqueta_codigo': 'Código de clase', 'etiqueta_usuario': 'Correo', 'etiqueta_contrasena': 'Contraseña',
+     'instrucciones': '1. Entra con tu correo y tu contraseña.\n2. Si todavía no estás en la clase: «+» → Unirse a una '
+                      'clase → escribe el código de clase.'},
+    {'nombre': 'Canva', 'icono': '🎨', 'url': 'https://www.canva.com/', 'etiqueta_codigo': '',
+     'etiqueta_usuario': 'Correo', 'etiqueta_contrasena': 'Contraseña',
+     'instrucciones': '1. Abre Canva y elige «Iniciar sesión».\n2. Entra con el correo y la contraseña de abajo.'},
+]
+
+
+@login_required
+def apps_lista(request):
+    apps = []
+    for app in AppExterna.objects.prefetch_related('en_clases__clase'):
+        clases = []
+        for enlace in sorted(app.en_clases.all(), key=lambda e: (e.clase.grado, e.clase.grupo, e.clase.nombre)):
+            alumnos = enlace.clase.alumnos.filter(activo=True)
+            listos = AccesoAlumno.objects.filter(app=app, alumno__in=alumnos).count() if app.es_personal else 0
+            clases.append({'enlace': enlace, 'total': alumnos.count(), 'listos': listos})
+        apps.append({'app': app, 'clases': clases})
+    return render(request, 'Profesor/apps.html', {'apps': apps, 'plantillas': PLANTILLAS_APPS, 'seccion': 'apps'})
+
+
+@login_required
+def app_form(request, pk=None):
+    app = get_object_or_404(AppExterna, pk=pk) if pk else None
+    inicial = {}
+    if not app:
+        inicial = {'activa': True, 'icono': '🔑', 'etiqueta_usuario': 'Usuario', 'etiqueta_contrasena': 'Contraseña'}
+        plantilla = next((p for p in PLANTILLAS_APPS if p['nombre'] == request.GET.get('plantilla')), None)
+        inicial.update(plantilla or {})
+        if request.GET.get('clase', '').isdigit():
+            inicial['clases'] = [int(request.GET['clase'])]
+    form = AppExternaForm(request.POST or None, instance=app, initial=inicial)
+    if request.method == 'POST' and form.is_valid():
+        app = form.save()
+        return _guardado(request, f'«{app.nombre}» quedó en el llavero de apps.', reverse('apps_lista'))
+    return _formulario(request, 'Profesor/app_form.html', {
+        'form': form,
+        'app': app,
+        'clases': _clases_info(),
+        'seleccionadas': {str(v) for v in (form['clases'].value() or [])},
+        'iconos': ICONOS_APPS,
+        'plantillas': PLANTILLAS_APPS,
+        'seccion': 'apps',
+    })
+
+
+@login_required
+def app_accesos(request, pk, clase_id):
+    """La tabla para escribir (o pegar desde Excel) el usuario y la contraseña de cada alumno de una clase."""
+    enlace = get_object_or_404(AppClase.objects.select_related('app', 'clase'), app_id=pk, clase_id=clase_id)
+    app, clase = enlace.app, enlace.clase
+    orden = 'nombre' if request.GET.get('orden') == 'nombre' else 'apellido'
+    alumnos = list(clase.alumnos.filter(activo=True).order_by(
+        *(('nombre', 'apellido') if orden == 'nombre' else ('apellido', 'nombre'))))
+    accesos = {a.alumno_id: a for a in AccesoAlumno.objects.filter(app=app, alumno__in=alumnos)}
+
+    if request.method == 'POST':
+        if app.etiqueta_codigo:
+            enlace.codigo = request.POST.get('codigo', '').strip()[:120]
+        enlace.nota = request.POST.get('nota', '').strip()[:200]
+        enlace.save()
+        guardados = 0
+        for alumno in alumnos:
+            claves = (f'usuario_{alumno.id}', f'contrasena_{alumno.id}')
+            if not any(clave in request.POST for clave in claves):
+                continue    # no venía en la tabla (p. ej. se dio de alta después): no se toca
+            actual = accesos.get(alumno.id)
+            usuario = request.POST.get(claves[0], actual.usuario if actual else '').strip()[:150]
+            contrasena = request.POST.get(claves[1], actual.contrasena if actual else '').strip()[:150]
+            if usuario or contrasena:
+                if not actual:
+                    AccesoAlumno.objects.create(app=app, alumno=alumno, usuario=usuario, contrasena=contrasena)
+                elif (actual.usuario, actual.contrasena) != (usuario, contrasena):
+                    actual.usuario, actual.contrasena = usuario, contrasena
+                    actual.save(update_fields=['usuario', 'contrasena', 'actualizado'])
+                guardados += 1
+            elif actual:
+                actual.delete()
+        if app.es_personal:
+            messages.success(request, f'Listo: {guardados} de {len(alumnos)} alumnos tienen su acceso a {app.nombre}.')
+        else:
+            messages.success(request, f'Se guardaron los datos de {app.nombre} para {clase.nombre}.')
+        return redirect(f"{reverse('app_accesos', args=[app.id, clase.id])}?orden={orden}")
+
+    return render(request, 'Profesor/app_accesos.html', {
+        'app': app,
+        'clase': clase,
+        'enlace': enlace,
+        'orden': orden,
+        'filas': [{'alumno': alumno, 'acceso': accesos.get(alumno.id)} for alumno in alumnos],
+        'listos': len(accesos),
+        'otras_clases': app.en_clases.select_related('clase').exclude(clase=clase),
+        'seccion': 'apps',
+    })
