@@ -1210,3 +1210,121 @@ class VistaAlumnoTests(BaseJuego):
         self.clase.save()
         self.entrar()
         self.assertRedirects(self.client.get(f'{base}/dashboard/'), f'{base}/mi-cuenta/', fetch_redirect_response=False)
+
+
+class CursoTics4ActualizarTests(BaseJuego):
+    def test_actualizar_conserva_el_avance_y_lo_del_profe(self):
+        from io import StringIO
+
+        from django.core.management import call_command
+
+        from . import cursos
+        from .models import Juego, Nivel
+
+        curso = cursos.obtener('tics4')
+        call_command('cargar_curso', 'tics4', '--clase', str(self.clase.id), stdout=StringIO())
+        despegue = self.clase.mundos.get(nombre='Estación Despegue')
+        nivel = despegue.niveles.order_by('orden').first()
+
+        # Así quedaría una clase con la versión anterior: misiones viejas (con y sin avance) y una creada por el profe
+        vieja_con_avance = Mision.objects.create(clase=self.clase, nivel=nivel, tipo='texto', descripcion='x',
+                                                 nombre='Lluvia de meteoros: partes de la compu')
+        vieja_sin_avance = Mision.objects.create(clase=self.clase, nivel=nivel, tipo='texto', descripcion='x',
+                                                 nombre='Teclado misterioso: fila de arriba')
+        del_profe = Mision.objects.create(clase=self.clase, nivel=nivel, tipo='texto', descripcion='x',
+                                          nombre='Mi misión especial')
+        ProgresoMision.objects.create(alumno=self.alumno, mision=vieja_con_avance, estado='aprobado', puntuacion=100)
+        juego_viejo = Juego.objects.create(clase=self.clase, nombre='Mensaje secreto: binario del programador',
+                                           plantilla='mensaje')
+        nivel_viejo = Nivel.objects.create(clase=self.clase, mundo=despegue, nombre='El error es mi copiloto', orden=9)
+
+        # Una misión del curso que un alumno ya hizo, con su texto desactualizado
+        partes = Mision.objects.get(clase=self.clase, nombre='Partes de la nave')
+        ProgresoMision.objects.create(alumno=self.alumno, mision=partes, estado='aprobado', puntuacion=80)
+        preguntas = list(partes.preguntas.values_list('id', flat=True))
+        Mision.objects.filter(pk=partes.pk).update(descripcion='viejo', orden=99)
+
+        salida = StringIO()
+        call_command('cargar_curso', 'tics4', '--clase', str(self.clase.id), '--actualizar', stdout=salida)
+        self.assertIn('Se actualizó', salida.getvalue())
+
+        partes.refresh_from_db()
+        self.assertNotEqual(partes.descripcion, 'viejo')
+        self.assertEqual(partes.orden, 2)
+        self.assertTrue(ProgresoMision.objects.filter(mision=partes).exists())
+        self.assertEqual(list(partes.preguntas.values_list('id', flat=True)), preguntas)   # no cambiaron: no se rehacen
+
+        vieja_con_avance.refresh_from_db()
+        self.assertFalse(vieja_con_avance.activa)                          # se oculta: alguien ya la hizo
+        self.assertFalse(Mision.objects.filter(pk=vieja_sin_avance.pk).exists())
+        self.assertTrue(Mision.objects.get(pk=del_profe.pk).activa)        # lo del profe no se toca
+        self.assertFalse(Juego.objects.filter(pk=juego_viejo.pk).exists())
+        self.assertFalse(Nivel.objects.filter(pk=nivel_viejo.pk).exists())
+
+        # Nada duplicado: las misiones activas de los mundos del curso son exactamente las del curso (+ la del profe)
+        total = sum(len(n['misiones']) for w in curso['mundos'] for n in w['niveles'])
+        activas = Mision.objects.filter(clase=self.clase, activa=True,
+                                        nivel__mundo__nombre__in=[w['nombre'] for w in curso['mundos']])
+        self.assertEqual(activas.exclude(pk=del_profe.pk).count(), total)
+        self.assertEqual(Juego.objects.filter(clase=self.clase).count(), len(curso['juegos']))
+
+
+class CursoTics6Tests(BaseJuego):
+    def test_carga_el_curso_con_sus_temas_sin_duplicar(self):
+        from io import StringIO
+
+        from django.core.management import call_command
+
+        from . import cursos, minijuegos
+        from .models import Juego
+
+        call_command('cargar_curso', 'tics6', '--clase', str(self.clase.id), stdout=StringIO())
+        curso = cursos.obtener('tics6')
+        nuevos = self.clase.mundos.exclude(pk=self.mundo.pk)
+        self.assertEqual(nuevos.count(), len(curso['mundos']))
+        self.assertEqual(self.clase.misiones.filter(es_jefe=True).count(), len(curso['mundos']))
+        # Los temas oscuros nuevos existen en el modelo y tienen su emoji y decoraciones
+        temas = {t for t, _ in Mundo.TEMAS}
+        for mundo in nuevos:
+            self.assertIn(mundo.tema, temas)
+            self.assertIn(mundo.tema, juego.TEMA_INFO)
+
+        juegos = Juego.objects.filter(clase=self.clase)
+        self.assertEqual(juegos.count(), len(curso['juegos']))
+        for j in juegos:
+            self.assertTrue(j.misiones.exists(), j.nombre)
+            if j.plantilla == 'clasifica':
+                cfg = minijuegos.configuracion(j)
+                self.assertEqual([c['nombre'] for c in cfg['categorias']],
+                                 [c['nombre'] for c in j.configuracion['categorias']])
+        for mision in self.clase.misiones.filter(tipo='cuestionario').exclude(pk=self.m2.pk):
+            for pregunta in mision.preguntas.all():
+                self.assertEqual(pregunta.opciones.filter(es_correcta=True).count(), 1)
+
+        antes = self.clase.misiones.count()
+        call_command('cargar_curso', 'tics6', '--clase', str(self.clase.id), stdout=StringIO())
+        self.assertEqual(self.clase.misiones.count(), antes)
+
+        self.entrar()
+        self.assertContains(self.client.get(f'/clase/{self.clase.id}/dashboard/'), 'Estudio Abismo')
+
+    def test_titulo_del_codigo_y_secciones_de_la_mision(self):
+        from io import StringIO
+
+        from django.core.management import call_command
+
+        from .templatetags.nextlevel import texto_mision, titulo_codigo
+
+        call_command('cargar_curso', 'tics6', '--clase', str(self.clase.id), stdout=StringIO())
+        sprint = Mision.objects.get(clase=self.clase, nombre='Sprint 1: cada clic cuenta')
+        self.assertEqual(titulo_codigo(sprint), 'bloques de MakeCode')
+        self.assertIn('cuando el botón A sea presionado', sprint.codigo)
+        self.assertEqual(titulo_codigo(self.m1), 'sketch.ino')
+        self.assertEqual(titulo_codigo(Mision(tipo='evidencia', codigo='x', link='https://scratch.mit.edu/projects/editor/')),
+                         'bloques de Scratch')
+        self.assertEqual(titulo_codigo(Mision(tipo='evidencia', codigo='print(1)')), 'código')
+
+        html = texto_mision(sprint.descripcion)
+        self.assertIn('<div class="seccion-mision">⏱️ Así se trabaja hoy</div>', html)
+        self.assertIn('<div class="seccion-mision">🛠️ Paso a paso</div>', html)
+        self.assertIn('<b>📤 Entrega:</b>', html)

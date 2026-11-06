@@ -345,6 +345,11 @@ NOMBRES_MUNDO = {
     'espacio': ['Galaxia Arduino', 'Estación Espacial', 'Planeta de los Robots'],
     'ciudad': ['Ciudad Neón', 'Metrópolis Robótica', 'Ciudad de los Inventos'],
     'dulces': ['Tierra de Dulces', 'Fábrica de Golosinas', 'Reino de Caramelo'],
+    'abismo': ['Abismo Profundo', 'Fosa de los Datos', 'Base Submarina'],
+    'marte': ['Planeta Rojo', 'Colonia Marte', 'Cráter de los Rovers'],
+    'tormenta': ['Tormenta Eléctrica', 'Valle de la Lluvia', 'Ojo del Huracán'],
+    'futuro': ['Laboratorio del Futuro', 'Museo del Mañana', 'Fábrica de Inventos'],
+    'cyber': ['Cuartel Ciber', 'Zona Segura', 'Red de los Hackers Éticos'],
 }
 
 

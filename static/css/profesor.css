@@ -299,6 +299,11 @@ div.nl-choice-list { display: grid; grid-template-columns: repeat(auto-fill, min
 .muestra.espacio { background: linear-gradient(160deg, #1e1b4b, #4c1d95); }
 .muestra.ciudad { background: linear-gradient(160deg, #0f172a, #312e81); }
 .muestra.dulces { background: linear-gradient(160deg, #fdf2f8, #f9a8d4); }
+.muestra.abismo { background: linear-gradient(160deg, #021b29, #0c4a6e); }
+.muestra.marte { background: linear-gradient(160deg, #1f0a05, #7c2d12); }
+.muestra.tormenta { background: linear-gradient(160deg, #0b1222, #334155); }
+.muestra.futuro { background: linear-gradient(160deg, #08111f, #1e1b4b); }
+.muestra.cyber { background: linear-gradient(160deg, #020a05, #14352a); }
 
 /* Selector de tipo de misión */
 .tipos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: .5rem; }
@@ -1118,6 +1123,11 @@ body.modo-enfoque .contenido-p { max-width: none; }
 .tema-espacio { --t1: #8b5cf6; --t2: #5b21b6; --tf1: #1e1b4b; --tf2: #4c1d95; --tt: #ede9fe; }
 .tema-ciudad { --t1: #ec4899; --t2: #9d174d; --tf1: #0f172a; --tf2: #312e81; --tt: #fce7f3; }
 .tema-dulces { --t1: #f472b6; --t2: #be185d; --tf1: #fdf2f8; --tf2: #f9a8d4; --tt: #831843; }
+.tema-abismo { --t1: #14b8a6; --t2: #0f766e; --tf1: #021b29; --tf2: #0c4a6e; --tt: #ccfbf1; }
+.tema-marte { --t1: #f97316; --t2: #c2410c; --tf1: #1f0a05; --tf2: #7c2d12; --tt: #ffedd5; }
+.tema-tormenta { --t1: #60a5fa; --t2: #1d4ed8; --tf1: #0b1222; --tf2: #334155; --tt: #dbeafe; }
+.tema-futuro { --t1: #22d3ee; --t2: #0e7490; --tf1: #08111f; --tf2: #1e1b4b; --tt: #cffafe; }
+.tema-cyber { --t1: #22c55e; --t2: #15803d; --tf1: #020a05; --tf2: #14352a; --tt: #dcfce7; }
 
 .equipo-previa { --c1: #6366f1; --c2: #4338ca; background: linear-gradient(150deg, var(--c1), var(--c2)); color: #fff; border-radius: 22px; padding: 1.1rem; box-shadow: 0 5px 0 rgba(0, 0, 0, .18); }
 .equipo-previa .escudo { width: 56px; height: 56px; border-radius: 17px; background: rgba(255, 255, 255, .2); display: grid; place-items: center; font-size: 2.1rem; flex-shrink: 0; }

@@ -59,7 +59,7 @@
 
         <section class="g-card mb-4">
             <div class="g-card-titulo"><span>📜</span> Tu misión</div>
-            <div class="descripcion">{{ mision.descripcion|linebreaks }}</div>
+            <div class="descripcion">{{ mision.descripcion|texto_mision }}</div>
 
             {% if mision.imagen %}
                 <a href="#" class="mision-imagen mt-4" data-bs-toggle="modal" data-bs-target="#modalImagen">
@@ -80,7 +80,7 @@
                 <div class="terminal mt-4">
                     <div class="terminal-barra">
                         <i class="p" style="background:#ef4444"></i><i class="p" style="background:#f59e0b"></i><i class="p" style="background:#10b981"></i>
-                        <span class="titulo">sketch.ino</span>
+                        <span class="titulo">{{ mision|titulo_codigo }}</span>
                         <button type="button" class="copiar" data-objetivo="codigo-mision"><i class="bi bi-clipboard"></i> Copiar</button>
                     </div>
                     <pre><code id="codigo-mision">{{ mision.codigo }}</code></pre>
@@ -272,7 +272,7 @@
                                 </span>
                             </label>
                             <label for="comentario" class="fw-black mt-3 mb-2 d-block">💬 ¿Quieres contarle algo a tu profe? <span class="texto-suave">(opcional)</span></label>
-                            <textarea name="respuesta_texto" id="comentario" class="area-texto" style="min-height:90px" placeholder="Ej. Usé un LED rojo en vez de verde"></textarea>
+                            <textarea name="respuesta_texto" id="comentario" class="area-texto" style="min-height:90px" placeholder="Ej. Lo que más me costó fue…"></textarea>
                         {% endif %}
                     </section>
                 {% endif %}

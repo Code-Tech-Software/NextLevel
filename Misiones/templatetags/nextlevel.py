@@ -2,6 +2,8 @@ import re
 from urllib.parse import parse_qs, urlparse
 
 from django import template
+from django.utils.html import escape
+from django.utils.safestring import mark_safe
 
 from Misiones.gamificacion import TEMA_INFO, TIPO_INFO
 from Misiones.minijuegos import juegos_arcade
@@ -155,6 +157,41 @@ def contadores_profesor():
         'pedidos': CompraAlumno.objects.filter(estado='pendiente').count(),
         'stock_bajo': ArticuloTienda.objects.filter(activo=True, stock__isnull=False, stock__lte=3).count(),
     }
+
+
+SECCIONES_MISION = ('📘', '🧰', '🛠️', '✅', '🧩', '⏱️', '👥', '⚠️')
+ETIQUETAS_MISION = ('💡 Tip:', '📤 Entrega:')
+
+
+@register.filter
+def titulo_codigo(mision):
+    """El nombre del recuadro de código de una misión: el sketch de Arduino o los bloques de Scratch o MakeCode."""
+    codigo, link = mision.codigo or '', mision.link or ''
+    if mision.tipo == 'arduino' or 'void setup' in codigo:
+        return 'sketch.ino'
+    if 'makecode.com' in link:
+        return 'bloques de MakeCode'
+    if 'scratch.mit.edu' in link or '🏁' in codigo or 'OBJETO:' in codigo:
+        return 'bloques de Scratch'
+    return 'código'
+
+
+@register.filter
+def texto_mision(texto):
+    """La descripción de una misión con sus secciones («📘 Lo que necesitas saber», «🛠️ Paso a paso»…) resaltadas."""
+    bloques = []
+    for parrafo in re.split(r'\n\s*\n', (texto or '').strip()):
+        lineas = [escape(linea) for linea in parrafo.split('\n')]
+        if len(lineas) > 1 and lineas[0].startswith(SECCIONES_MISION) and len(lineas[0]) <= 40:
+            bloques.append(f'<div class="bloque-mision"><div class="seccion-mision">{lineas[0]}</div>'
+                           f'<p>{"<br>".join(lineas[1:])}</p></div>')
+            continue
+        html = '<br>'.join(lineas)
+        for etiqueta in ETIQUETAS_MISION:
+            if html.startswith(etiqueta):
+                html = f'<b>{etiqueta}</b>{html[len(etiqueta):]}'
+        bloques.append(f'<p>{html}</p>')
+    return mark_safe(''.join(bloques))
 
 
 @register.simple_tag

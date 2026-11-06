@@ -206,6 +206,11 @@ class Mundo(models.Model):
         ('espacio', '🚀 Espacio Exterior'),
         ('ciudad', '🌆 Ciudad Neón'),
         ('dulces', '🍭 Tierra de Dulces'),
+        ('abismo', '🦑 Abismo Profundo'),
+        ('marte', '🛰️ Planeta Rojo'),
+        ('tormenta', '⛈️ Tormenta Eléctrica'),
+        ('futuro', '🔮 Laboratorio del Futuro'),
+        ('cyber', '🛡️ Cuartel Ciber'),
     ]
     clase = models.ForeignKey(Clase, on_delete=models.CASCADE, related_name="mundos")
     nombre = models.CharField(max_length=100)
