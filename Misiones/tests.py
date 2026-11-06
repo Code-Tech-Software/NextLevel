@@ -1328,3 +1328,54 @@ class CursoTics6Tests(BaseJuego):
         self.assertIn('<div class="seccion-mision">⏱️ Así se trabaja hoy</div>', html)
         self.assertIn('<div class="seccion-mision">🛠️ Paso a paso</div>', html)
         self.assertIn('<b>📤 Entrega:</b>', html)
+
+
+class AvanceDelGrupoTests(BaseJuego):
+    """En la vista de alumno el profe ve quién completó cada misión y en cuál va cada alumno."""
+
+    def setUp(self):
+        super().setUp()
+        self.m3 = Mision.objects.create(clase=self.clase, nivel=self.nivel, nombre='Tres', descripcion='x',
+                                        tipo='evidencia', orden=3, xp_recompensa=50, monedas_recompensa=10)
+        self.beto = Alumno.objects.create(nombre='Beto', apellido='Ruiz', pin='1234')
+        self.caro = Alumno.objects.create(nombre='Caro', apellido='Díaz', pin='1234')
+        inactivo = Alumno.objects.create(nombre='Dani', apellido='Baja', pin='1234', activo=False)
+        for alumno in (self.beto, self.caro, inactivo):
+            alumno.clases.add(self.clase)
+        # Ana no ha hecho nada · Beto aprobó la 1 y espera revisión en la 2 · Caro aprobó la 1 y la 2
+        ProgresoMision.objects.create(alumno=self.beto, mision=self.m1, estado='aprobado', puntuacion=90)
+        ProgresoMision.objects.create(alumno=self.beto, mision=self.m2, estado='pendiente')
+        ProgresoMision.objects.create(alumno=self.caro, mision=self.m1, estado='aprobado', puntuacion=100)
+        ProgresoMision.objects.create(alumno=self.caro, mision=self.m2, estado='aprobado', puntuacion=70)
+
+    def test_calcula_quien_completo_y_donde_va_cada_alumno(self):
+        avance = juego.avance_del_grupo(self.clase)
+        self.assertEqual(avance['total'], 3)    # el alumno inactivo no cuenta
+        nombres = lambda lista: sorted(d['alumno'].nombre for d in lista)
+        self.assertEqual(nombres(avance['misiones'][self.m1.id]['completaron']), ['Beto', 'Caro'])
+        self.assertEqual(nombres(avance['misiones'][self.m1.id]['aqui']), ['Ana'])
+        self.assertEqual([(d['alumno'].nombre, d['estado']) for d in avance['misiones'][self.m2.id]['aqui']],
+                         [('Beto', 'pendiente')])
+        self.assertEqual(nombres(avance['misiones'][self.m3.id]['aqui']), ['Caro'])
+        self.assertEqual(sorted(a.nombre for a in avance['mundos'][self.mundo.id]['aqui']), ['Ana', 'Beto', 'Caro'])
+        self.assertEqual(avance['mundos'][self.mundo.id]['terminaron'], 0)
+
+    def test_solo_el_profe_lo_ve_en_la_vista_de_alumno(self):
+        base = f'/clase/{self.clase.id}'
+        self.entrar()
+        self.assertNotContains(self.client.get(f'{base}/mundo/{self.mundo.id}/'), 'avance-nodo')
+        self.assertNotContains(self.client.get(f'{base}/mision/{self.m1.id}/'), 'Avance del grupo')
+
+        self.client.force_login(User.objects.create_superuser('profe14', 'p@x.com', 'x'))
+        self.client.get(f'/profesor/clases/{self.clase.id}/vista-alumno/')
+        mapa = self.client.get(f'{base}/mundo/{self.mundo.id}/')
+        self.assertContains(mapa, '✅ 2/3')          # la misión 1 la completaron 2 de 3
+        self.assertContains(mapa, 'Beto Ruiz')
+        self.assertContains(mapa, '⏳ En revisión')
+        self.assertNotContains(mapa, '¡Empieza!')    # el globo del alumno no aplica al profe
+
+        mision = self.client.get(f'{base}/mision/{self.m2.id}/')
+        self.assertContains(mision, 'Avance del grupo')
+        self.assertContains(mision, 'Caro Díaz')
+        self.assertContains(mision, '1</b> de 3 la completaron (33%)')
+        self.assertContains(self.client.get(f'{base}/dashboard/'), '3 aquí')

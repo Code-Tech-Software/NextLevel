@@ -115,8 +115,13 @@
                                 <div class="numero">Mundo {{ m.numero }}</div>
                                 <div class="nombre">{{ m.nombre }}</div>
                                 <div class="meta">
-                                    <span>🏁 {{ m.aprobadas }}/{{ m.total }}</span>
-                                    <span>⭐ {{ m.estrellas }}/{{ m.estrellas_max }}</span>
+                                    {% if avance %}{% with grupo=avance.mundos|get_item:m.mundo.id %}
+                                        <span title="Alumnos que van en este mundo">📍 {{ grupo.aqui|length|default:0 }} aquí</span>
+                                        <span title="Alumnos que ya terminaron todo el mundo">🏁 {{ grupo.terminaron|default:0 }}/{{ avance.total }} terminaron</span>
+                                    {% endwith %}{% else %}
+                                        <span>🏁 {{ m.aprobadas }}/{{ m.total }}</span>
+                                        <span>⭐ {{ m.estrellas }}/{{ m.estrellas_max }}</span>
+                                    {% endif %}
                                 </div>
                             </div>
                         </a>

@@ -1,5 +1,5 @@
 """Mundo 3 · ES-DAT314 Mini-historia del dinero: del trueque al dinero digital, investigación con fuentes confiables,
-procesador de textos avanzado (estilos, imágenes, notas al pie, índice) trabajado en equipo en la nube y una hoja de
+procesador de textos avanzado (estilos, imágenes, notas al pie, índice) trabajado en dupla en la nube y una hoja de
 cálculo con precios en granos de cacao."""
 from .base import KIDDLE, clasifica, jefe, leccion, mision
 
@@ -33,7 +33,7 @@ JUEGOS = {
 MUNDO = {
     'nombre': 'La Ruta del Dinero', 'tema': 'desierto',
     'descripcion': 'ES-DAT314 · Mini-historia del dinero. ¿Qué tienen en común el cacao, la sal y las conchas cauri? '
-                   'Investiga cómo se inventó el dinero y escribe con tu equipo, en un documento compartido en la nube, '
+                   'Investiga cómo se inventó el dinero y escribe con tu dupla, en un documento compartido en la nube, '
                    'una mini-historia con estilos, imágenes, notas al pie e índice automático. Pregunta guía: ¿cómo se '
                    'inventó el dinero?',
     'niveles': [
@@ -110,7 +110,8 @@ MUNDO = {
                 intro='Ordena la historia: ¿esta forma de pagar es de antes de las monedas, de monedas y billetes o del '
                       'dinero digital?'), juego='clasifica_eras_dinero'),
             mision('Investiga como pro', 'texto', leccion(
-                intro='Cada equipo investiga una parada de la ruta del dinero. Tu profe asigna el tema.',
+                intro='Cada dupla investiga una parada de la ruta del dinero. Tu profe asigna el tema (varias duplas '
+                      'pueden tener el mismo).',
                 saber=['Temas: 1) Mexicas y mayas: cacao y mantas · 2) China: conchas cauri y papel moneda · 3) Lidia: '
                        'las primeras monedas · 4) Roma: la sal y los denarios · 5) Isla de Yap: las piedras rai gigantes '
                        '· 6) Nueva España: el real de a ocho · 7) Hoy: tarjetas, transferencias y criptomonedas.',
@@ -181,25 +182,25 @@ MUNDO = {
                 saber=['Ctrl + C copia, Ctrl + V pega, Ctrl + X corta, Ctrl + Z deshace y Ctrl + Y rehace.',
                        'Primero se selecciona y luego se usa el atajo.']), juego='atajos_editor'),
         ]},
-        {'nombre': 'Edición en equipo', 'cofre': 35, 'misiones': [
+        {'nombre': 'Edición en dupla', 'cofre': 35, 'misiones': [
             mision('El documento compartido', 'presencial', leccion(
-                intro='En el trabajo real, 5 personas escriben el mismo documento al mismo tiempo desde distintas '
-                      'computadoras. Hoy lo arman como equipo en la nube.',
+                intro='En el trabajo real, varias personas escriben el mismo documento al mismo tiempo desde distintas '
+                      'computadoras. Hoy lo arman tú y tu dupla en la nube, cada quien desde su computadora.',
                 saber=['Documento en la nube: se guarda en internet (Google Drive u OneDrive) y todos ven los cambios al '
                        'instante.',
                        'Al compartir eliges el permiso: Editor (puede cambiar todo), Comentarista (solo comenta) o '
                        'Lector (solo ve).',
-                       'Se comparte solo con los correos de tu equipo, nunca «con cualquier persona que tenga el '
-                       'enlace».'],
-                roles=['Editor en jefe: crea el documento, lo comparte y arma la estructura de títulos.',
-                       'Redactores: cada uno escribe su sección (trueque, mercancías, monedas, billetes, dinero digital).',
-                       'Revisor: lee todo y deja comentarios.',
-                       'Diseñador: cuida que las imágenes y los estilos se vean iguales en todo el documento.'],
-                pasos=['El editor en jefe crea «La ruta del dinero – Equipo X» y lo comparte como Editor con el equipo.',
+                       'Se comparte solo con el correo de tu dupla y el de tu profe, nunca «con cualquier persona que '
+                       'tenga el enlace».'],
+                roles=['Editor/a en jefe: crea el documento, lo comparte y arma la estructura de títulos.',
+                       'Diseñador/a: cuida que las imágenes y los estilos se vean iguales en todo el documento.',
+                       'Los dos son redactores: uno escribe trueque, mercancías y monedas; el otro billetes, dinero '
+                       'digital y la parte de su investigación.'],
+                pasos=['El editor en jefe crea «La ruta del dinero – Dupla X» y lo comparte como Editor con su dupla.',
                        'El editor en jefe escribe los Título 1 de cada sección para que nadie se encime.',
-                       'Cada redactor escribe SOLO en su sección.',
-                       'Regla de oro: nunca borres el texto de otro; si algo está mal, comenta.'],
-                logro=['Todos los integrantes escriben en el mismo documento y cada sección tiene dueño.']), xp=50),
+                       'Cada quien escribe SOLO en sus secciones.',
+                       'Regla de oro: nunca borres el texto del otro; si algo está mal, comenta.'],
+                logro=['Los dos escriben en el mismo documento y cada sección tiene dueño.']), xp=50),
             mision('Comentarios y sugerencias', 'evidencia', leccion(
                 intro='Revisar el trabajo de otro sin pisarlo es una habilidad profesional. Para eso existen los '
                       'comentarios y el modo sugerencia.',
@@ -242,24 +243,25 @@ MUNDO = {
                        'actualizar).',
                        'Encabezado: el texto de arriba que se repite en todas las páginas. Pie de página: el de abajo.',
                        'PDF: un formato que se ve igual en cualquier computadora y no se desacomoda.'],
-                pasos=['Crea una portada: título, nombre del equipo, grupo y una imagen.',
+                pasos=['Crea una portada: título, nombres de la dupla, grupo y una imagen.',
                        'Después de la portada, inserta el índice automático.',
-                       'Agrega en el encabezado el nombre del equipo y en el pie el número de página.',
+                       'Agrega en el encabezado el nombre de la dupla y en el pie el número de página.',
                        'Revisa la ortografía (F7 en Word; Herramientas → Ortografía en Google Docs).',
                        'Descárgalo en PDF (Word: Archivo → Guardar como → PDF; Google Docs: Archivo → Descargar → PDF).'],
                 logro=['El documento tiene portada, índice automático, encabezado, números de página y está en PDF.'],
                 entrega='sube el PDF o una captura de la portada y el índice.'), xp=110, monedas=30),
         ]},
         {'nombre': 'Cierre de edición', 'cofre': 40, 'misiones': [
-            mision('Revisión entre equipos', 'presencial', leccion(
-                intro='Antes de publicar, otro equipo revisa su documento con una lista de cotejo.',
-                dinamica=['Cada equipo intercambia su documento con otro (el profe dice con cuál).',
+            mision('Revisión entre duplas', 'presencial', leccion(
+                intro='Antes de publicar, otra dupla revisa su documento con una lista de cotejo.',
+                dinamica=['Cada dupla comparte el enlace de su documento con otra dupla como Comentarista (el profe dice '
+                          'con cuál). Nadie se mueve de su lugar.',
                           '10 minutos de revisión en silencio y 3 minutos para explicar lo que encontraron.'],
                 pasos=['Revisen: ¿tiene portada, índice automático, estilos, imágenes con pie de foto, notas al pie y '
                        'fuentes?',
                        '¿Los datos tienen sentido? ¿Hay faltas de ortografía?',
                        'Dejen 2 comentarios de algo que funciona y 2 de algo que se puede mejorar.',
-                       'Cada equipo corrige su documento con los comentarios recibidos.'],
+                       'Cada dupla corrige su documento con los comentarios recibidos.'],
                 logro=['Su revisión es concreta y su documento quedó corregido.']), xp=50),
             jefe('Jefe: La Inflación', leccion(
                 intro='La Inflación hace que todo cueste más y que el dinero valga menos. Derrótala demostrando que '
@@ -279,7 +281,7 @@ MUNDO = {
                  ['El número de página', 'El título del documento', 'Una imagen pequeña']),
                 ('¿Qué fórmula multiplica el precio de B2 por la cantidad de C2?', '=B2*C2',
                  ['=B2+C2', 'B2xC2', '=SUMA(B2)']),
-                ('¿Con qué permiso compartes el documento con tu equipo para que todos escriban?', 'Editor',
+                ('¿Con qué permiso compartes el documento con tu dupla para que los dos escriban?', 'Editor',
                  ['Lector', 'Comentarista', 'Cualquier persona con el enlace']),
                 ('¿Cuál es una señal de fuente confiable?', 'Tiene autor, fecha y dice de dónde saca sus datos',
                  ['Tiene muchos anuncios', 'Promete hacerte rico', 'Es un mensaje reenviado']),

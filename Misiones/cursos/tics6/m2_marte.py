@@ -82,11 +82,11 @@ MUNDO = {
             mision('Lluvia de problemas marcianos', 'presencial', leccion(
                 intro='Antes de inventar soluciones hay que tener claros TODOS los problemas. Los equipos de la NASA '
                       'hacen esto con notas adhesivas.',
-                material=['Notas adhesivas o papelitos', 'Plumones', 'Un pedazo de pizarrón o una cartulina por equipo'],
-                dinamica=['Equipos de 4. El Productor controla el tiempo.',
+                material=['Notas adhesivas o papelitos', 'Plumones', 'Una hoja tamaño carta o media cartulina por dupla'],
+                dinamica=['En duplas, cada una en su lugar. Uno de los dos es el cronometrista.',
                           'Ronda 1 (4 minutos, en silencio): cada quien escribe problemas de vivir en Marte, uno por '
                           'papel.',
-                          'Ronda 2 (4 minutos, en voz baja): pegan todo y agrupan los papeles parecidos.',
+                          'Ronda 2 (4 minutos, en voz baja): juntan los papeles de los dos y agrupan los parecidos.',
                           'Regla: en la lluvia de ideas no se critica ninguna idea.'],
                 pasos=['Escriban problemas: radiación, frío, aire, comida, agua, tormentas de polvo, comunicación, '
                        'gravedad baja, soledad…',
@@ -100,7 +100,7 @@ MUNDO = {
                        'Truco «¿Y si…?»: cambia una parte del problema. ¿Y si la casa estuviera bajo tierra? ¿Y si el '
                        'escudo fuera de agua?',
                        'Truco «combina»: une dos cosas que no tienen que ver (una sombrilla + un imán).'],
-                pasos=['Elige el problema que más votó tu equipo (o la radiación).',
+                pasos=['Elige el problema que más votó tu dupla (o la radiación).',
                        'Escribe 1 idea normal, 1 idea muy loca y 1 idea que combine las dos.',
                        'Califica cada idea del 1 al 5 en: ¿es novedosa?, ¿es útil?, ¿es posible?',
                        'Elige tu mejor idea y explica en 3 renglones cómo funcionaría.'],
@@ -139,17 +139,19 @@ MUNDO = {
                  ['Encontrar extraterrestres', 'Llenar Marte de agua', 'Crear un campo magnético']),
             ]),
             mision('Ficha técnica del escudo', 'evidencia', leccion(
-                intro='Tu estudio presenta su propuesta de escudo como lo haría un equipo de ingeniería: en una ficha '
+                intro='Tu dupla presenta su propuesta de escudo como lo haría un equipo de ingeniería: en una ficha '
                       'técnica clara.',
-                roles=['Piloto: escribe la ficha en la computadora.', 'Copiloto: revisa ortografía y datos.',
-                       'Tester: hace el dibujo con las partes señaladas.', 'Productor: cuida el tiempo (20 minutos).'],
+                roles=['Redactor/a: escribe la ficha en la computadora.',
+                       'Dibujante: hace el dibujo con las partes señaladas.',
+                       'A los 10 minutos cambian: quien dibujó revisa la ortografía y los datos de la ficha. Tiempo total: '
+                       '20 minutos.'],
                 pasos=['Abre un documento nuevo y ponle de título el nombre de su escudo.',
                        'Problema que resuelve (con un dato real del expediente de Marte).',
                        'Cómo funciona, en 3 pasos numerados.',
                        'Materiales y de dónde sale la energía.',
                        '¿A quién beneficia? (el bien común) y ¿qué riesgo tiene y cómo lo cuidarían?',
                        'Inserta una foto del dibujo con las partes señaladas.',
-                       'Guarda como Escudo_NombreDelEstudio en su carpeta.'],
+                       'Guarda como Escudo_NombreDelEstudio en tu carpeta (los dos suben la misma ficha).'],
                 logro=['La ficha tiene problema, funcionamiento en 3 pasos, materiales, beneficio, riesgo y dibujo.'],
                 entrega='sube una captura o el PDF de su ficha técnica.'), xp=100, monedas=30),
             mision('Divide y vencerás', 'evidencia', leccion(
@@ -282,7 +284,8 @@ cuando el botón arriba sea presionado
                 intro='Un torneo también es un problema grande. Apliquen lo que ya saben: divídanlo en subproblemas y '
                       'repártanlos.',
                 dinamica=['Todo el grupo junto, con el profe como moderador. Se habla levantando la mano.',
-                          'Cada equipo se queda con un subproblema y tiene 10 minutos para resolverlo.'],
+                          'Cada dupla, desde su lugar, se queda con un subproblema y tiene 10 minutos para resolverlo. Si '
+                          'dos duplas tienen el mismo, al final comparan y el profe elige la mejor propuesta.'],
                 pasos=['Reglas: ¿cuánto dura cada partida?, ¿qué pasa en un empate? (por ejemplo, muerte súbita de 20 '
                        'segundos).',
                        'Formato: ¿quién juega contra quién?, ¿cuántas rondas? Dibujen la tabla de eliminación.',
@@ -299,7 +302,7 @@ cuando el botón arriba sea presionado
                        'Toda fórmula empieza con «=».',
                        '=MAX(B2:B30) da el puntaje más alto, =MIN(B2:B30) el más bajo y =PROMEDIO(B2:B30) el promedio.',
                        'B2:B30 significa «de la celda B2 a la B30».'],
-                pasos=['Columna A: Jugador · Columna B: Juego (de qué estudio) · Columna C: Puntaje · Columna D: Vidas '
+                pasos=['Columna A: Jugador · Columna B: Juego (de quién) · Columna C: Puntaje · Columna D: Vidas '
                        'que le quedaron.',
                        'Pon en negritas y con color de relleno la primera fila (los encabezados).',
                        'Debajo de la tabla calcula el récord (=MAX), el más bajo (=MIN) y el promedio (=PROMEDIO).',
@@ -308,11 +311,11 @@ cuando el botón arriba sea presionado
                 logro=['Las fórmulas calculan solas: si cambias un puntaje, el récord y el promedio se actualizan.'],
                 entrega='sube una captura de tu tabla con las fórmulas.'), xp=90, monedas=25),
             mision('¡Torneo marciano!', 'presencial', leccion(
-                intro='Llegó el día. Cada jugador juega el juego de OTRO estudio: así probamos de verdad las evidencias '
+                intro='Llegó el día. Cada jugador juega el juego de OTRA dupla: así probamos de verdad las evidencias '
                       'que crearon.',
                 dinamica=['Cada uno con su rol del torneo. El árbitro tiene la última palabra.',
                           'Partidas de 60 segundos. El anotador registra los puntajes en la tabla de récords.',
-                          'Regla de oro: se celebra con los brazos, no con gritos. El equipo que grite pierde su turno.'],
+                          'Regla de oro: se celebra con los brazos, no con gritos. Quien grite pierde su turno.'],
                 pasos=['El presentador explica las reglas y el formato.',
                        'Primera ronda: todos juegan una partida en un juego ajeno.',
                        'Los mejores puntajes pasan a la final.',

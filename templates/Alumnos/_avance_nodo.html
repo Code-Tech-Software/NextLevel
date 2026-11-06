@@ -1,0 +1,39 @@
+{% load nextlevel %}{% comment %}
+Avance del grupo bajo una misión del mapa (solo en la vista de alumno del profe).
+Recibe datos_avance = {'completaron': [...], 'aqui': [...]} y total = alumnos de la clase.
+{% endcomment %}{% if datos_avance %}
+<details class="avance-nodo">
+    <summary title="Avance del grupo: toca para ver quiénes">
+        <span class="hechos">✅ {{ datos_avance.completaron|length }}/{{ total }}</span>
+        {% if datos_avance.aqui %}
+            <span class="caritas" aria-label="{{ datos_avance.aqui|length }} van aquí">
+                {% for d in datos_avance.aqui|slice:":3" %}<img src="{{ d.alumno|avatar_url }}" alt="" class="carita">{% endfor %}
+                {% if datos_avance.aqui|length > 3 %}<span class="mas">+{{ datos_avance.aqui|length|restar:3 }}</span>{% endif %}
+            </span>
+        {% endif %}
+    </summary>
+    <div class="avance-panel">
+        <div class="titulo">📍 Van aquí ({{ datos_avance.aqui|length }})</div>
+        {% for d in datos_avance.aqui %}
+            <div class="fila">
+                <img src="{{ d.alumno|avatar_url }}" alt="" class="carita">
+                <span class="nombre">{{ d.alumno.nombre }} {{ d.alumno.apellido }}</span>
+                {% if d.estado == 'pendiente' %}<span class="etq revision">⏳ En revisión</span>
+                {% elif d.estado == 'rechazado' %}<span class="etq corregir">🔧 Corrigiendo</span>{% endif %}
+            </div>
+        {% empty %}
+            <div class="vacio">Nadie va en esta misión ahora.</div>
+        {% endfor %}
+        <div class="titulo">✅ La completaron ({{ datos_avance.completaron|length }})</div>
+        {% for d in datos_avance.completaron %}
+            <div class="fila">
+                <img src="{{ d.alumno|avatar_url }}" alt="" class="carita">
+                <span class="nombre">{{ d.alumno.nombre }} {{ d.alumno.apellido }}</span>
+                <span class="estrellas-mini">{% for e in d.progreso.estrellas|estrellas %}<span class="{% if not e %}apagada{% endif %}">⭐</span>{% endfor %}</span>
+            </div>
+        {% empty %}
+            <div class="vacio">Todavía nadie.</div>
+        {% endfor %}
+    </div>
+</details>
+{% endif %}

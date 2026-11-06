@@ -2,9 +2,9 @@
 Tinkercad y el modelado 3D de un inspirómetro (incentivador respiratorio) paso a paso."""
 from .base import TINKERCAD, clasifica, jefe, leccion, mision, tinkercad
 
-PAREJAS_3D = ['En parejas frente a una computadora: Piloto (mouse) y Copiloto (lee las medidas y revisa).',
-              'Cambien de lugar a la mitad de la clase, cuando el profe lo indique.',
-              'Si se atoran: primero pregunten a 3 compañeros y después al profe («3 antes de mí»).']
+PAREJAS_3D = ['Cada quien modela en su computadora.',
+              'Tu dupla (el compañero de al lado) revisa tus medidas al terminar cada paso, y tú las suyas.',
+              '¿Atorados? Primero lo intentan entre los dos; si no sale, mano arriba y esperan al profe.']
 
 JUEGOS = {
     'clasifica_ejes': clasifica('¿Eje X, Y o Z?', '🧭', 'X es izquierda-derecha, Y es adelante-atrás y Z es '
@@ -237,7 +237,7 @@ MUNDO = {
         {'nombre': 'Expo del laboratorio', 'cofre': 40, 'misiones': [
             mision('Expo de inspirómetros', 'presencial', leccion(
                 intro='Los modelos se presentan como en una feria de ciencias.',
-                dinamica=['Galería: cada pareja deja su modelo abierto en pantalla y su plano a un lado.',
+                dinamica=['Galería: cada quien deja su modelo abierto en pantalla y su plano a un lado.',
                           'Recorrido en orden, en el sentido de las manecillas del reloj, 1 minuto por computadora.',
                           'Se observa con las manos atrás: nadie toca el mouse de otro.'],
                 pasos=['Recorre los modelos de tus compañeros.',

@@ -1404,3 +1404,64 @@ a.maquina:hover { transform: translateY(-6px); color: var(--texto); box-shadow: 
     font-weight: 900; color: var(--navy); margin-bottom: .3rem; padding-bottom: .2rem;
     border-bottom: 2px dashed #e2e8f0;
 }
+
+/* ---------- Avance del grupo (solo en la vista de alumno del profe) ---------- */
+.avance-nodo { margin-top: .4rem; position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; }
+.avance-nodo summary {
+    list-style: none; cursor: pointer; user-select: none;
+    display: inline-flex; align-items: center; gap: .4rem;
+    background: rgba(255, 255, 255, .95); color: var(--navy);
+    border: 2px solid rgba(15, 23, 42, .12); border-radius: 999px;
+    padding: .2rem .55rem; font-weight: 900; font-size: .78rem; white-space: nowrap;
+    box-shadow: 0 3px 0 rgba(0, 0, 0, .12);
+}
+.avance-nodo summary::-webkit-details-marker { display: none; }
+.avance-nodo[open] summary { background: var(--navy); color: #fff; }
+.avance-nodo .caritas { display: inline-flex; align-items: center; }
+.avance-nodo .caritas .carita { margin-left: -7px; border: 2px solid #fff; }
+.avance-nodo .caritas .carita:first-child { margin-left: 0; }
+.avance-nodo .mas { margin-left: 3px; font-size: .72rem; }
+.carita { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; background: #e2e8f0; flex-shrink: 0; }
+.avance-panel {
+    margin-top: .4rem; width: min(270px, 82vw); max-height: 260px; overflow-y: auto;
+    background: #fff; color: var(--texto); text-align: left;
+    border-radius: 16px; padding: .6rem .7rem; box-shadow: 0 8px 24px rgba(0, 0, 0, .25);
+}
+.avance-panel .titulo, .grupo-avance .titulo {
+    font-weight: 900; font-size: .76rem; text-transform: uppercase; letter-spacing: .5px; color: var(--navy);
+    margin: .35rem 0 .25rem;
+}
+.avance-panel .titulo:first-child, .grupo-avance .titulo:first-child { margin-top: 0; }
+.avance-panel .fila, .grupo-avance .fila {
+    display: flex; align-items: center; gap: .45rem; padding: .22rem 0;
+    font-weight: 700; font-size: .84rem; color: var(--texto); text-decoration: none;
+}
+.avance-panel .nombre, .grupo-avance .nombre { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.avance-panel .vacio, .grupo-avance .vacio { font-size: .82rem; font-weight: 700; color: #94a3b8; padding: .2rem 0; }
+.avance-panel .estrellas-mini { font-size: .7rem; white-space: nowrap; }
+.avance-panel .estrellas-mini .apagada { filter: grayscale(1); opacity: .35; }
+.etq {
+    font-size: .7rem; font-weight: 900; white-space: nowrap; border-radius: 999px; padding: .1rem .45rem;
+    background: #f1f5f9; color: #475569;
+}
+.etq.revision { background: #fff7ed; color: #c2410c; }
+.etq.corregir { background: #fef2f2; color: #b91c1c; }
+
+.avance-mision { border-color: #ddd6fe; box-shadow: 0 6px 0 #c4b5fd; }
+.avance-mision .g-card-titulo { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.avance-mision .solo-profe {
+    margin-left: auto; font-size: .7rem; font-weight: 900; text-transform: uppercase; letter-spacing: .5px;
+    color: #6d28d9; background: #f5f3ff; border-radius: 999px; padding: .2rem .6rem;
+}
+.barra-avance { height: 12px; border-radius: 999px; background: #e2e8f0; overflow: hidden; margin: .2rem 0 .6rem; }
+.barra-avance span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #22c55e, #16a34a); }
+.resumen-avance { display: flex; flex-wrap: wrap; gap: .35rem 1rem; font-size: .88rem; font-weight: 700; margin-bottom: 1rem; }
+.grupo-avance { background: #f8fafc; border-radius: 16px; padding: .7rem .8rem; height: 100%; }
+.grupo-avance .fila { border-radius: 10px; padding: .25rem .35rem; margin: 0 -.35rem; }
+.grupo-avance a.fila:hover { background: #eef2ff; }
+.grupo-avance .carita { width: 26px; height: 26px; }
+.grupo-avance .calif { font-weight: 900; font-size: .8rem; border-radius: 8px; padding: .05rem .4rem; background: #f1f5f9; }
+.grupo-avance .calif.a { background: #dcfce7; color: #15803d; }
+.grupo-avance .calif.b { background: #e0f2fe; color: #0369a1; }
+.grupo-avance .calif.c { background: #fef9c3; color: #a16207; }
+.grupo-avance .calif.d { background: #fee2e2; color: #b91c1c; }

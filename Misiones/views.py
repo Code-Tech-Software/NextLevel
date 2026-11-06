@@ -226,6 +226,7 @@ def dashboard_alumno(request, alumno, clase):
         'mi_posicion': mi_posicion,
         'total_jugadores': len(ranking),
         'logros_recientes': alumno.logros.select_related('logro')[:4],
+        'avance': juego.avance_del_grupo(clase) if alumno.es_prueba else None,
         'seccion': 'mapa',
     })
 
@@ -245,6 +246,7 @@ def ver_mundo(request, alumno, clase, mundo_id):
         'datos': mundo,
         'anterior': ruta['mundos'][indice - 1] if indice > 0 else None,
         'siguiente': ruta['mundos'][indice + 1] if indice + 1 < len(ruta['mundos']) else None,
+        'avance': juego.avance_del_grupo(clase) if alumno.es_prueba else None,
         'seccion': 'mapa',
     })
 
@@ -281,8 +283,31 @@ def ver_mision(request, alumno, clase, mision_id):
         'info': juego.TIPO_INFO.get(mision.tipo),
         'juego_datos': datos_juego(mision.juego) if mision.tipo == 'juego' and mision.juego and mision.juego.activo else None,
         'resultado': request.session.pop('resultado_mision', None),
+        'avance': _avance_de_mision(clase, mision) if alumno.es_prueba else None,
         'seccion': 'mapa',
     })
+
+
+def _avance_de_mision(clase, mision):
+    """Quién completó la misión y quién va en ella, para el panel que ve el profe en la vista de alumno."""
+    grupo = juego.avance_del_grupo(clase)
+    datos = grupo['misiones'].get(mision.id)
+    if datos is None:
+        # Misión oculta: nadie «va» en ella, pero puede haber alumnos que ya la hicieron
+        datos = {'aqui': [], 'completaron': [
+            {'alumno': p.alumno, 'progreso': p}
+            for p in ProgresoMision.objects.filter(mision=mision, estado='aprobado', alumno__activo=True,
+                                                   alumno__clases=clase).select_related('alumno')]}
+    pendientes = [d for d in datos['aqui'] if d['estado'] == 'pendiente']
+    por_corregir = [d for d in datos['aqui'] if d['estado'] == 'rechazado']
+    empezando = [d for d in datos['aqui'] if d['estado'] not in ('pendiente', 'rechazado')]
+    hechos = len(datos['completaron'])
+    return {
+        'total': grupo['total'], 'completaron': datos['completaron'], 'pendientes': pendientes,
+        'por_corregir': por_corregir, 'empezando': empezando,
+        'no_llegan': max(grupo['total'] - hechos - len(datos['aqui']), 0),
+        'pct': int(hechos * 100 / grupo['total']) if grupo['total'] else 0,
+    }
 
 
 @require_POST

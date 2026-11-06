@@ -140,7 +140,7 @@ MUNDO = {
                        '3) Cierra y vuelve a abrir el programa o la página (F5 recarga).',
                        '4) Si un programa se congela: Ctrl + Shift + Esc abre el Administrador de tareas → selecciona el '
                        'programa → Finalizar tarea.',
-                       '5) Reinicia el equipo. 6) Si sigue igual, pide ayuda y cuenta qué ya intentaste.',
+                       '5) Reinicia la computadora. 6) Si sigue igual, pide ayuda y cuenta qué ya intentaste.',
                        'Para no perder trabajo: guarda seguido o usa documentos en la nube que se guardan solos.']),
                 xp=60, preguntas=[
                 ('¿Cuál es el primer paso para resolver una falla?', 'Describir bien qué pasó',

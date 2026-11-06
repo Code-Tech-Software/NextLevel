@@ -398,6 +398,55 @@ def progreso_logros(alumno):
 # ========================
 # RUTA DEL MAPA (mundos → niveles → misiones)
 # ========================
+def misiones_en_orden(clase):
+    """Las misiones visibles de la clase en el orden del mapa: mundo, nivel y misión."""
+    misiones = list(Mision.objects.filter(clase=clase, activa=True).select_related('nivel', 'nivel__mundo'))
+    misiones.sort(key=lambda m: (
+        m.nivel.mundo.orden if m.nivel.mundo else 10 ** 6,
+        m.nivel.mundo_id or 0,
+        m.nivel.orden, m.nivel_id, m.orden, m.id,
+    ))
+    return misiones
+
+
+def avance_del_grupo(clase):
+    """Para la vista de alumno del profe: en cada misión, quién ya la completó y quién va en ella.
+
+    Con la misma regla del mapa: la misión en la que «va» un alumno es la primera que no tiene aprobada (puede estar
+    empezándola, esperando revisión o corrigiéndola). Devuelve {'total', 'misiones': {id: {...}}, 'mundos': {id: {...}}}.
+    """
+    misiones = misiones_en_orden(clase)
+    alumnos = list(clase.alumnos.filter(activo=True).order_by('nombre', 'apellido'))
+    progresos = {
+        (p.alumno_id, p.mision_id): p
+        for p in ProgresoMision.objects.filter(mision__clase=clase, alumno__in=alumnos)
+    }
+    por_mision = {m.id: {'completaron': [], 'aqui': []} for m in misiones}
+    por_mundo = {}
+    for mision in misiones:
+        por_mundo.setdefault(mision.nivel.mundo_id or 0, {'aqui': [], 'terminaron': 0, 'misiones': 0})['misiones'] += 1
+
+    for alumno in alumnos:
+        en_camino = True
+        aprobadas_por_mundo = {}
+        for mision in misiones:
+            progreso = progresos.get((alumno.id, mision.id))
+            estado = progreso.estado if progreso else 'nuevo'
+            if estado == 'aprobado':
+                por_mision[mision.id]['completaron'].append({'alumno': alumno, 'progreso': progreso})
+                clave = mision.nivel.mundo_id or 0
+                aprobadas_por_mundo[clave] = aprobadas_por_mundo.get(clave, 0) + 1
+            elif en_camino:
+                en_camino = False
+                por_mision[mision.id]['aqui'].append({'alumno': alumno, 'estado': estado})
+                por_mundo[mision.nivel.mundo_id or 0]['aqui'].append(alumno)
+        for clave, aprobadas in aprobadas_por_mundo.items():
+            if aprobadas == por_mundo[clave]['misiones']:
+                por_mundo[clave]['terminaron'] += 1
+
+    return {'total': len(alumnos), 'misiones': por_mision, 'mundos': por_mundo}
+
+
 def construir_ruta(alumno, clase):
     """
     Arma el mapa del alumno. LA REGLA DE ORO se mantiene: si una misión no está
@@ -405,12 +454,7 @@ def construir_ruta(alumno, clase):
     En la vista de alumno del profe (alumno de prueba) todo está desbloqueado.
     """
     todo_abierto = alumno.es_prueba
-    misiones = list(Mision.objects.filter(clase=clase, activa=True).select_related('nivel', 'nivel__mundo'))
-    misiones.sort(key=lambda m: (
-        m.nivel.mundo.orden if m.nivel.mundo else 10 ** 6,
-        m.nivel.mundo_id or 0,
-        m.nivel.orden, m.nivel_id, m.orden, m.id,
-    ))
+    misiones = misiones_en_orden(clase)
     progresos = {p.mision_id: p for p in ProgresoMision.objects.filter(alumno=alumno, mision__clase=clase)}
     cofres = {c.nivel_id: c for c in CofreAbierto.objects.filter(alumno=alumno, nivel__clase=clase)}
 
@@ -842,7 +886,8 @@ def metas_visibles(clase, dias=7):
 __all__ = [
     'TIPO_INFO', 'TEMA_INFO', 'notificar', 'otorgar', 'actualizar_racha', 'seleccionar_diarias',
     'misiones_del_dia', 'registrar_evento', 'reclamar_diaria', 'estadisticas_alumno', 'verificar_logros',
-    'otorgar_logro', 'progreso_logros', 'construir_ruta', 'buscar_en_ruta', 'abrir_cofre', 'calificar',
+    'otorgar_logro', 'progreso_logros', 'misiones_en_orden', 'avance_del_grupo', 'construir_ruta', 'buscar_en_ruta',
+    'abrir_cofre', 'calificar',
     'rechazar', 'comprar', 'entregar_compra', 'cancelar_compra', 'ajustar_monedas', 'ranking_clase',
     'calcular_nivel', 'info_rangos', 'equipo_de', 'sumar_puntos_equipo', 'dar_puntos_equipo', 'ranking_equipos',
     'asignar_equipo', 'repartir_equipos', 'registrar_conducta', 'deshacer_conducta', 'progreso_meta',

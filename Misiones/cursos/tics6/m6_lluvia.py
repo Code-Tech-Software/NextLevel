@@ -3,7 +3,7 @@ captación pluvial, soluciones que ya existen, diagnóstico de la escuela, cálc
 captador modelado en Tinkercad y una noticia redactada en el procesador de textos."""
 from .base import TINKERCAD, clasifica, jefe, leccion, mision, tinkercad
 
-PAREJAS_3D = ['En parejas: Piloto (mouse) y Copiloto (lee las medidas y revisa). Cambian a la mitad de la clase.',
+PAREJAS_3D = ['Cada quien modela en su computadora; tu dupla revisa tus medidas al terminar cada paso, y tú las suyas.',
               'Meta del día escrita en el pizarrón: al final de la clase todos muestran su avance.',
               'Señal «manos arriba»: sueltan el mouse y miran al frente.']
 
@@ -80,7 +80,7 @@ MUNDO = {
                        'Meta vaga: «hacer un buen captador». Meta clara: «terminar el modelo 3D con filtro y tanque en 3 '
                        'clases».'],
                 pasos=['¿Qué sabes ya de modelado 3D? ¿Qué te gustaría aprender?',
-                       'Escribe 2 metas claras para este proyecto (una de 3D y una de equipo o conducta).',
+                       'Escribe 2 metas claras para este proyecto (una de 3D y una de trabajo en dupla o de conducta).',
                        'Para cada meta: ¿cómo sabrás que la cumpliste?'],
                 entrega='escribe tus metas aquí abajo. Al final del mundo las vas a revisar.'), xp=50),
         ]},
@@ -143,10 +143,11 @@ MUNDO = {
                 intro='Un buen diseño empieza por conocer el lugar donde se va a instalar. Salen a diagnosticar la '
                       'escuela.',
                 material=['Una cinta métrica o un metro', 'Una hoja de registro', 'El celular del profe para fotos'],
-                roles=['Medidor: mide (o cuenta pasos: 1 paso ≈ 0.6 m).', 'Anotador: llena la hoja de registro.',
-                       'Fotógrafo: toma fotos con el celular del profe.',
-                       'Guardián: cuida que el equipo vaya junto y en silencio por los pasillos.'],
-                dinamica=['Salen por equipos, uno detrás de otro, con el profe. Se habla en voz baja fuera del salón.',
+                roles=['Medidor/a: mide (o cuenta pasos: 1 paso ≈ 0.6 m).',
+                       'Anotador/a: llena la hoja de registro y le dice al profe qué fotografiar.',
+                       'En la segunda zona cambian de rol.'],
+                dinamica=['Salen todos juntos en fila con el profe, cada quien junto a su dupla. Se habla en voz baja '
+                          'fuera del salón.',
                           'Si no se puede salir, hagan el diagnóstico con fotos o el plano de la escuela.'],
                 pasos=['Elijan un techo o una zona donde se podría captar la lluvia.',
                        'Midan su largo y ancho y calculen el área (largo × ancho).',
@@ -208,7 +209,7 @@ MUNDO = {
                 entrega='sube una captura donde se vean las capas del filtro.'), xp=110, monedas=30),
             tinkercad('Mejora tu diseño', leccion(
                 intro='Ningún diseño sale perfecto a la primera. Revisa las necesidades del usuario y mejóralo.',
-                pasos=['Muestra tu modelo a otra pareja y pídeles 2 sugerencias.',
+                pasos=['Muestra tu modelo a tu dupla y pídele 2 sugerencias.',
                        'Agrega el rebosadero: un tubo pequeño acostado cerca de la parte alta del tanque.',
                        'Agrega el separador de primeras lluvias: un tubo vertical antes del filtro con una esfera adentro.',
                        'Haz al menos un cambio para cumplir una necesidad del usuario (candado, escalón, sombra…).',
@@ -238,7 +239,8 @@ MUNDO = {
                 entrega='sube tu noticia en PDF o una captura.'), xp=110, monedas=30),
             mision('Galería del agua', 'presencial', leccion(
                 intro='Presenta tu captador en 60 segundos, como en un concurso de innovación.',
-                dinamica=['Cada pareja tiene 60 segundos exactos. Cuando suena la alarma, se termina.',
+                dinamica=['Cada dupla tiene 60 segundos exactos para presentar el mejor de sus dos captadores. Cuando '
+                          'suena la alarma, se termina.',
                           'El público escucha en silencio y al final hace una sola pregunta por presentación.'],
                 pasos=['Muestra tu modelo en el proyector.',
                        'Explica en orden: el problema, cómo funciona tu captador y cuántos litros podría juntar.',

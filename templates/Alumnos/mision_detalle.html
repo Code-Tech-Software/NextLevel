@@ -27,6 +27,7 @@
         {% if alumno.es_prueba and not mision.activa %}
             <div class="aviso-oculta mb-4"><span aria-hidden="true">🙈</span> Esta misión está <b>oculta</b>: tus alumnos todavía no la ven en su mapa.</div>
         {% endif %}
+        {% if avance %}{% include 'Alumnos/_avance_mision.html' %}{% endif %}
         {% if resultado %}
             <section class="g-card text-center mb-4" id="resultado-mision" style="border-color:#fde047;box-shadow:0 6px 0 #facc15">
                 <div class="fw-black text-uppercase" style="letter-spacing:2px;color:var(--morado);font-size:.85rem">{% if resultado.prueba %}👀 Así le saldría a un alumno{% else %}¡Misión completada!{% endif %}</div>

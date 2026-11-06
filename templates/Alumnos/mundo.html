@@ -51,8 +51,8 @@
 
             {% for item in nivel.misiones %}
                 {% with zz=item.indice|zigzag m=item.mision %}
-                <div class="nodo-wrap {% if zz < 0 %}zz-neg{% endif %} {% if item.actual %}es-actual{% endif %} {% if m.es_jefe %}con-jefe{% endif %}" style="--zz: {{ zz }}">
-                    {% if item.actual %}
+                <div class="nodo-wrap {% if zz < 0 %}zz-neg{% endif %} {% if item.actual and not avance %}es-actual{% endif %} {% if m.es_jefe %}con-jefe{% endif %}" style="--zz: {{ zz }}">
+                    {% if item.actual and not avance %}
                         <span class="nodo-globo">
                             {% if item.estado == 'pendiente' %}⏳ En revisión{% elif item.estado == 'rechazado' %}🔧 ¡Corrígela!{% else %}¡Empieza!{% endif %}
                         </span>
@@ -77,7 +77,9 @@
                     {% endif %}
                     <div class="nodo-nombre">{{ item.info.emoji }} {{ m.nombre }}</div>
 
-                    {% if item.actual %}
+                    {% if avance %}{% include 'Alumnos/_avance_nodo.html' with datos_avance=avance.misiones|get_item:m.id total=avance.total %}{% endif %}
+
+                    {% if item.actual and not avance %}
                         <span class="nodo-avatar"><img src="{{ alumno|avatar_url }}" alt="Tú" class="avatar anillo-{{ alumno.rango.color }}"></span>
                     {% endif %}
                 </div>

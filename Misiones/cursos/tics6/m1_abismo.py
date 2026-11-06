@@ -43,7 +43,7 @@ JUEGOS = {
 MUNDO = {
     'nombre': 'Estudio Abismo', 'tema': 'abismo',
     'descripcion': 'ES-DAT302 · Aventura submarina. Heracleion, una ciudad egipcia, pasó siglos bajo el agua hasta que '
-                   'la encontraron en el año 2000. Tu equipo es un estudio de videojuegos: entenderás qué hace que un '
+                   'la encontraron en el año 2000. Tú y tu dupla son un estudio de videojuegos: entenderás qué hace que un '
                    'juego enganche y programarás un clicker para explorar el fondo del mar. Pregunta guía: si nos '
                    'sumergimos en aguas profundas, ¿qué hay por descubrir?',
     'niveles': [
@@ -62,23 +62,24 @@ MUNDO = {
                 entrega='escribe tus respuestas aquí abajo.'), xp=60),
             mision('Contrato del estudio', 'presencial', leccion(
                 intro='Un estudio de videojuegos real no funciona con todos hablando al mismo tiempo: trabaja con '
-                      'roles, tiempos cortos («sprints») y señales claras. Hoy firman el contrato de su estudio.',
+                      'roles, tiempos cortos («sprints») y señales claras. Tu estudio es una dupla: tú y un compañero. '
+                      'Hoy firman su contrato.',
                 saber=['Sprint: un bloque de trabajo de 10 a 15 minutos con una sola meta.',
-                       'Stand-up: una junta de 1 minuto, de pie, donde cada quien dice qué hizo y qué sigue.',
-                       'Playtest: cuando otra persona prueba tu juego y tú solo observas y anotas.'],
-                roles=['Piloto: maneja el mouse y el teclado.',
-                       'Copiloto: lee las instrucciones y revisa cada bloque.',
-                       'Tester: prueba el juego y anota los errores (bugs).',
-                       'Productor: cuida el tiempo y que el equipo cumpla la meta del sprint.'],
-                pasos=['Formen equipos de 4 y pónganle nombre a su estudio.',
-                       'Repartan los 4 roles. Cambiarán cada mundo, así que todos pasarán por todos.',
+                       'Stand-up: una junta de 1 minuto con tu dupla donde cada quien dice qué hizo y qué sigue.',
+                       'Playtest: cuando otra persona prueba tu juego y tú solo observas y anotas.',
+                       'Cada quien trabaja en su computadora y hace su propio juego, pero el estudio responde por los dos.'],
+                roles=['Copiloto: cuando tu dupla termina un paso, revisas sus bloques antes de que siga (y luego al revés).',
+                       'Tester: en los playtests juegas el juego de otro compañero y anotas los errores (bugs).',
+                       'Cronometrista: en las actividades sin computadora uno cuida el tiempo; se turnan cada vez.'],
+                pasos=['El profe arma las duplas (no siempre te va a tocar con tu mejor amigo: así se trabaja mejor).',
+                       'Pónganle nombre a su estudio de 2.',
                        'Acuerden las señales del grupo con su profe: «manos arriba» = silencio y mouse suelto; '
                        '«pantallas a 45°» = todos miran al frente.',
                        'Escriban 3 reglas propias del estudio (por ejemplo: «se critica el juego, no a la persona»).',
                        'Firmen el contrato y tómenle foto.'],
-                logro=['Cada integrante sabe su rol y las señales del grupo.',
+                logro=['Los dos saben cómo se revisan entre sí y conocen las señales del grupo.',
                        'El estudio tiene nombre y 3 reglas escritas.'],
-                tip='El equipo que respeta las señales en todo el mundo puede ganar XP extra al final.'), xp=50),
+                tip='La dupla que respeta las señales en todo el mundo puede ganar XP extra al final.'), xp=50),
             mision('Mecánicas y dinámicas', 'cuestionario', leccion(
                 intro='Los diseñadores de videojuegos hablan de dos ideas clave. Si las entiendes, nunca vuelves a ver '
                       'un juego igual.',
@@ -130,18 +131,18 @@ MUNDO = {
             mision('Clicker humano', 'presencial', leccion(
                 intro='Antes de programarlo, lo juegan con papel y lápiz. Así descubren qué dinámicas aparecen cuando '
                       'cambias una sola regla.',
-                material=['Una hoja por equipo', 'Un lápiz por equipo', 'El cronómetro del profe'],
-                dinamica=['Equipos de 4. Solo el Piloto escribe; los demás observan y aconsejan en voz baja.',
+                material=['Una hoja por dupla', 'Un lápiz por dupla', 'El cronómetro del profe'],
+                dinamica=['En duplas: uno escribe las palomitas y el otro decide cuándo comprar. En cada ronda cambian.',
                           'Cada ronda dura 60 segundos. Cuando el profe dice «¡alto!», lápices arriba.',
-                          'Regla del estudio: el equipo que grita pierde 10 perlas. El ruido también es una mecánica.'],
-                pasos=['Ronda 1: cada palomita (✓) que haga el Piloto vale 1 perla. Al final, cuenten.',
+                          'Regla del estudio: la dupla que grita pierde 10 perlas. El ruido también es una mecánica.'],
+                pasos=['Ronda 1: cada palomita (✓) que haga quien tiene el lápiz vale 1 perla. Al final, cuenten.',
                        'Ronda 2, con tienda: al juntar 20 perlas pueden «comprar» la mejora x2 (tachan 20 perlas y '
                        'desde ahí cada palomita vale 2).',
                        'Ronda 3, con dron: por 40 perlas compran un dron; cada vez que el profe dice «tic» (cada 10 '
                        'segundos), el dron les da 5 perlas gratis.',
-                       'Comparen: ¿en qué ronda juntaron más? ¿Qué estrategia usó el equipo ganador?',
+                       'Comparen: ¿en qué ronda juntaron más? ¿Qué estrategia usó la dupla ganadora?',
                        'Anoten 2 dinámicas que aparecieron (por ejemplo: «ahorramos para el dron»).'],
-                logro=['Explicas qué mecánica nueva cambió la forma de jugar de tu equipo.'],
+                logro=['Explicas qué mecánica nueva cambió la forma de jugar de tu dupla.'],
                 tip='Fíjense en quién compró la mejora muy pronto o muy tarde: ahí está la dinámica.'), xp=50),
             mision('Anatomía de un clicker: tarjetas', 'juego', leccion(
                 intro='Clasifica cada pieza: ¿es algo que hace el jugador, una mejora o algo que trabaja solo?'),
@@ -340,14 +341,15 @@ en puntaje 100
             mision('Playtest cruzado', 'presencial', leccion(
                 intro='En los estudios de verdad, otros prueban tu juego mientras tú solo observas. Duele un poco, pero '
                       'así se encuentran los errores.',
-                dinamica=['Cada estudio se cambia a la computadora de otro estudio (el profe dice a cuál).',
-                          '2 minutos de juego por persona, cronometrados por el Productor.',
+                dinamica=['Te cambias a la computadora de alguien de la dupla de al lado (el profe dice a cuál): solo se '
+                          'mueve un lugar.',
+                          '2 minutos de juego por persona; tu dupla cronometra.',
                           'El creador NO explica nada: si el jugador se confunde, eso es información valiosa.'],
-                pasos=['Juega el juego del otro estudio sin que te expliquen.',
+                pasos=['Juega el juego de tu compañero sin que te explique.',
                        'Anota en una hoja: 2 mecánicas que encontraste y 1 dinámica que te pasó al jugar.',
                        'Anota un bug (error) o algo que te confundió.',
                        'Escribe tu retroalimentación con la fórmula «Me gustó… / Me confundió… / Te sugiero…».',
-                       'Entrega la hoja al estudio dueño del juego.'],
+                       'Entrega la hoja al dueño del juego.'],
                 logro=['Tu retroalimentación es concreta y amable: habla del juego, no de la persona.']), xp=50),
             mision('Notas del parche', 'evidencia', leccion(
                 intro='Cuando un juego se actualiza, el estudio publica sus «notas del parche» (patch notes): qué se '

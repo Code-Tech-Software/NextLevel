@@ -176,7 +176,9 @@ MUNDO = {
                       'defiendes con argumentos.',
                 dinamica=['El profe lee una situación y las 4 opciones; cada esquina es una opción (A, B, C, D).',
                           'Tienen 10 segundos para caminar (no correr) a su esquina, sin hablar.',
-                          'Cada esquina tiene 1 minuto para elegir a alguien que explique por qué la eligieron.',
+                          'Ya en la esquina, en pareja con quien tengas al lado, preparan un argumento en 30 segundos y '
+                          'en voz baja.',
+                          'El profe elige a una persona de cada esquina para explicar por qué la eligieron.',
                           'Se vale cambiar de esquina si un argumento te convence.'],
                 pasos=['Situación 1: en el grupo del salón comparten un meme que se burla de un compañero.',
                        'Situación 2: un jugador en línea te ofrece skins si le das tu contraseña.',

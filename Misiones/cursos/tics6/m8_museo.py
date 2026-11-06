@@ -103,9 +103,9 @@ MUNDO = {
                 intro='Clasifica cada frase: ¿es una idea probable o el juicio final con pruebas?',
                 tip='«Tal vez», «quizá», «puede que» suelen ser inferencias.'), juego='clasifica_inferencia'),
             mision('Caso: el invento misterioso', 'presencial', leccion(
-                intro='Tu profe revela, una por una, las pistas de un invento de Leonardo. Los equipos compiten por '
+                intro='Tu profe revela, una por una, las pistas de un invento de Leonardo. Las duplas compiten por '
                       'descubrirlo con inferencias y llegar a la conclusión correcta.',
-                dinamica=['Equipos de 4 con una hoja. Solo escribe el Anotador; los demás opinan en voz baja.',
+                dinamica=['En duplas con una hoja: uno escribe y el otro propone en voz baja. En el caso 2 cambian.',
                           'Después de cada pista tienen 1 minuto para escribir una inferencia.',
                           'Puntos: 3 por acertar con la pista 2, 2 con la pista 3 y 1 con la pista 4. Si gritan la '
                           'respuesta, pierden sus puntos.'],
@@ -197,17 +197,18 @@ MUNDO = {
                 logro=['Tu ficha tiene la imagen con pie de crédito y texto alternativo.'],
                 entrega='sube una captura de tu ficha con la imagen.'), xp=90, monedas=25),
             mision('Construye el museo virtual', 'evidencia', leccion(
-                intro='Ahora el equipo une sus fichas en un museo que se recorre con clics, como una página web.',
+                intro='Ahora tú y tu dupla unen sus fichas en un museo que se recorre con clics, como una página web.',
                 saber=['Vestíbulo: la primera diapositiva, con botones que llevan a cada sala.',
                        'Vínculo a otra diapositiva: selecciona el botón → Insertar → Vínculo → «Lugar de este documento» '
                        '(PowerPoint) o «Diapositivas de esta presentación» (Google Slides).',
                        'Cada ficha lleva un botón «Volver al vestíbulo».',
                        'Los vínculos funcionan en modo presentación (F5).'],
-                roles=['Curador: decide las salas (por ejemplo: Transporte, Salud, Planeta).',
-                       'Diseñador: arma el vestíbulo y los botones con el mismo estilo.',
-                       'Integrador: copia las fichas de todos a la presentación del equipo.',
-                       'Tester: prueba que TODOS los vínculos lleven a donde deben.'],
-                pasos=['Creen la presentación del equipo: Museo_del_Futuro_Equipo.',
+                roles=['Curador/a y diseñador/a: decide las salas y arma el vestíbulo y los botones con el mismo estilo.',
+                       'Integrador/a y tester: copia las fichas a la presentación y prueba que TODOS los vínculos lleven a '
+                       'donde deben.',
+                       'Si la presentación está en la nube (Google Slides o PowerPoint en línea), los dos trabajan al mismo '
+                       'tiempo, cada quien en su computadora.'],
+                pasos=['Creen la presentación de la dupla: Museo_del_Futuro_NombreDupla.',
                        'Diapositiva 1: vestíbulo con el nombre del museo y un botón por sala (Insertar → Formas).',
                        'Una diapositiva de portada por sala y después las fichas de esa sala.',
                        'Vinculen cada botón con su sala y agreguen «Volver al vestíbulo» en cada ficha.',
@@ -217,18 +218,18 @@ MUNDO = {
         ]},
         {'nombre': 'Inauguración', 'cofre': 40, 'misiones': [
             mision('Recorrido y retroalimentación', 'presencial', leccion(
-                intro='Día de inauguración: los equipos visitan los museos de los demás.',
+                intro='Día de inauguración: las duplas visitan los museos de las demás.',
                 dinamica=['Rotación por las computadoras cada 4 minutos con la alarma del profe.',
-                          'Un integrante se queda como guía del museo de su equipo; los demás visitan.',
+                          'Uno de la dupla se queda como guía de su museo y el otro visita; a la mitad cambian.',
                           'Se recorre en modo presentación. Se habla con voz de museo (bajito).'],
                 pasos=['Recorre al menos 3 museos.',
                        'En cada uno deja una nota con la fórmula EPS: un Elogio, una Pregunta y una Sugerencia.',
                        'Escribe una inferencia sobre un invento ajeno: «Creo que este invento también podría servir '
                        'para…».',
-                       'Regresa a tu equipo y lean juntos las notas que recibieron.'],
+                       'Regresa con tu dupla y lean juntos las notas que recibieron.'],
                 logro=['Dejaste notas EPS en al menos 3 museos.']), xp=50),
             mision('Ajustes finales', 'evidencia', leccion(
-                intro='Un buen equipo convierte la retroalimentación en mejoras.',
+                intro='Una buena dupla convierte la retroalimentación en mejoras.',
                 pasos=['Lean todas las notas EPS que recibieron.',
                        'Elijan las 2 sugerencias más útiles y háganlas.',
                        'Respondan por escrito las preguntas que les dejaron (pueden agregar una diapositiva de '

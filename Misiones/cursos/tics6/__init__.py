@@ -1,5 +1,5 @@
 """TIC 6° · Pinion Learn 6.1: los temas de Pinion (videojuegos, documentos, 3D e IA) como punto de partida y, sobre
-todo, habilidades de computación de verdad: MakeCode Arcade, procesador de textos en equipo, hoja de cálculo,
+todo, habilidades de computación de verdad: MakeCode Arcade, procesador de textos en dupla, hoja de cálculo,
 encuestas, Tinkercad, IA responsable y ciberseguridad, en 9 mundos con jefes.
 
 El grupo es muy inquieto y ya se siente grande: cada misión está escrita como una pequeña clase con tiempos, roles y
@@ -18,4 +18,7 @@ CURSO = {
     'nombre': 'TIC 6° · Pinion Learn 6.1',
     'juegos': JUEGOS,
     'mundos': [modulo.MUNDO for modulo in MODULOS],
+    # Nombres de la primera versión (equipos de 4) que se renombraron al pasar a duplas: al actualizar una clase que ya
+    # tenía el curso, se retiran (o se ocultan si algún alumno ya los hizo)
+    'anteriores': {'misiones': ['Revisión entre equipos'], 'niveles': ['Edición en equipo'], 'juegos': []},
 }

@@ -118,7 +118,8 @@ MUNDO = {
                        'Muestras: las fotos de ejemplo de cada clase. Más muestras y más variadas = mejor IA.',
                        'Entrenar: la IA busca el patrón de cada clase. Vista previa: la pruebas con ejemplos nuevos y te '
                        'dice qué tan segura está (en porcentaje).'],
-                dinamica=['En parejas. Uno hace los gestos frente a la cámara y el otro maneja el mouse; luego cambian.',
+                dinamica=['En duplas, en la computadora de uno: uno hace los gestos frente a la cámara y el otro maneja '
+                          'el mouse. Después cambian a la computadora del otro.',
                           '15 minutos para entrenar y probar. Al final, ronda de «¿quién engaña a su IA?».'],
                 pasos=['Abre el enlace → Proyecto de imagen → Modelo de imagen estándar.',
                        'Renombra Class 1 como «Pulgar arriba» y Class 2 como «Pulgar abajo».',
@@ -183,7 +184,7 @@ MUNDO = {
             ]),
             mision('El prompt humano', 'presencial', leccion(
                 intro='Sin computadora: tu compañero será la IA y hará EXACTAMENTE lo que diga tu prompt, ni más ni menos.',
-                dinamica=['En parejas: uno escribe prompts, el otro es la «IA» y los sigue al pie de la letra.',
+                dinamica=['En duplas: uno escribe prompts, el otro es la «IA» y los sigue al pie de la letra.',
                           'Rondas de 3 minutos; luego cambian de papel. Todo se dibuja en una hoja, en silencio.'],
                 pasos=['Ronda 1: el autor escribe un prompt flojo para un dibujo: «Dibuja un planeta». La IA dibuja.',
                        'Ronda 2: el autor usa la fórmula: «Dibuja un planeta con anillos y tres lunas, visto desde la '
@@ -242,12 +243,17 @@ MUNDO = {
                 logro=['Tu convocatoria tiene todas sus partes y alguien que la lee sabe exactamente cómo participar.'],
                 entrega='sube tu convocatoria en PDF o una captura.'), xp=100, monedas=30),
             mision('Arma el periódico mural', 'presencial', leccion(
-                intro='Es hora de publicar: el grupo arma su periódico mural de ciencia ficción.',
-                roles=['Editor en jefe: decide el orden y el nombre del periódico.',
-                       'Diseñadores: arman la cabecera y acomodan las secciones.',
-                       'Correctores: revisan ortografía antes de pegar cualquier cosa.',
-                       'Montaje: pegan todo derecho y parejo.'],
-                dinamica=['Cada quien solo hace su rol. Cuando termina, ayuda al rol que vaya más atrasado.',
+                intro='Es hora de publicar: el grupo arma su periódico mural de ciencia ficción. Cada dupla se encarga '
+                      'de una parte.',
+                roles=['Dupla editora: decide el nombre del periódico y el orden de las secciones.',
+                       'Dupla de la cabecera: diseña el nombre, el número y la fecha.',
+                       'Duplas de historias: cada una prepara sus dos historias con su imagen.',
+                       'Dupla de datos: arma la sección «Hora local en otros planetas».',
+                       'Dupla de la IA: escribe la sección «Cómo usamos la IA».',
+                       'Dupla correctora: revisa la ortografía de todo antes de pegarlo.'],
+                dinamica=['Cada dupla prepara su parte en su lugar. Al mural pasa una sola dupla a la vez, cuando el profe '
+                          'la llama.',
+                          'La dupla que termina ayuda a la que vaya más atrasada.',
                           '30 minutos de armado; la última parte de la clase es la inauguración.'],
                 pasos=['Impriman las historias con sus imágenes, los datos de los planetas y la convocatoria.',
                        'Cabecera: nombre del periódico, número y fecha.',

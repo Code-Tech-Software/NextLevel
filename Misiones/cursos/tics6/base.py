@@ -1,7 +1,8 @@
 """Piezas comunes del curso TIC 6°: misiones-lección, jefes, juegos de tarjetas y prácticas de MakeCode y Tinkercad.
 
-El grupo es muy inquieto, así que casi todas las misiones traen «⏱️ Así se trabaja hoy» (tiempos, parejas y reglas) y,
-cuando hay equipo, «👥 Roles». El tono es de estudio, laboratorio o redacción: nada infantil.
+El grupo es muy inquieto, así que casi todas las misiones traen «⏱️ Así se trabaja hoy» (tiempos, duplas y reglas).
+Hay computadora para cada quien: cada alumno hace su propio trabajo y, cuando hay equipo, es una dupla (máximo 2, la
+arma el profe) con sus «👥 Roles». El tono es de estudio, laboratorio o redacción: nada infantil.
 """
 from Misiones.cursos import mision
 from Misiones.cursos.formato import clasifica, jefe, leccion
@@ -22,9 +23,11 @@ LEYENDA_MAKECODE = (
     'que está entre [corchetes] lo eliges o lo dibujas. ¿No encuentras un bloque? Escribe una palabra en el buscador de '
     'bloques, por ejemplo «puntaje».')
 
-# La dinámica de trabajo en parejas que se repite en las prácticas de computadora
-PAREJAS = ['En parejas: Piloto (mouse y teclado) y Copiloto (lee los pasos en voz baja y revisa cada bloque).',
-           'Cada 10 minutos, cuando suene la alarma del profe, cambian de lugar.',
+# La dinámica que se repite en las prácticas de computadora: cada quien en su compu, con su dupla al lado
+PAREJAS = ['Cada quien en su computadora, con su propio proyecto.',
+           'Tu dupla (el compañero de al lado) es tu copiloto: al terminar cada paso, se revisan los bloques antes de '
+           'seguir.',
+           '¿Atorado? Primero lo intentan entre los dos; si no sale, mano arriba y esperan al profe.',
            'Señal del profe «manos arriba»: sueltan el mouse y miran al frente.']
 
 

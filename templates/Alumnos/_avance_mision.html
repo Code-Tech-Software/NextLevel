@@ -1,0 +1,65 @@
+{% load nextlevel %}{% comment %}
+Panel con el avance del grupo en una misión (solo en la vista de alumno del profe). Recibe «avance».
+{% endcomment %}
+<section class="g-card mb-4 avance-mision">
+    <div class="g-card-titulo"><span>👥</span> Avance del grupo <span class="solo-profe">Solo lo ves tú</span></div>
+    <div class="barra-avance" title="{{ avance.pct }}% del grupo la completó"><span style="width: {{ avance.pct }}%"></span></div>
+    <div class="resumen-avance">
+        <span><b>{{ avance.completaron|length }}</b> de {{ avance.total }} la completaron ({{ avance.pct }}%)</span>
+        {% if avance.pendientes %}<span>⏳ <b>{{ avance.pendientes|length }}</b> en revisión</span>{% endif %}
+        {% if avance.por_corregir %}<span>🔧 <b>{{ avance.por_corregir|length }}</b> corrigiendo</span>{% endif %}
+        {% if avance.empezando %}<span>📍 <b>{{ avance.empezando|length }}</b> va{{ avance.empezando|length|pluralize:"n" }} aquí</span>{% endif %}
+        {% if avance.no_llegan %}<span>🔒 <b>{{ avance.no_llegan }}</b> aún no llega{{ avance.no_llegan|pluralize:"n" }}</span>{% endif %}
+    </div>
+
+    <div class="row g-3">
+        <div class="col-md-6">
+            <div class="grupo-avance">
+                <div class="titulo">✅ La completaron</div>
+                {% for d in avance.completaron %}
+                    <a class="fila" href="{% url 'alumno_detalle' d.alumno.id %}">
+                        <img src="{{ d.alumno|avatar_url }}" alt="" class="carita">
+                        <span class="nombre">{{ d.alumno.nombre }} {{ d.alumno.apellido }}</span>
+                        <span class="calif {{ d.progreso.puntuacion|nivel_calif }}">{{ d.progreso.puntuacion|calif10 }}</span>
+                    </a>
+                {% empty %}
+                    <div class="vacio">Todavía nadie.</div>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="grupo-avance">
+                <div class="titulo">📍 Van en esta misión</div>
+                {% for d in avance.pendientes %}
+                    <a class="fila" href="{% url 'alumno_detalle' d.alumno.id %}">
+                        <img src="{{ d.alumno|avatar_url }}" alt="" class="carita">
+                        <span class="nombre">{{ d.alumno.nombre }} {{ d.alumno.apellido }}</span>
+                        <span class="etq revision">⏳ En revisión</span>
+                    </a>
+                {% endfor %}
+                {% for d in avance.por_corregir %}
+                    <a class="fila" href="{% url 'alumno_detalle' d.alumno.id %}">
+                        <img src="{{ d.alumno|avatar_url }}" alt="" class="carita">
+                        <span class="nombre">{{ d.alumno.nombre }} {{ d.alumno.apellido }}</span>
+                        <span class="etq corregir">🔧 Corrigiendo</span>
+                    </a>
+                {% endfor %}
+                {% for d in avance.empezando %}
+                    <a class="fila" href="{% url 'alumno_detalle' d.alumno.id %}">
+                        <img src="{{ d.alumno|avatar_url }}" alt="" class="carita">
+                        <span class="nombre">{{ d.alumno.nombre }} {{ d.alumno.apellido }}</span>
+                        <span class="etq">Empezando</span>
+                    </a>
+                {% endfor %}
+                {% if not avance.pendientes and not avance.por_corregir and not avance.empezando %}
+                    <div class="vacio">Nadie va en esta misión ahora.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% if avance.pendientes %}
+        <div class="text-end mt-3">
+            <a href="{% url 'revisiones' %}" class="g-btn chico"><i class="bi bi-check2-square"></i> Revisar entregas</a>
+        </div>
+    {% endif %}
+</section>
