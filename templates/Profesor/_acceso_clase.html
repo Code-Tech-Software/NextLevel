@@ -1,10 +1,9 @@
 {% comment %}Botón del candado: abre o cierra la plataforma para los alumnos de `clase` y, aparte, su Tienda y su Arcade.{% endcomment %}
 {% with abierta=clase.acceso_abierto cerradas=clase.secciones_cerradas %}
 <div class="dropdown acceso-clase">
-    {# strategy fixed: el menú flota por encima aunque la tarjeta recorte lo que se sale (overflow hidden) #}
+    {# El menú se coloca con la regla común de profesor.js (iniciarMenus): flota y no se mete bajo la barra ni el menú lateral #}
     {# Si la Tienda o el Arcade están cerrados, un punto naranja en la esquina lo avisa sin hacer más ancho el botón #}
     <button type="button" class="p-btn sm acceso-btn {% if abierta %}abierta{% else %}cerrada{% endif %}" data-bs-toggle="dropdown"
-            data-bs-popper-config='{"strategy": "fixed"}'
             aria-label="Acceso de los alumnos: {% if abierta %}abierta{% else %}cerrada{% endif %}{% for s in cerradas %}, {{ s.nombre }} {{ s.cerrada }}{% endfor %}"
             title="Acceso de los alumnos{% for s in cerradas %} · {{ s.nombre }} {{ s.cerrada }}{% endfor %}">
         <i class="bi {% if abierta %}bi-unlock{% else %}bi-lock-fill{% endif %}"></i>

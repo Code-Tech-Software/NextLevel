@@ -61,6 +61,45 @@
         $('.velo')?.addEventListener('click', () => document.body.classList.remove('menu-abierto'));
     }
 
+    // ---------- Menús desplegables: siempre completos y a la vista ----------
+    // Los menús de la página flotan sobre todo (strategy fixed: una tarjeta ya no los recorta) y se acomodan
+    // dentro del hueco libre: nunca debajo de la barra superior ni del menú lateral, ni fuera de la pantalla.
+    // Si no caben ni arriba ni abajo del botón, se recorren lo necesario; si ni así, se desplazan por dentro (CSS).
+    function iniciarMenus() {
+        const Dropdown = window.bootstrap && window.bootstrap.Dropdown;
+        if (!Dropdown) return;
+        const MARGEN = 8;
+        let abriendo = null;  // botón del menú que se está abriendo (el evento llega justo antes de colocarlo)
+        document.addEventListener('show.bs.dropdown', e => { abriendo = e.target; }, true);
+
+        const borde = (selector, lado) => {
+            const el = $(selector);
+            if (!el) return 0;
+            const r = el.getBoundingClientRect();
+            return r.width && r.height ? Math.max(0, r[lado]) : 0;  // oculto o fuera de pantalla: no estorba
+        };
+        Dropdown.Default.popperConfig = base => {
+            const boton = abriendo;
+            abriendo = null;
+            if (!boton || !boton.closest('.contenido-p')) return base;  // los de la barra superior ya caben bien
+            const libre = {
+                top: borde('.topbar', 'bottom') + MARGEN,
+                left: borde('.sidebar', 'right') + MARGEN,
+                right: MARGEN,
+                bottom: MARGEN,
+            };
+            return {
+                ...base,
+                strategy: 'fixed',
+                modifiers: [
+                    ...base.modifiers.filter(m => m.name !== 'preventOverflow'),
+                    { name: 'preventOverflow', options: { padding: libre, altAxis: true } },
+                    { name: 'flip', options: { padding: libre } },
+                ],
+            };
+        };
+    }
+
     // ---------- Formularios con confirmación ----------
     function iniciarConfirmaciones() {
         document.addEventListener('submit', async e => {
@@ -2573,6 +2612,8 @@
         history.replaceState(null, '', location.pathname + (params.toString() ? '?' + params : ''));
         Modal.abrir(destino, /mision/.test(destino) ? 'xl' : '');
     }
+
+    iniciarMenus();
 
     document.addEventListener('DOMContentLoaded', () => {
         $$('.modal').forEach(m => document.body.appendChild(m));

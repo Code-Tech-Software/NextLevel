@@ -642,6 +642,11 @@ div.nl-choice-list { display: grid; grid-template-columns: repeat(auto-fill, min
 [data-theme="dark"] .modal-content, [data-theme="dark"] .dropdown-menu { background: var(--surface); color: var(--text); border-color: var(--border); }
 .dropdown-menu { border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(15, 23, 42, .12); padding: .35rem; font-size: .875rem; }
 .dropdown-item { border-radius: 8px; padding: .45rem .7rem; color: var(--text); display: flex; align-items: center; gap: .55rem; }
+/* Ningún menú es más alto ni más ancho que la pantalla: si no cabe, se desplaza por dentro (profesor.js lo acomoda) */
+.dropdown-menu {
+    max-height: calc(100vh - 76px); max-height: calc(100dvh - 76px);
+    max-width: calc(100vw - 16px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin;
+}
 .dropdown-item:hover { background: var(--surface-2); color: var(--text); }
 .modal-content { border-radius: 16px; border: 1px solid var(--border); }
 
