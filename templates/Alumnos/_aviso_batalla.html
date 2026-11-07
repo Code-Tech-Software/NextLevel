@@ -1,0 +1,9 @@
+{% comment %}Aviso flotante para el alumno cuando su profe abre una Batalla en vivo. alumno.js lo muestra u oculta solo.{% endcomment %}
+{% load nextlevel %}
+{% batalla_en_juego clase as batalla_viva %}
+<a href="{% url 'batalla_alumno' clase.id %}" class="aviso-batalla {% if not batalla_viva %}oculto{% endif %}" id="aviso-batalla"
+   data-url-senal="{% url 'batalla_alumno_estado' clase.id %}?senal=1" aria-live="polite">
+    <span class="e" aria-hidden="true">⚔️</span>
+    <span class="t"><b>¡Batalla en vivo!</b><small data-aviso-titulo>{{ batalla_viva.titulo|default:'' }}</small></span>
+    <span class="ir">Entrar <i class="bi bi-chevron-right"></i></span>
+</a>

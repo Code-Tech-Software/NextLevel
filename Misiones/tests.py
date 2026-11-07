@@ -1613,3 +1613,301 @@ class SeccionesClaseTests(BaseJuego):
         # En la vista de alumno el profe ve lo mismo que sus alumnos, con una nota para reabrirlo
         self.client.get(f'/profesor/clases/{self.clase.id}/vista-alumno/')
         self.assertContains(self.client.get(f'/clase/{self.clase.id}/arcade/'), 'Así lo ven tus alumnos')
+
+
+class BatallaEnVivoTests(BaseJuego):
+    """Batalla en vivo: el profe proyecta preguntas y los alumnos contestan desde su dispositivo."""
+
+    def setUp(self):
+        super().setUp()
+        from django.test import Client
+        from .models import Batalla
+        self.Batalla = Batalla
+        for texto, buena, mala in [('¿3+3?', '6', '7'), ('¿Capital de México?', 'CDMX', 'Lima')]:
+            pregunta = Pregunta.objects.create(mision=self.m2, texto=texto, orden=5)
+            OpcionRespuesta.objects.create(pregunta=pregunta, texto=buena, es_correcta=True)
+            OpcionRespuesta.objects.create(pregunta=pregunta, texto=mala)
+        # Preguntas que no sirven para la batalla: una sola opción y todas correctas
+        sola = Pregunta.objects.create(mision=self.m2, texto='Sola', orden=9)
+        OpcionRespuesta.objects.create(pregunta=sola, texto='x', es_correcta=True)
+        todas = Pregunta.objects.create(mision=self.m2, texto='Todas', orden=10)
+        OpcionRespuesta.objects.create(pregunta=todas, texto='a', es_correcta=True)
+        OpcionRespuesta.objects.create(pregunta=todas, texto='b', es_correcta=True)
+
+        self.leo = Alumno.objects.create(nombre='Leo', apellido='Ruiz', pin='4321')
+        self.leo.clases.add(self.clase)
+        self.profe = Client()
+        self.profe.force_login(User.objects.create_superuser('profe_bt', 'p@x.com', 'x'))
+        self.cliente_leo = Client()
+        self.cliente_leo.post(f'/clase/{self.clase.id}/alumno/{self.leo.id}/ingresar/', {'pin': '4321'})
+
+    # --- utilidades ---
+    def crear(self, **opciones):
+        from . import batallas as motor
+        datos = {'cantidad': 0, 'mezclar': False, **opciones}
+        return motor.crear_batalla(self.clase, [self.m2.id], **datos)
+
+    def accion(self, batalla, accion, **extra):
+        batalla.refresh_from_db()
+        return self.profe.post(f'/profesor/batallas/{batalla.id}/accion/', {'accion': accion, 'v': batalla.version, **extra},
+                               HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+
+    def ya_se_puede_contestar(self, batalla, hace=1):
+        """Se salta los 3 segundos de «prepárense» (como si ya hubieran pasado)."""
+        from datetime import timedelta
+        from django.utils import timezone
+        self.Batalla.objects.filter(pk=batalla.pk).update(inicio_pregunta=timezone.now() - timedelta(seconds=hace))
+        batalla.refresh_from_db()
+
+    def responder(self, cliente, indice, opcion):
+        return cliente.post(f'/clase/{self.clase.id}/batalla/responder/', {'indice': indice, 'opcion': opcion},
+                            HTTP_X_REQUESTED_WITH='XMLHttpRequest').json()
+
+    def unirse(self, cliente):
+        return cliente.post(f'/clase/{self.clase.id}/batalla/unirse/', HTTP_X_REQUESTED_WITH='XMLHttpRequest').json()
+
+    def estado(self, cliente, ficha=''):
+        return cliente.get(f'/clase/{self.clase.id}/batalla/estado/', {'ficha': ficha}).json()
+
+    # --- pruebas ---
+    def test_el_formulario_crea_la_batalla_solo_con_preguntas_validas(self):
+        from . import batallas as motor
+        mundos = motor.misiones_con_preguntas(self.clase)
+        self.assertEqual(mundos[0]['misiones'][0]['preguntas'], 3)   # «Sola» y «Todas» no cuentan
+        formulario = self.profe.get(f'/profesor/batallas/nueva/?clase={self.clase.id}')
+        self.assertContains(formulario, 'Nueva batalla en vivo')
+        self.assertContains(formulario, self.m2.nombre)
+
+        respuesta = self.profe.post('/profesor/batallas/nueva/', {
+            'clase': self.clase.id, 'misiones': [self.m2.id], 'cantidad': 10, 'segundos': 20, 'premios': 'normal',
+            'modo': 'individual', 'mezclar': 'on',
+        }, HTTP_X_MODAL='1')
+        batalla = self.Batalla.objects.get()
+        self.assertEqual(respuesta.json(), {'ok': True, 'redirect': f'/profesor/batallas/{batalla.id}/', 'navegar': True})
+        self.assertEqual((batalla.estado, batalla.preguntas.count(), batalla.premio_1), ('sala', 3, 30))
+        for pregunta in batalla.preguntas.all():
+            self.assertEqual(len(pregunta.correctas), 1)
+        self.assertContains(self.profe.get(f'/profesor/batallas/{batalla.id}/'), 'batalla-estado')
+
+        # Sin misiones elegidas no se crea
+        sin = self.profe.post('/profesor/batallas/nueva/', {'clase': self.clase.id, 'cantidad': 10, 'segundos': 20,
+                                                            'premios': 'normal', 'modo': 'individual'})
+        self.assertContains(sin, 'Elige al menos una misión')
+
+    def test_batalla_completa_con_puntos_y_premios(self):
+        from .models import JugadorBatalla, Movimiento, Notificacion
+        batalla = self.crear()
+        self.entrar()
+        self.assertFalse(self.estado(self.client)['estado']['unido'])
+        self.assertTrue(self.unirse(self.client)['estado']['unido'])
+        self.unirse(self.cliente_leo)
+        self.unirse(self.client)   # entrar dos veces no duplica
+        self.assertEqual(batalla.jugadores.count(), 2)
+
+        monedas_ana, monedas_leo = self.alumno.monedas, self.leo.monedas
+        for indice in range(3):
+            self.assertEqual(self.accion(batalla, 'siguiente').json()['estado']['estado'], 'pregunta')
+            self.ya_se_puede_contestar(batalla)
+            pregunta = batalla.preguntas.get(orden=indice)
+            buena = pregunta.correctas[0]
+            # Antes de revelar, nadie recibe cuál es la correcta
+            visto = self.estado(self.client)['estado']
+            self.assertNotIn('correctas', visto)
+            self.assertNotIn('correcta', str(visto['pregunta']))
+
+            self.assertTrue(self.responder(self.client, indice, buena)['ok'])
+            otra = self.responder(self.client, indice, 1 - buena)
+            self.assertEqual((otra['ok'], otra['mensaje']), (False, 'Ya contestaste esta pregunta.'))
+            self.assertTrue(self.responder(self.cliente_leo, indice, 1 - buena)['ok'])
+
+            resultado = self.accion(batalla, 'revelar').json()['estado']
+            self.assertEqual(resultado['estado'], 'resultado')
+            self.assertEqual(resultado['aciertos_pregunta'], 1)
+            visto = self.estado(self.client)['estado']
+            self.assertEqual(visto['correctas'], [buena])
+            self.assertTrue(visto['resultado']['acerte'])
+            self.assertGreaterEqual(visto['resultado']['puntos'], 900)   # contestó en el primer segundo
+
+        ana = JugadorBatalla.objects.get(batalla=batalla, alumno=self.alumno)
+        self.assertEqual((ana.aciertos, ana.racha), (3, 3))
+        self.assertGreater(ana.puntos, 2900)   # incluye el bono por aciertos seguidos
+
+        # Después de la última pregunta, «siguiente» lleva al podio y reparte premios una sola vez
+        final = self.accion(batalla, 'siguiente').json()['estado']
+        self.assertEqual(final['estado'], 'final')
+        self.assertTrue(final['premios_entregados'])
+        self.assertEqual(final['podio'][0]['nombre'], 'Ana')
+        from . import batallas as motor
+        motor.entregar_premios(batalla)
+        self.alumno.refresh_from_db()
+        self.leo.refresh_from_db()
+        self.assertEqual(self.alumno.monedas - monedas_ana, 35)   # 30 del 1.er lugar + 5 por jugar
+        self.assertEqual(Movimiento.objects.filter(alumno=self.alumno, tipo='batalla').count(), 1)
+        self.assertEqual(Movimiento.objects.get(alumno=self.leo, tipo='batalla').monedas, 25)   # 2.º lugar: 20 + 5
+        self.assertTrue(Notificacion.objects.filter(alumno=self.alumno, tipo='batalla', celebrar=True).exists())
+        visto = self.estado(self.client)['estado']
+        self.assertEqual((visto['final']['posicion'], visto['final']['monedas']), (1, 35))
+
+        resumen = self.profe.get(f'/profesor/batallas/{batalla.id}/resumen/')
+        self.assertContains(resumen, 'Qué costó más')
+        self.assertContains(resumen, '50 %')
+
+    def test_respuestas_fuera_de_tiempo_o_de_otra_pregunta(self):
+        batalla = self.crear(segundos=10)
+        self.entrar()
+        self.unirse(self.client)
+        self.accion(batalla, 'siguiente')
+        # Durante el «prepárense» todavía no se puede
+        self.assertEqual(self.responder(self.client, 0, 0)['mensaje'], '¡Espera a que aparezcan las respuestas!')
+        self.assertEqual(self.responder(self.client, 1, 0)['mensaje'], 'Esa pregunta ya se cerró.')
+        self.ya_se_puede_contestar(batalla, hace=15)
+        self.assertEqual(self.responder(self.client, 0, 0)['mensaje'], '⏰ Se acabó el tiempo.')
+        self.assertEqual(self.responder(self.client, 0, 9)['ok'], False)
+
+    def test_doble_clic_del_profe_no_se_salta_preguntas(self):
+        batalla = self.crear()
+        version = batalla.version
+        for _ in range(2):
+            self.profe.post(f'/profesor/batallas/{batalla.id}/accion/', {'accion': 'siguiente', 'v': version},
+                            HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        batalla.refresh_from_db()
+        self.assertEqual((batalla.estado, batalla.indice), ('pregunta', 0))
+
+    def test_la_consulta_de_cada_segundo_solo_avisa_si_algo_cambio(self):
+        batalla = self.crear()
+        self.entrar()
+        primera = self.estado(self.client)
+        self.assertTrue(primera['cambio'])
+        self.assertEqual(self.estado(self.client, primera['estado']['ficha']), {'cambio': False})
+        self.accion(batalla, 'siguiente')
+        self.assertTrue(self.estado(self.client, primera['estado']['ficha'])['cambio'])
+        # El aviso de las demás páginas solo pregunta si hay batalla
+        senal = self.client.get(f'/clase/{self.clase.id}/batalla/estado/', {'senal': 1}).json()
+        self.assertEqual(senal, {'en_juego': True, 'titulo': batalla.titulo})
+        self.assertContains(self.client.get(f'/clase/{self.clase.id}/dashboard/'), '¡Batalla en vivo!')
+        # Sin sesión no hay nada
+        from django.test import Client
+        self.assertEqual(Client().get(f'/clase/{self.clase.id}/batalla/estado/').status_code, 403)
+
+    def test_si_el_proyector_se_cierra_la_respuesta_se_revela_sola(self):
+        from . import batallas as motor
+        batalla = self.crear(segundos=10)
+        self.entrar()
+        self.accion(batalla, 'siguiente')
+        self.ya_se_puede_contestar(batalla, hace=10 + motor.AUTO_REVELAR + 1)
+        self.assertEqual(self.estado(self.client)['estado']['estado'], 'resultado')
+
+    def test_con_la_clase_cerrada_se_puede_jugar_la_batalla(self):
+        self.clase.acceso = 'cerrado'
+        self.clase.save()
+        self.entrar()
+        self.assertRedirects(self.client.get(f'/clase/{self.clase.id}/batalla/'), f'/clase/{self.clase.id}/mi-cuenta/',
+                             fetch_redirect_response=False)
+        self.crear()
+        self.assertContains(self.client.get(f'/clase/{self.clase.id}/batalla/'), 'batalla-estado')
+        self.assertTrue(self.unirse(self.client)['ok'])
+        self.assertContains(self.client.get(f'/clase/{self.clase.id}/mi-cuenta/'), 'aviso-batalla')
+
+    def test_solo_el_profe_controla_y_su_vista_de_alumno_no_juega(self):
+        batalla = self.crear()
+        self.entrar()
+        respuesta = self.client.post(f'/profesor/batallas/{batalla.id}/accion/', {'accion': 'siguiente', 'v': batalla.version})
+        self.assertEqual(respuesta.status_code, 302)   # al inicio de sesión del profe
+        batalla.refresh_from_db()
+        self.assertEqual(batalla.estado, 'sala')
+
+        self.profe.get(f'/profesor/clases/{self.clase.id}/vista-alumno/')
+        self.assertEqual(self.profe.post(f'/clase/{self.clase.id}/batalla/unirse/').status_code, 403)
+        self.assertTrue(self.profe.get(f'/clase/{self.clase.id}/batalla/estado/').json()['estado']['vista_previa'])
+
+    def test_quitar_jugador_y_terminar_desde_la_lista(self):
+        batalla = self.crear()
+        self.entrar()
+        self.unirse(self.client)
+        jugador = batalla.jugadores.get()
+        self.assertEqual(self.accion(batalla, 'quitar', jugador=jugador.id).json()['estado']['total_jugadores'], 0)
+        respuesta = self.profe.post(f'/profesor/batallas/{batalla.id}/accion/', {'accion': 'terminar', 'v': batalla.version})
+        self.assertRedirects(respuesta, '/profesor/batallas/', fetch_redirect_response=False)
+        batalla.refresh_from_db()
+        self.assertEqual(batalla.estado, 'final')
+        self.assertContains(self.profe.get('/profesor/batallas/'), batalla.titulo)
+
+    def test_una_nueva_batalla_cierra_la_anterior_y_repetir_baraja(self):
+        vieja = self.crear()
+        nueva = self.crear()
+        vieja.refresh_from_db()
+        self.assertEqual(vieja.estado, 'final')
+        otra = self.profe.post(f'/profesor/batallas/{nueva.id}/repetir/')
+        repetida = self.Batalla.objects.order_by('-id').first()
+        self.assertRedirects(otra, f'/profesor/batallas/{repetida.id}/', fetch_redirect_response=False)
+        self.assertEqual(repetida.preguntas.count(), 3)
+        nueva.refresh_from_db()
+        self.assertEqual(nueva.estado, 'final')
+
+    def test_por_equipos_gana_el_mejor_promedio(self):
+        from .models import Equipo, JugadorBatalla
+        rojos = Equipo.objects.create(clase=self.clase, nombre='Rojos', emoji='🔴')
+        azules = Equipo.objects.create(clase=self.clase, nombre='Azules', emoji='🔵')
+        rojos.miembros.add(self.alumno)
+        azules.miembros.add(self.leo)
+        batalla = self.crear(por_equipos=True)
+        self.assertTrue(batalla.por_equipos)
+        self.entrar()
+        self.unirse(self.client)
+        self.unirse(self.cliente_leo)
+        self.accion(batalla, 'siguiente')
+        self.ya_se_puede_contestar(batalla)
+        buena = batalla.preguntas.get(orden=0).correctas[0]
+        self.responder(self.client, 0, 1 - buena)
+        self.responder(self.cliente_leo, 0, buena)
+        self.accion(batalla, 'revelar')
+        final = self.accion(batalla, 'terminar').json()['estado']
+        self.assertEqual(final['equipos'][0]['nombre'], 'Azules')
+        self.assertEqual(JugadorBatalla.objects.get(alumno=self.leo).posicion, 1)
+        self.assertEqual(JugadorBatalla.objects.get(alumno=self.alumno).posicion, 2)
+
+    def test_logros_de_batallas(self):
+        from .models import Logro, LogroAlumno
+        Logro.objects.create(nombre='Guerrero', descripcion='x', condicion='batallas', valor=1)
+        Logro.objects.create(nombre='Campeón', descripcion='x', condicion='podios', valor=1)
+        batalla = self.crear(premios='practica')
+        self.entrar()
+        self.unirse(self.client)
+        self.accion(batalla, 'siguiente')
+        self.ya_se_puede_contestar(batalla)
+        self.responder(self.client, 0, 0)
+        self.accion(batalla, 'terminar')
+        self.assertEqual(set(LogroAlumno.objects.filter(alumno=self.alumno).values_list('logro__nombre', flat=True)),
+                         {'Guerrero', 'Campeón'})
+        self.assertEqual(sorted(juego.alumnos_que_cumplen('batallas', 1)), [self.alumno.id])
+
+    def test_con_redis_la_consulta_sin_cambios_no_toca_la_base_de_datos(self):
+        from unittest import mock
+        from django.core.cache import cache
+        from . import batallas as motor
+        cache.clear()
+        with mock.patch.object(motor._Cache, 'disponible', new_callable=mock.PropertyMock, return_value=True):
+            # Los avisos a Redis salen al confirmarse cada cambio en la base de datos
+            with self.captureOnCommitCallbacks(execute=True):
+                batalla = self.crear()
+            self.entrar()
+            ficha = self.estado(self.client)['estado']['ficha']
+            with self.assertNumQueries(1):   # solo la sesión
+                self.assertEqual(self.estado(self.client, ficha), {'cambio': False})
+            with self.captureOnCommitCallbacks(execute=True):
+                self.accion(batalla, 'siguiente')
+            self.assertTrue(self.estado(self.client, ficha)['cambio'])   # Redis se actualizó al cambiar de pantalla
+        cache.clear()
+
+    def test_si_redis_no_responde_todo_sigue_desde_la_base_de_datos(self):
+        from . import batallas as motor
+        caido = {'default': {'BACKEND': 'django.core.cache.backends.redis.RedisCache', 'LOCATION': 'redis://127.0.0.1:1/0',
+                             'OPTIONS': {'socket_connect_timeout': 0.2, 'socket_timeout': 0.2}}}
+        try:
+            with override_settings(CACHES=caido):
+                batalla = self.crear()
+                self.entrar()
+                self.assertEqual(self.estado(self.client)['estado']['titulo'], batalla.titulo)
+                self.assertFalse(motor.memoria.disponible)   # se aparta un rato para no hacer esperar a nadie
+        finally:
+            motor.memoria._apagada_hasta = 0

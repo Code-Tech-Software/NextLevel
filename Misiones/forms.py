@@ -752,3 +752,28 @@ class AppExternaForm(EstiloMixin, forms.ModelForm):
         AppClase.objects.filter(app=app, clase_id__in=actuales - elegidas).delete()
         AppClase.objects.bulk_create([AppClase(app=app, clase_id=clase_id) for clase_id in elegidas - actuales])
         return app
+
+
+class BatallaForm(forms.Form):
+    """Nueva Batalla en vivo: de qué misiones salen las preguntas, cuántas, cuánto tiempo y qué premio."""
+    clase = forms.ModelChoiceField(queryset=Clase.objects.order_by('-activa', 'grado', 'grupo'), label='Clase',
+                                   empty_label='Selecciona una clase…')
+    misiones = forms.TypedMultipleChoiceField(coerce=int, label='Misiones', error_messages={
+        'required': 'Elige al menos una misión con preguntas.',
+        'invalid_choice': 'Esa misión no es de esta clase o ya no tiene preguntas.',
+    })
+    cantidad = forms.TypedChoiceField(coerce=int, initial=10, label='¿Cuántas preguntas?')
+    segundos = forms.TypedChoiceField(coerce=int, initial=20, label='Tiempo por pregunta')
+    premios = forms.ChoiceField(initial='normal', label='Premios')
+    modo = forms.ChoiceField(choices=[('individual', 'Cada quien'), ('equipos', 'Por equipos')], initial='individual')
+    mezclar = forms.BooleanField(required=False, initial=True, label='Mezclar preguntas y respuestas')
+    titulo = forms.CharField(required=False, max_length=120, label='Nombre (opcional)',
+                             widget=forms.TextInput(attrs={'placeholder': 'Se pone solo según las misiones'}))
+
+    def __init__(self, *args, mundos=None, **kwargs):
+        from .batallas import CANTIDADES, PREMIOS, TIEMPOS
+        super().__init__(*args, **kwargs)
+        self.fields['cantidad'].choices = [(n, str(n)) for n in CANTIDADES] + [(0, 'Todas')]
+        self.fields['segundos'].choices = [(s, f'{s} s') for s, _, _ in TIEMPOS]
+        self.fields['premios'].choices = [(k, v[1]) for k, v in PREMIOS.items()]
+        self.fields['misiones'].choices = [(m['id'], m['nombre']) for mundo in (mundos or []) for m in mundo['misiones']]

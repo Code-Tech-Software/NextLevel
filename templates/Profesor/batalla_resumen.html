@@ -1,0 +1,89 @@
+{% extends 'Profesor/baseProfesor.html' %}
+{% load nextlevel %}
+{% block title %}{{ batalla.titulo }} · Batalla en vivo{% endblock %}
+{% block migas %}<a href="{% url 'batallas_lista' %}">Batallas en vivo</a><i class="bi bi-chevron-right"></i><span class="actual">{{ batalla.titulo }}</span>{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1>⚔️ {{ batalla.titulo }}</h1>
+        <p>{{ clase.icono }} {{ clase.nombre }} · {{ batalla.terminada|default:batalla.creada|date:"l d \d\e F · H:i" }} · {{ preguntas|length }} preguntas de {{ batalla.segundos }} s{% if batalla.por_equipos %} · por equipos{% endif %}</p>
+    </div>
+    <div class="acciones">
+        {% if batalla.abierta %}
+            <a href="{% url 'batalla_proyector' batalla.id %}" class="p-btn primario"><i class="bi bi-display"></i> Volver al proyector</a>
+        {% else %}
+            <form method="post" action="{% url 'batalla_repetir' batalla.id %}" data-confirmar="Se abre una batalla nueva con las mismas preguntas en otro orden." data-titulo="¿Jugar otra vez?" data-boton="Abrir el proyector">{% csrf_token %}<button class="p-btn primario"><i class="bi bi-arrow-repeat"></i> Jugar otra vez</button></form>
+        {% endif %}
+    </div>
+</div>
+
+<div class="bt-cifras mb-3">
+    <div class="p-card"><span class="v">{{ participaron }}</span><span class="l">alumnos jugaron</span></div>
+    <div class="p-card"><span class="v">{% if pct is not None %}{{ pct }} %{% else %}—{% endif %}</span><span class="l">de respuestas correctas</span></div>
+    <div class="p-card"><span class="v">{{ repasar|length }}</span><span class="l">{% if repasar|length == 1 %}misión para repasar{% else %}misiones para repasar{% endif %}</span></div>
+</div>
+
+<div class="row g-3">
+    <div class="col-xl-7">
+        <div class="p-card mb-3">
+            <div class="p-card-head"><h2>Qué costó más</h2><span class="sub">De la más difícil a la más fácil</span></div>
+            {% if repasar %}
+                <div class="bt-repasar">
+                    <i class="bi bi-lightbulb"></i>
+                    <div><b>Vale la pena repasar:</b> {% for m in repasar %}{{ m.nombre }}{% if not forloop.last %}, {% endif %}{% endfor %}.</div>
+                </div>
+            {% endif %}
+            <div class="p-card-body sin-pad">
+                {% for f in resumen %}
+                    <div class="bt-pregunta-fila">
+                        <span class="num">{{ f.orden }}</span>
+                        <div class="min-w-0 flex-grow-1">
+                            <div class="texto">{{ f.texto }}</div>
+                            <div class="detalle">✅ {{ f.correcta }}{% if f.confusion %} · <span class="confusion">la confundieron con «{{ f.confusion }}»</span>{% endif %}{% if f.mision %} · {{ f.mision }}{% endif %}</div>
+                            <div class="progreso mt-1"><span class="{% if f.pct >= 75 %}bien{% elif f.pct >= 50 %}regular{% else %}mal{% endif %}" style="width: {{ f.pct }}%"></span></div>
+                        </div>
+                        <span class="pct {% if f.pct >= 75 %}bien{% elif f.pct >= 50 %}regular{% else %}mal{% endif %}">{{ f.pct }} %</span>
+                    </div>
+                {% empty %}
+                    <div class="vacio-p"><i class="bi bi-hourglass"></i><h3>Nadie contestó todavía</h3></div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-5">
+        {% if equipos %}
+            <div class="p-card mb-3">
+                <div class="p-card-head"><h2>Equipos</h2><span class="sub">Promedio de puntos</span></div>
+                <div class="p-card-body sin-pad">
+                    {% for e in equipos %}
+                        <div class="bt-jugador-fila"><span class="pos">{{ e.posicion }}</span><span class="fs-5">{{ e.emoji }}</span><span class="flex-grow-1 fw-semibold">{{ e.nombre }}</span><span class="tnum fw-semibold">{{ e.promedio }}</span></div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+        <div class="p-card">
+            <div class="p-card-head"><h2>Alumnos</h2><span class="sub">Cada punto es una pregunta: <span class="bt-marca si"></span> bien · <span class="bt-marca no"></span> mal · <span class="bt-marca"></span> sin contestar</span></div>
+            <div class="p-card-body sin-pad">
+                {% for j in jugadores %}
+                    <div class="bt-jugador-fila {% if not j.contestadas %}opacity-50{% endif %}">
+                        <span class="pos">{% if j.posicion %}{% if j.posicion == 1 %}🥇{% elif j.posicion == 2 %}🥈{% elif j.posicion == 3 %}🥉{% else %}{{ j.posicion }}{% endif %}{% else %}–{% endif %}</span>
+                        <img src="{{ j.alumno|avatar_url }}" alt="" class="avatar-mini">
+                        <div class="min-w-0 flex-grow-1">
+                            <div class="fw-semibold text-truncate">{{ j.alumno.nombre }} {{ j.alumno.apellido }}{% if j.equipo %} <span title="{{ j.equipo.nombre }}">{{ j.equipo.emoji }}</span>{% endif %}</div>
+                            <div class="bt-marcas">{% for m in j.marcas %}<span class="bt-marca {% if m is True %}si{% elif m is False %}no{% endif %}"></span>{% endfor %}</div>
+                        </div>
+                        <div class="text-end">
+                            <div class="tnum fw-semibold">{{ j.puntos }}</div>
+                            <div class="text-muted-p" style="font-size:.72rem">{{ j.aciertos }}/{{ preguntas|length }}{% if j.monedas %} · <i class="bi bi-coin text-warning"></i> {{ j.monedas }}{% endif %}</div>
+                        </div>
+                    </div>
+                {% empty %}
+                    <div class="vacio-p"><i class="bi bi-people"></i><h3>Nadie se unió</h3></div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

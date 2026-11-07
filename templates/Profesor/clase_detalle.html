@@ -16,6 +16,7 @@
         {% include 'Profesor/_acceso_clase.html' %}
         <a href="{% url 'vista_alumno' clase.id %}" class="p-btn" title="Recorre la clase como alumno: todo abierto y sin guardar nada"><i class="bi bi-eye"></i> Ver como alumno</a>
         <a href="{% url 'modo_clase' clase.id %}" class="p-btn"><i class="bi bi-phone"></i> Modo clase</a>
+        <a data-modal="xl" href="{% url 'batalla_nueva' %}?clase={{ clase.id }}" class="p-btn"><i class="bi bi-lightning-charge"></i> Batalla en vivo</a>
         <a href="{% url 'equipos_clase' clase.id %}" class="p-btn"><i class="bi bi-shield"></i> Equipos</a>
         <a href="{% url 'proyector' clase.id %}" target="_blank" class="p-btn"><i class="bi bi-display"></i> Proyectar</a>
         <a href="{% url 'matriz_calificaciones' clase.id %}" class="p-btn"><i class="bi bi-table"></i> Calificaciones</a>

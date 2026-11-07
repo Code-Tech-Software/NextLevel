@@ -15,7 +15,7 @@ from django.db.models.functions import Coalesce
 from django.utils import timezone
 
 from .models import (
-    Alumno, ArticuloTienda, CofreAbierto, CompraAlumno, Logro, LogroAlumno, LogroRetirado, Mision, MisionDiaria,
+    Alumno, ArticuloTienda, CofreAbierto, CompraAlumno, JugadorBatalla, Logro, LogroAlumno, LogroRetirado, Mision, MisionDiaria,
     Movimiento, Notificacion, PartidaJuego, ProgresoDiario, ProgresoMision, PuntosEquipo, RegistroConducta, calcular_nivel,
     xp_para_nivel, RANGOS,
 )
@@ -224,6 +224,14 @@ def mundos_completados(alumno):
     return sum(1 for ids in por_mundo.values() if ids and ids <= aprobadas)
 
 
+# Una batalla cuenta cuando terminó y el alumno contestó al menos una pregunta
+BATALLAS_JUGADAS = JugadorBatalla.objects.filter(batalla__estado='final', contestadas__gt=0)
+
+
+def batallas_jugadas(alumno):
+    return BATALLAS_JUGADAS.filter(alumno=alumno)
+
+
 def estadisticas_alumno(alumno):
     aprobados = ProgresoMision.objects.filter(alumno=alumno, estado='aprobado')
     compras = CompraAlumno.objects.filter(alumno=alumno).exclude(estado='cancelado')
@@ -244,6 +252,8 @@ def estadisticas_alumno(alumno):
         'logros': LogroAlumno.objects.filter(alumno=alumno).count(),
         'juegos': PartidaJuego.objects.filter(alumno=alumno, terminada=True).count(),
         'ppm': PartidaJuego.objects.filter(alumno=alumno, terminada=True).aggregate(m=Max('ppm'))['m'] or 0,
+        'batallas': batallas_jugadas(alumno).count(),
+        'podios': batallas_jugadas(alumno).filter(posicion__lte=3).count(),
     }
 
 
@@ -360,6 +370,8 @@ def alumnos_que_cumplen(condicion, valor):
         'compras': CompraAlumno.objects.filter(alumno__activo=True).exclude(estado='cancelado'),
         'diarias': ProgresoDiario.objects.filter(alumno__activo=True, reclamada=True),
         'juegos': PartidaJuego.objects.filter(alumno__activo=True, terminada=True),
+        'batallas': BATALLAS_JUGADAS.filter(alumno__activo=True),
+        'podios': BATALLAS_JUGADAS.filter(alumno__activo=True, posicion__lte=3),
     }
     if condicion not in origenes:
         return []

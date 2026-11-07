@@ -494,6 +494,7 @@ class Movimiento(models.Model):
         ('conducta', 'Comportamiento'),
         ('meta', 'Meta del grupo'),
         ('juego', 'Minijuego del Arcade'),
+        ('batalla', 'Batalla en vivo'),
     ]
     alumno = models.ForeignKey(Alumno, on_delete=models.CASCADE, related_name="movimientos")
     clase = models.ForeignKey(Clase, on_delete=models.SET_NULL, null=True, blank=True, related_name="movimientos")
@@ -523,6 +524,7 @@ class Notificacion(models.Model):
         ('diaria', 'Misión diaria'),
         ('tienda', 'Tienda'),
         ('monedas', 'Monedas'),
+        ('batalla', 'Batalla en vivo'),
         ('sistema', 'Sistema'),
     ]
     alumno = models.ForeignKey(Alumno, on_delete=models.CASCADE, related_name="notificaciones")
@@ -558,6 +560,8 @@ class Logro(models.Model):
         ('jefes', 'Jefes derrotados'),
         ('juegos', 'Partidas de minijuegos'),
         ('ppm', 'Récord de palabras por minuto'),
+        ('batallas', 'Batallas en vivo jugadas'),
+        ('podios', 'Podios en batallas en vivo'),
         ('manual', 'Lo otorga el profesor'),
     ]
     RAREZAS = [
@@ -896,3 +900,130 @@ class AccesoAlumno(models.Model):
 
     def __str__(self):
         return f"{self.alumno} · {self.app}"
+
+
+# ========================
+# BATALLA EN VIVO (concurso de preguntas en el proyector)
+# ========================
+class BatallaQuerySet(models.QuerySet):
+    def abiertas(self):
+        """Las que siguen en juego. Una que se quedó abierta más de 12 horas ya no se le muestra a nadie."""
+        return self.exclude(estado='final').filter(
+            creada__gte=timezone.now() - timedelta(hours=Batalla.HORAS_VIGENCIA))
+
+
+class Batalla(models.Model):
+    """El profe proyecta las preguntas y los alumnos contestan desde su dispositivo: gana quien acierta más rápido.
+
+    Las preguntas se copian de los cuestionarios de las misiones al crearla, así el historial no cambia aunque
+    después se editen. `version` sube con cada cambio de pantalla (sala → pregunta → resultado → …) y es lo que
+    consultan los dispositivos cada segundo para saber si hay algo nuevo.
+    """
+    ESTADOS = [
+        ('sala', 'Sala de espera'),
+        ('pregunta', 'Pregunta en curso'),
+        ('resultado', 'Respuesta revelada'),
+        ('final', 'Terminada'),
+    ]
+    HORAS_VIGENCIA = 12
+
+    clase = models.ForeignKey(Clase, on_delete=models.CASCADE, related_name='batallas')
+    titulo = models.CharField(max_length=120)
+    estado = models.CharField(max_length=10, choices=ESTADOS, default='sala')
+    indice = models.IntegerField(default=-1, help_text='Pregunta en pantalla (0, 1, 2…); -1 en la sala de espera')
+    segundos = models.PositiveSmallIntegerField(default=20, help_text='Tiempo para contestar cada pregunta')
+    por_equipos = models.BooleanField(default=False, help_text='Los equipos de la clase compiten con su promedio')
+    premio_1 = models.PositiveSmallIntegerField(default=30, help_text='Monedas para el 1.er lugar')
+    premio_2 = models.PositiveSmallIntegerField(default=20, help_text='Monedas para el 2.º lugar')
+    premio_3 = models.PositiveSmallIntegerField(default=10, help_text='Monedas para el 3.er lugar')
+    premio_participar = models.PositiveSmallIntegerField(default=5, help_text='Monedas para quien contestó al menos una')
+    xp_por_acierto = models.PositiveSmallIntegerField(default=10)
+    inicio_pregunta = models.DateTimeField(null=True, blank=True, help_text='Desde cuándo se puede contestar')
+    version = models.PositiveIntegerField(default=1)
+    creada = models.DateTimeField(default=timezone.now)
+    terminada = models.DateTimeField(null=True, blank=True)
+    premios_entregados = models.BooleanField(default=False)
+
+    objects = BatallaQuerySet.as_manager()
+
+    class Meta:
+        ordering = ['-creada', '-id']
+
+    def __str__(self):
+        return f'⚔️ {self.titulo}'
+
+    @property
+    def abierta(self):
+        return self.estado != 'final' and self.creada >= timezone.now() - timedelta(hours=self.HORAS_VIGENCIA)
+
+    @property
+    def fin_pregunta(self):
+        if not self.inicio_pregunta:
+            return None
+        return self.inicio_pregunta + timedelta(seconds=self.segundos)
+
+    @property
+    def premios_podio(self):
+        return [self.premio_1, self.premio_2, self.premio_3]
+
+    @property
+    def con_premios(self):
+        return bool(self.premio_1 or self.premio_2 or self.premio_3 or self.premio_participar or self.xp_por_acierto)
+
+
+class PreguntaBatalla(models.Model):
+    batalla = models.ForeignKey(Batalla, on_delete=models.CASCADE, related_name='preguntas')
+    orden = models.PositiveSmallIntegerField()
+    texto = models.TextField()
+    opciones = models.JSONField(default=list, help_text='[{"texto": "…", "correcta": true}, …]')
+    mision = models.ForeignKey(Mision, on_delete=models.SET_NULL, null=True, blank=True, related_name='+',
+                               help_text='De qué misión salió (para saber qué repasar)')
+
+    class Meta:
+        ordering = ['orden']
+        unique_together = [('batalla', 'orden')]
+
+    def __str__(self):
+        return f'{self.batalla} · {self.orden + 1}. {self.texto[:40]}'
+
+    @property
+    def correctas(self):
+        return [i for i, opcion in enumerate(self.opciones) if opcion.get('correcta')]
+
+
+class JugadorBatalla(models.Model):
+    batalla = models.ForeignKey(Batalla, on_delete=models.CASCADE, related_name='jugadores')
+    alumno = models.ForeignKey(Alumno, on_delete=models.CASCADE, related_name='batallas_jugadas')
+    equipo = models.ForeignKey(Equipo, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    puntos = models.PositiveIntegerField(default=0)
+    aciertos = models.PositiveSmallIntegerField(default=0)
+    contestadas = models.PositiveSmallIntegerField(default=0)
+    racha = models.PositiveSmallIntegerField(default=0, help_text='Aciertos seguidos')
+    milisegundos = models.PositiveIntegerField(default=0, help_text='Tiempo total de sus aciertos (desempata)')
+    posicion = models.PositiveSmallIntegerField(null=True, blank=True, help_text='Lugar final (en equipos, el de su equipo)')
+    monedas = models.PositiveIntegerField(default=0, help_text='Premio que recibió')
+    xp = models.PositiveIntegerField(default=0)
+    unido = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ['-puntos', '-aciertos', 'milisegundos', 'unido']
+        unique_together = [('batalla', 'alumno')]
+
+    def __str__(self):
+        return f'{self.alumno} · {self.batalla} · {self.puntos}'
+
+
+class RespuestaBatalla(models.Model):
+    pregunta = models.ForeignKey(PreguntaBatalla, on_delete=models.CASCADE, related_name='respuestas')
+    jugador = models.ForeignKey(JugadorBatalla, on_delete=models.CASCADE, related_name='respuestas')
+    opcion = models.PositiveSmallIntegerField()
+    correcta = models.BooleanField(default=False)
+    puntos = models.PositiveIntegerField(default=0)
+    milisegundos = models.PositiveIntegerField(default=0, help_text='Lo que tardó en contestar')
+    fecha = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [('pregunta', 'jugador')]
+
+    def __str__(self):
+        return f'{self.jugador.alumno} · {self.pregunta.orden + 1} · {"✔" if self.correcta else "✘"}'

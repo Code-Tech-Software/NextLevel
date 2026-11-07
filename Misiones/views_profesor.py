@@ -26,7 +26,7 @@ from .forms import (
     MundoForm, NivelForm, OtorgarLogroForm, separar_nombre,
 )
 from .models import (
-    AccesoAlumno, Alumno, AppClase, AppExterna, ArticuloTienda, Clase, CompraAlumno, Comportamiento, Equipo, Juego, Logro, LogroAlumno, MetaGrupo, Mision,
+    AccesoAlumno, Alumno, AppClase, AppExterna, ArticuloTienda, Batalla, Clase, CompraAlumno, Comportamiento, Equipo, Juego, Logro, LogroAlumno, MetaGrupo, Mision,
     MisionDiaria, Movimiento, Mundo, Nivel, OpcionRespuesta, Pregunta, ProgresoMision,
 )
 from .templatetags.nextlevel import COLORES_CLASE, avatar_url
@@ -607,6 +607,8 @@ CONDICIONES_INFO = [
     ('compras', '🛒', 'Comprar en la tienda', 'Ej. haz 3 compras'),
     ('juegos', '🎮', 'Jugar minijuegos', 'Ej. juega 20 partidas'),
     ('ppm', '⌨️', 'Escribir rápido', 'Ej. 30 palabras por minuto'),
+    ('batallas', '⚔️', 'Batallas en vivo', 'Ej. juega 5 batallas'),
+    ('podios', '🏆', 'Podio en batallas', 'Ej. sube 3 veces al podio'),
     ('manual', '🎁', 'Lo das tú', 'Reconocimiento especial'),
 ]
 
@@ -650,6 +652,7 @@ MODELOS_ELIMINABLES = {
     'comportamiento': (Comportamiento, 'comportamientos_lista'),
     'juego': (Juego, 'juegos_lista'),
     'app': (AppExterna, 'apps_lista'),
+    'batalla': (Batalla, 'batallas_lista'),
 }
 
 

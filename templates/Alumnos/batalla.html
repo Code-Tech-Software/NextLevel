@@ -1,0 +1,29 @@
+{% extends 'Alumnos/base_publica.html' %}
+{% load static nextlevel %}
+{% block title %}⚔️ Batalla en vivo · {{ clase.nombre }}{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/batalla.css' %}">{% endblock %}
+{% block body_class %}batalla-alumno{% endblock %}
+
+{% block cuerpo %}
+{% include 'Alumnos/_vista_alumno.html' %}
+<div class="ba" id="batalla" data-modo="alumno"
+     data-url-estado="{% url 'batalla_alumno_estado' clase.id %}"
+     data-url-unirse="{% url 'batalla_unirse' clase.id %}"
+     data-url-responder="{% url 'batalla_responder' clase.id %}"
+     data-url-mapa="{% url 'dashboard_alumno' clase.id %}"
+     data-nombre="{{ alumno.nombre }}"
+     data-avatar="{{ alumno|avatar_url }}">
+    <header class="ba-cabeza">
+        <a href="{% url 'dashboard_alumno' clase.id %}" class="ba-salir" title="Volver al mapa" aria-label="Volver al mapa"><i class="bi bi-arrow-left"></i></a>
+        <div class="t min-w-0"><span class="k">⚔️ Batalla en vivo</span><span class="n text-truncate" data-titulo></span></div>
+        <div class="ba-yo">
+            <img src="{{ alumno|avatar_url }}" alt="" class="avatar anillo-{{ alumno.rango.color }}" style="--tam:38px">
+            <span class="pts" data-mis-puntos hidden></span>
+        </div>
+    </header>
+    <main class="ba-escena" data-escena aria-live="polite"></main>
+</div>
+{{ estado|json_script:"batalla-estado" }}
+{% endblock %}
+
+{% block extra_js %}<script src="{% static 'js/batalla.js' %}"></script>{% endblock %}

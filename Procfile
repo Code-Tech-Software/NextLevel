@@ -1,1 +1,1 @@
-web: python manage.py migrate --noinput && python manage.py collectstatic --noinput && gunicorn NextLevel.wsgi
+web: python manage.py migrate --noinput && python manage.py collectstatic --noinput && gunicorn NextLevel.wsgi --workers ${WEB_CONCURRENCY:-2} --threads ${GUNICORN_THREADS:-4} --timeout 60

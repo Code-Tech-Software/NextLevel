@@ -35,6 +35,7 @@
     <nav class="sidebar-nav">
         <a href="{% url 'dashboard_profesor' %}" class="nav-item-p {% if seccion == 'inicio' %}activo{% endif %}"><i class="bi bi-grid-1x2"></i> Inicio</a>
         <a href="{% url 'modo_clase_inicio' %}" class="nav-item-p {% if seccion == 'modo_clase' %}activo{% endif %}"><i class="bi bi-phone"></i> Modo clase</a>
+        <a href="{% url 'batallas_lista' %}" class="nav-item-p {% if seccion == 'batallas' %}activo{% endif %}"><i class="bi bi-lightning-charge"></i> Batallas en vivo</a>
         <a href="{% url 'revisiones' %}" class="nav-item-p {% if seccion == 'revisiones' %}activo{% endif %}">
             <i class="bi bi-inbox"></i> Revisiones {% if cont.revisiones %}<span class="cuenta">{{ cont.revisiones }}</span>{% endif %}
         </a>
@@ -83,11 +84,16 @@
             {% block migas %}<span class="actual">{% block titulo_pagina %}Panel{% endblock %}</span>{% endblock %}
         </div>
         <div class="acciones">
+            {% batallas_abiertas as bt_abiertas %}
+            {% for b in bt_abiertas|slice:":1" %}
+                <a href="{% url 'batalla_proyector' b.id %}" class="chip-batalla" title="«{{ b.titulo }}» sigue abierta en {{ b.clase.nombre }}"><span class="pulso" aria-hidden="true"></span>⚔️ <span>Batalla en curso</span></a>
+            {% endfor %}
             <a data-modal="xl" href="{% url 'alta_mision' %}" class="p-btn sm primario d-none d-sm-inline-flex"><i class="bi bi-plus-lg"></i> Nueva misión</a>
             <div class="dropdown">
                 <button type="button" class="icon-btn" data-bs-toggle="dropdown" aria-label="Crear" title="Crear"><i class="bi bi-plus-circle"></i></button>
                 <ul class="dropdown-menu dropdown-menu-end">
                     <li><a data-modal="xl" class="dropdown-item" href="{% url 'alta_mision' %}"><i class="bi bi-flag"></i> Misión</a></li>
+                    <li><a data-modal="xl" class="dropdown-item" href="{% url 'batalla_nueva' %}"><i class="bi bi-lightning-charge"></i> Batalla en vivo</a></li>
                     <li><a data-modal class="dropdown-item" href="{% url 'alta_alumno' %}"><i class="bi bi-person-plus"></i> Alumno</a></li>
                     <li><a data-modal class="dropdown-item" href="{% url 'alta_masiva' %}"><i class="bi bi-people"></i> Varios alumnos</a></li>
                     <li><a data-modal class="dropdown-item" href="{% url 'alta_clase' %}"><i class="bi bi-easel2"></i> Clase</a></li>

@@ -32,6 +32,11 @@
 
         <div class="mc-acciones">
             {% include 'Profesor/_acceso_clase.html' %}
+            {% if batalla_abierta %}
+                <a href="{% url 'batalla_proyector' batalla_abierta.id %}" class="mc-accion mc-batalla" title="«{{ batalla_abierta.titulo }}» sigue abierta"><i class="bi bi-lightning-charge-fill"></i><span>Volver a la batalla</span></a>
+            {% else %}
+                <a data-modal="xl" href="{% url 'batalla_nueva' %}?clase={{ clase.id }}" class="mc-accion mc-batalla" title="Concurso de preguntas en el proyector"><i class="bi bi-lightning-charge-fill"></i><span>Batalla</span></a>
+            {% endif %}
             <button type="button" class="mc-accion" data-accion="azar" title="Elegir un alumno al azar"><i class="bi bi-dice-5"></i><span>Al azar</span></button>
             <button type="button" class="mc-accion" data-accion="seleccionar" title="Seleccionar varios alumnos"><i class="bi bi-check2-square"></i><span>Varios</span></button>
             <button type="button" class="mc-accion" data-accion="todos" title="Premiar a toda la clase"><i class="bi bi-people-fill"></i><span>Toda la clase</span></button>

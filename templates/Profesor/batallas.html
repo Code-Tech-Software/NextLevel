@@ -1,0 +1,88 @@
+{% extends 'Profesor/baseProfesor.html' %}
+{% block title %}Batallas en vivo{% endblock %}
+{% block titulo_pagina %}Batallas en vivo{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1>Batallas en vivo</h1>
+        <p>Concurso de preguntas en el proyector: tus alumnos contestan desde su dispositivo y gana quien acierta más rápido.</p>
+    </div>
+    <div class="acciones"><a data-modal="xl" href="{% url 'batalla_nueva' %}{% if clase %}?clase={{ clase.id }}{% endif %}" class="p-btn primario"><i class="bi bi-lightning-charge-fill"></i> Nueva batalla</a></div>
+</div>
+
+{% if clases|length > 1 %}
+    <div class="chips-filtro mb-3">
+        <a href="{% url 'batallas_lista' %}" class="chip-f {% if not clase %}activo{% endif %}">Todas</a>
+        {% for c in clases %}<a href="?clase={{ c.id }}" class="chip-f {% if clase and clase.id == c.id %}activo{% endif %}">{{ c.icono }} {{ c.nombre }}</a>{% endfor %}
+    </div>
+{% endif %}
+
+{% for b in abiertas %}
+    <div class="p-card bt-en-curso mb-3">
+        <span class="pulso" aria-hidden="true"></span>
+        <div class="min-w-0 flex-grow-1">
+            <div class="t">⚔️ {{ b.titulo }}</div>
+            <div class="s">{{ b.clase.icono }} {{ b.clase.nombre }} · {{ b.get_estado_display }}{% if b.estado != 'sala' %} · pregunta {{ b.indice|add:1 }} de {{ b.n_preguntas }}{% endif %} · {{ b.n_jugadores }} jugando</div>
+        </div>
+        <a href="{% url 'batalla_proyector' b.id %}" class="p-btn primario sm"><i class="bi bi-display"></i> Abrir el proyector</a>
+        <form method="post" action="{% url 'batalla_accion' b.id %}" data-batalla-terminar data-confirmar="Se cierra la batalla y se reparten los premios con los puntos de ahora." data-titulo="¿Terminar «{{ b.titulo }}»?" data-boton="Terminar">
+            {% csrf_token %}<input type="hidden" name="accion" value="terminar"><input type="hidden" name="v" value="{{ b.version }}">
+            <button class="p-btn sm fantasma"><i class="bi bi-flag"></i> Terminar</button>
+        </form>
+    </div>
+{% endfor %}
+
+{% if pagina.object_list %}
+    <div class="p-card">
+        <div class="p-card-head"><h2>Historial</h2><span class="sub">Toca una para ver qué preguntas costaron más.</span></div>
+        <div class="p-table-wrap">
+            <table class="p-table">
+                <thead><tr><th>Batalla</th><th>Clase</th><th class="num">Jugaron</th><th class="num">Aciertos</th><th>Ganó</th><th></th></tr></thead>
+                <tbody>
+                    {% for b in pagina %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'batalla_resumen' b.id %}" class="fw-semibold text-decoration-none">{{ b.titulo }}</a>
+                                <div class="text-muted-p" style="font-size:.76rem">{{ b.terminada|default:b.creada|date:"d M Y · H:i" }} · {{ b.n_preguntas }} preguntas{% if b.por_equipos %} · por equipos{% endif %}{% if not b.con_premios %} · práctica{% endif %}</div>
+                            </td>
+                            <td>{{ b.clase.icono }} {{ b.clase.nombre }}</td>
+                            <td class="num">{{ b.n_jugadores }}</td>
+                            <td class="num">{% if b.pct is not None %}<span class="p-badge {% if b.pct >= 75 %}verde{% elif b.pct >= 50 %}ambar{% else %}rojo{% endif %}">{{ b.pct }} %</span>{% else %}—{% endif %}</td>
+                            <td>
+                                {% if b.ganadores %}
+                                    {% with g=b.ganadores.0 %}{% if b.por_equipos and g.equipo %}{{ g.equipo.emoji }} {{ g.equipo.nombre }}{% else %}🥇 {{ g.alumno.nombre }} {{ g.alumno.apellido|slice:":1" }}.{% endif %}{% endwith %}
+                                {% else %}<span class="text-muted-p">—</span>{% endif %}
+                            </td>
+                            <td>
+                                <div class="acciones-fila">
+                                    <a href="{% url 'batalla_resumen' b.id %}" class="p-btn xs"><i class="bi bi-bar-chart"></i> Resumen</a>
+                                    <form method="post" action="{% url 'batalla_repetir' b.id %}" data-confirmar="Se abre una batalla nueva con las mismas preguntas en otro orden." data-titulo="¿Jugar otra vez?" data-boton="Abrir el proyector">{% csrf_token %}<button class="p-btn xs fantasma" title="Jugar otra vez"><i class="bi bi-arrow-repeat"></i></button></form>
+                                    <form method="post" action="{% url 'eliminar' 'batalla' b.id %}" data-confirmar="Se borran sus resultados. Las monedas que ganaron tus alumnos se quedan." data-titulo="¿Eliminar «{{ b.titulo }}»?" data-boton="Eliminar" data-peligro>{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="p-btn xs fantasma" title="Eliminar"><i class="bi bi-trash"></i></button></form>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% if pagina.has_other_pages %}
+        <div class="d-flex justify-content-center gap-2 mt-3">
+            {% if pagina.has_previous %}<a class="p-btn sm" href="?{% if clase %}clase={{ clase.id }}&{% endif %}pagina={{ pagina.previous_page_number }}"><i class="bi bi-chevron-left"></i> Anteriores</a>{% endif %}
+            {% if pagina.has_next %}<a class="p-btn sm" href="?{% if clase %}clase={{ clase.id }}&{% endif %}pagina={{ pagina.next_page_number }}">Más antiguas <i class="bi bi-chevron-right"></i></a>{% endif %}
+        </div>
+    {% endif %}
+{% elif not abiertas %}
+    <div class="p-card vacio-p bt-vacio">
+        <div class="ilustracion" aria-hidden="true">⚔️</div>
+        <h3>Aún no hay batallas{% if clase %} en {{ clase.nombre }}{% endif %}</h3>
+        <p>Elige misiones con cuestionario, abre el proyector y tus alumnos entran con su PIN. Las preguntas salen de tus misiones: no tienes que escribir nada nuevo.</p>
+        {% if hay_preguntas %}
+            <a data-modal="xl" href="{% url 'batalla_nueva' %}{% if clase %}?clase={{ clase.id }}{% endif %}" class="p-btn primario"><i class="bi bi-lightning-charge-fill"></i> Crear la primera batalla</a>
+        {% else %}
+            <p class="mb-0"><b>Primero necesitas misiones de tipo Cuestionario.</b></p>
+        {% endif %}
+    </div>
+{% endif %}
+{% endblock %}

@@ -93,6 +93,22 @@ DATABASES = {
     'default': dj_database_url.config(default=os.getenv("DATABASE_URL"))
 }
 
+# Caché compartida entre los procesos del servidor. Con REDIS_URL (Railway) es Redis: la Batalla en vivo la usa para
+# que las consultas de cada segundo no toquen la base de datos. Sin REDIS_URL todo sigue funcionando (desde la base).
+# Tiempos cortos: si Redis tarda o se cae, la página no se queda esperando (Misiones/batallas.py lo deja de usar un rato).
+REDIS_URL = os.getenv('REDIS_URL', '').strip()
+if REDIS_URL:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+            'LOCATION': REDIS_URL,
+            'KEY_PREFIX': 'nextlevel',
+            'OPTIONS': {'socket_connect_timeout': 1, 'socket_timeout': 1, 'health_check_interval': 30},
+        }
+    }
+else:
+    CACHES = {'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'}}
+
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
 

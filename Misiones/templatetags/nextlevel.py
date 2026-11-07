@@ -5,6 +5,7 @@ from django import template
 from django.utils.html import escape
 from django.utils.safestring import mark_safe
 
+from Misiones import batallas
 from Misiones.gamificacion import TEMA_INFO, TIPO_INFO
 from Misiones.minijuegos import juegos_arcade
 from Misiones.models import ArticuloTienda, Clase, CompraAlumno, ProgresoMision
@@ -256,3 +257,19 @@ def info_articulo(articulo):
 def hay_arcade(clase):
     """El menú del alumno muestra el Arcade solo si su clase tiene juegos ahí."""
     return juegos_arcade(clase).exists()
+
+
+@register.simple_tag
+def batalla_en_juego(clase):
+    """La señal de la Batalla en vivo de la clase si hay una jugándose (para el aviso del alumno), o None."""
+    if not clase:
+        return None
+    datos = batallas.senal(clase.id)
+    return datos if batallas.en_juego(datos) else None
+
+
+@register.simple_tag
+def batallas_abiertas():
+    """Batallas que siguen abiertas (para el aviso del panel del profesor)."""
+    from Misiones.models import Batalla
+    return [b for b in Batalla.objects.abiertas().select_related('clase')]

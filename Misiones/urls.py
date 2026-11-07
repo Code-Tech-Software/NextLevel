@@ -2,6 +2,7 @@ from django.contrib.auth import views as auth_views
 from django.urls import path
 
 from . import views
+from . import views_batalla as batalla
 from . import views_clase as aula
 from . import views_juegos as juegos
 from . import views_profesor as profe
@@ -29,6 +30,10 @@ urlpatterns = [
     path('clase/<int:clase_id>/juegos/<int:juego_id>/iniciar/', juegos.iniciar_partida, name='iniciar_partida'),
     path('clase/<int:clase_id>/juegos/partida/<int:partida_id>/terminar/', juegos.terminar_partida,
          name='terminar_partida'),
+    path('clase/<int:clase_id>/batalla/', batalla.batalla_alumno, name='batalla_alumno'),
+    path('clase/<int:clase_id>/batalla/estado/', batalla.batalla_alumno_estado, name='batalla_alumno_estado'),
+    path('clase/<int:clase_id>/batalla/unirse/', batalla.batalla_unirse, name='batalla_unirse'),
+    path('clase/<int:clase_id>/batalla/responder/', batalla.batalla_responder, name='batalla_responder'),
     path('salir/', views.salir_alumno, name='salir_alumno'),
 
     # ===== Acceso del profesor =====
@@ -122,6 +127,15 @@ urlpatterns = [
     path('profesor/metas/nueva/', aula.meta_form, name='alta_meta'),
     path('profesor/metas/<int:pk>/editar/', aula.meta_form, name='editar_meta'),
     path('profesor/metas/<int:pk>/reiniciar/', aula.reiniciar_meta, name='reiniciar_meta'),
+
+    # ===== Batalla en vivo =====
+    path('profesor/batallas/', batalla.batallas_lista, name='batallas_lista'),
+    path('profesor/batallas/nueva/', batalla.batalla_nueva, name='batalla_nueva'),
+    path('profesor/batallas/<int:pk>/', batalla.batalla_proyector, name='batalla_proyector'),
+    path('profesor/batallas/<int:pk>/estado/', batalla.batalla_estado, name='batalla_estado'),
+    path('profesor/batallas/<int:pk>/accion/', batalla.batalla_accion, name='batalla_accion'),
+    path('profesor/batallas/<int:pk>/repetir/', batalla.batalla_repetir, name='batalla_repetir'),
+    path('profesor/batallas/<int:pk>/resumen/', batalla.batalla_resumen, name='batalla_resumen'),
 
     path('profesor/juegos/', juegos.juegos_lista, name='juegos_lista'),
     path('profesor/juegos/nuevo/', juegos.juego_form, name='alta_juego'),

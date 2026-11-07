@@ -1,0 +1,45 @@
+{% extends 'Alumnos/base_publica.html' %}
+{% load static %}
+{% block title %}⚔️ {{ batalla.titulo }} · Batalla en vivo{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/batalla.css' %}">{% endblock %}
+{% block body_class %}batalla-proy{% endblock %}
+
+{% block cuerpo %}
+<div class="bp" id="batalla" data-modo="proyector"
+     data-url-estado="{% url 'batalla_estado' batalla.id %}"
+     data-url-accion="{% url 'batalla_accion' batalla.id %}"
+     data-url-resumen="{% url 'batalla_resumen' batalla.id %}"
+     data-url-repetir="{% url 'batalla_repetir' batalla.id %}"
+     data-url-entrar="{{ url_entrar }}"
+     data-sitio="{{ sitio }}"
+     data-clase="{{ clase.nombre }}">
+    <header class="bp-cabeza">
+        <span class="bp-clase" aria-hidden="true">{{ clase.icono|default:'🚀' }}</span>
+        <div class="min-w-0 flex-grow-1">
+            <div class="k">⚔️ Batalla en vivo · {{ clase.nombre }} {{ clase.grado }}{{ clase.grupo }}</div>
+            <h1 class="text-truncate">{{ batalla.titulo }}</h1>
+        </div>
+        <div class="bp-contador" data-contador hidden></div>
+        <div class="bp-cuenta" title="Jugadores"><i class="bi bi-people-fill"></i> <span data-total-jugadores>{{ estado.total_jugadores }}</span></div>
+    </header>
+
+    <main class="bp-escena" data-escena aria-live="polite"></main>
+
+    <footer class="bp-controles">
+        <a href="{% url 'batallas_lista' %}" class="bp-ctl" title="Volver al panel (la batalla sigue abierta)" aria-label="Volver al panel"><i class="bi bi-arrow-left"></i></a>
+        <button type="button" class="bp-ctl" data-sonido title="Sonido (M)" aria-label="Activar o silenciar sonidos"><i class="bi bi-volume-up-fill ico-on"></i><i class="bi bi-volume-mute-fill ico-off"></i></button>
+        <button type="button" class="bp-ctl" data-pantalla title="Pantalla completa (F)" aria-label="Pantalla completa"><i class="bi bi-arrows-fullscreen"></i></button>
+        <span class="bp-conexion" data-conexion hidden><i class="bi bi-wifi-off"></i> Reconectando…</span>
+        <div class="flex-grow-1"></div>
+        <button type="button" class="bp-ctl texto" data-secundario hidden></button>
+        <button type="button" class="g-btn grande" data-principal hidden></button>
+    </footer>
+</div>
+<form method="post" action="{% url 'batalla_repetir' batalla.id %}" data-form-repetir hidden>{% csrf_token %}</form>
+{{ estado|json_script:"batalla-estado" }}
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<script src="{% static 'js/batalla.js' %}"></script>
+{% endblock %}

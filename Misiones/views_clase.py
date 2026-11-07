@@ -11,7 +11,7 @@ from django.views.decorators.http import require_POST
 
 from . import gamificacion as juego
 from .forms import ComportamientoForm, EquipoForm, MetaGrupoForm
-from .models import Alumno, Clase, Comportamiento, Equipo, MetaGrupo, PuntosEquipo, RegistroConducta
+from .models import Alumno, Batalla, Clase, Comportamiento, Equipo, MetaGrupo, PuntosEquipo, RegistroConducta
 from .views_profesor import _acomodar, _colores, _formulario, _guardado
 
 CASAS_CLASICAS = [
@@ -77,6 +77,7 @@ def modo_clase(request, clase_id=None):
         'negativos': [c for c in comportamientos if not c.positivo],
         'metas': juego.metas_visibles(clase),
         'recientes': RegistroConducta.objects.filter(clase=clase, fecha__date=hoy).select_related('alumno')[:10],
+        'batalla_abierta': Batalla.objects.abiertas().filter(clase=clase).first(),
         'seccion': 'modo_clase',
     })
 

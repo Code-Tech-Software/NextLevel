@@ -1617,3 +1617,26 @@ a.maquina:hover { transform: translateY(-6px); color: var(--texto); box-shadow: 
     .llavero { padding: 1rem; }
     .llave { padding: .85rem; }
 }
+
+/* ---------- Aviso de Batalla en vivo (flota sobre cualquier página del alumno) ---------- */
+.aviso-batalla {
+    position: fixed; z-index: 1040; right: 1rem; bottom: 1.2rem;
+    display: flex; align-items: center; gap: .75rem; max-width: calc(100vw - 2rem);
+    padding: .6rem .7rem .6rem .8rem; border-radius: 20px; text-decoration: none; color: #fff;
+    background: linear-gradient(135deg, #1e3a5f, #7e22ce); box-shadow: 0 6px 0 #3b0764, 0 14px 30px rgba(59, 7, 100, .35);
+    animation: aviso-batalla-entra .5s cubic-bezier(.34, 1.56, .64, 1), aviso-batalla-brillo 2.4s ease-in-out .5s infinite;
+}
+.aviso-batalla:hover { color: #fff; filter: brightness(1.08); }
+.aviso-batalla:active { transform: translateY(4px); box-shadow: 0 2px 0 #3b0764; }
+.aviso-batalla .e { font-size: 1.9rem; line-height: 1; animation: rebote-simple 1.4s ease-in-out infinite; }
+.aviso-batalla .t { display: flex; flex-direction: column; min-width: 0; line-height: 1.15; }
+.aviso-batalla .t b { font-family: var(--fuente-titulo); font-weight: 700; font-size: 1.1rem; }
+.aviso-batalla .t small { font-weight: 800; opacity: .85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
+.aviso-batalla .ir { background: var(--oro); color: #78350f; font-family: var(--fuente-titulo); font-weight: 700; border-radius: 13px; padding: .45rem .8rem; white-space: nowrap; box-shadow: 0 3px 0 var(--oro-osc); }
+@media (max-width: 991.98px) { .aviso-batalla { left: 1rem; right: 1rem; justify-content: space-between; bottom: calc(84px + env(safe-area-inset-bottom)); } }
+@keyframes aviso-batalla-entra { from { transform: translateY(140%); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes aviso-batalla-brillo {
+    0%, 100% { box-shadow: 0 6px 0 #3b0764, 0 14px 30px rgba(59, 7, 100, .35); }
+    50% { box-shadow: 0 6px 0 #3b0764, 0 0 0 8px rgba(168, 85, 247, .25), 0 14px 30px rgba(59, 7, 100, .35); }
+}
+@media (prefers-reduced-motion: reduce) { .aviso-batalla, .aviso-batalla .e { animation: none; } }

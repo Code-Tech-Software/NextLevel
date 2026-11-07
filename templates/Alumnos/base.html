@@ -77,6 +77,8 @@
     {% block content %}{% endblock %}
 </main>
 
+{% include 'Alumnos/_aviso_batalla.html' %}
+
 <nav class="nav-inferior" aria-label="Navegación">
     <a href="{% url 'dashboard_alumno' clase.id %}" class="{% if seccion == 'mapa' %}activo{% endif %}"><i class="bi bi-map-fill"></i>Mapa</a>
     <a href="{% url 'tienda_alumno' clase.id %}" class="{% if seccion == 'tienda' %}activo{% endif %}{% if not clase.tienda_abierta %} cerrada{% endif %}"><i class="bi bi-shop"></i>Tienda{% if not clase.tienda_abierta %}<span class="nav-candado" aria-label="cerrada">🔒</span>{% endif %}</a>

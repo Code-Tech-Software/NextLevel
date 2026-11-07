@@ -154,6 +154,7 @@
         sistema: '¡Increíble!',
         cofre: '¡Tesoro!',
         diaria: 'Misión del día',
+        batalla: '¡Batalla en vivo!',
     };
 
     async function mostrarCelebracionesPendientes() {
@@ -183,6 +184,30 @@
             const url = document.body.dataset.urlLeer;
             if (url) postJSON(url).then(() => burbuja.remove()).catch(() => {});
         });
+    }
+
+    // ---------- Aviso de Batalla en vivo ----------
+    // Cada pocos segundos pregunta (sin tocar la base de datos si hay Redis) si el profe abrió una batalla
+    function iniciarAvisoBatalla() {
+        const aviso = $('#aviso-batalla');
+        if (!aviso) return;
+        let visible = !aviso.classList.contains('oculto');
+        async function revisar() {
+            if (!document.hidden) {
+                try {
+                    const r = await fetch(aviso.dataset.urlSenal, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, cache: 'no-store' });
+                    if (r.ok) {
+                        const datos = await r.json();
+                        if (datos.en_juego && !visible) Sonido.play('pop');
+                        visible = !!datos.en_juego;
+                        aviso.classList.toggle('oculto', !visible);
+                        if (datos.titulo) $('[data-aviso-titulo]', aviso).textContent = datos.titulo;
+                    }
+                } catch (e) { /* sin red: se intenta en la siguiente vuelta */ }
+            }
+            setTimeout(revisar, visible ? 15000 : 8000);
+        }
+        setTimeout(revisar, 8000);
     }
 
     // ---------- Sonido on/off ----------
@@ -490,6 +515,7 @@
         iniciarMision();
         iniciarPin();
         iniciarClicks();
+        iniciarAvisoBatalla();
         mostrarCelebracionesPendientes();
         $$('.barra > span[data-ancho]').forEach(barra => {
             requestAnimationFrame(() => { barra.style.width = barra.dataset.ancho + '%'; });

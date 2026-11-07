@@ -719,6 +719,8 @@
         compras: { pregunta: '¿Cuántas compras debe hacer en la tienda?', unidad: 'compras', sugerencias: [1, 3, 5, 10], texto: n => n === 1 ? 'Haz tu primera compra en la tienda' : `Haz ${n} compras en la tienda` },
         juegos: { pregunta: '¿Cuántas partidas de minijuegos debe jugar?', unidad: 'partidas', sugerencias: [5, 10, 25, 50], texto: n => n === 1 ? 'Juega tu primer minijuego' : `Juega ${n} partidas de minijuegos` },
         ppm: { pregunta: '¿Cuántas palabras por minuto en Mecanografía?', unidad: 'ppm', sugerencias: [15, 20, 30, 40], texto: n => `Escribe ${n} palabras por minuto en Mecanografía` },
+        batallas: { pregunta: '¿En cuántas batallas en vivo debe jugar?', unidad: 'batallas', sugerencias: [1, 3, 5, 10], texto: n => n === 1 ? 'Juega tu primera batalla en vivo' : `Juega ${n} batallas en vivo` },
+        podios: { pregunta: '¿Cuántas veces debe subir al podio (1.º, 2.º o 3.º)?', unidad: 'podios', sugerencias: [1, 3, 5, 10], texto: n => n === 1 ? 'Sube al podio en una batalla en vivo' : `Sube ${n} veces al podio en batallas en vivo` },
         manual: { texto: () => 'Reconocimiento especial de tu profe' },
     };
     const PREMIOS_RAREZA = { comun: [10, 0], raro: [25, 10], epico: [50, 25], legendario: [100, 50] };
@@ -2407,10 +2409,74 @@
         actualizar();
     }
 
+    // ---------- Formulario de Batalla en vivo ----------
+    function iniciarFormBatalla(raiz = document) {
+        const form = $('form[data-form="batalla"]', raiz);
+        if (!form || form.dataset.listo) return;
+        form.dataset.listo = '1';
+        const casillas = () => $$('input[name="misiones"]', form);
+
+        // Otra clase = otras misiones: se vuelve a pedir el formulario (sin contarlo como cambios sin guardar)
+        $('[data-cambiar-clase]', form)?.addEventListener('change', e => {
+            e.stopPropagation();
+            const url = `${form.dataset.url}?clase=${encodeURIComponent(e.target.value)}`;
+            if (form.closest('#modal-form') && window.PModal) window.PModal.abrir(url, 'xl');
+            else location.href = url;
+        });
+
+        function actualizar() {
+            $$('.bt-mundo', form).forEach(mundo => {
+                const propias = $$('input[name="misiones"]', mundo);
+                const marcadas = propias.filter(c => c.checked).length;
+                const todo = $('[data-todo-mundo]', mundo);
+                todo.checked = marcadas > 0 && marcadas === propias.length;
+                todo.indeterminate = marcadas > 0 && marcadas < propias.length;
+            });
+            const disponibles = casillas().filter(c => c.checked).reduce((suma, c) => suma + Number(c.dataset.preguntas || 0), 0);
+            const cantidad = Number($('input[name="cantidad"]:checked', form)?.value || 0);
+            const segundos = Number($('input[name="segundos"]:checked', form)?.value || 20);
+            const mezclar = $('input[name="mezclar"]', form)?.checked;
+            const total = cantidad ? Math.min(cantidad, disponibles) : disponibles;
+            const titulo = $('[data-resumen-total]', form);
+            const detalle = $('[data-resumen-tiempo]', form);
+            if (!total) {
+                titulo.textContent = 'Elige misiones';
+                detalle.textContent = 'Marca al menos una misión';
+                return;
+            }
+            // Cada pregunta: 3 s de «prepárense» + el tiempo para contestar + unos 10 s viendo el resultado
+            const minutos = Math.max(1, Math.round(total * (segundos + 13) / 60));
+            titulo.textContent = `${total} ${total === 1 ? 'pregunta' : 'preguntas'} · ≈ ${minutos} min`;
+            detalle.textContent = disponibles > total
+                ? `De ${disponibles} disponibles salen ${total} ${mezclar ? 'al azar' : '(las primeras del mapa)'}`
+                : `${disponibles === 1 ? 'Sale la única pregunta' : `Salen las ${disponibles}`} de esas misiones`;
+        }
+
+        $$('[data-todo-mundo]', form).forEach(todo => {
+            todo.addEventListener('change', () => {
+                const mundo = todo.closest('.bt-mundo');
+                $$('input[name="misiones"]', mundo).forEach(c => { c.checked = todo.checked; });
+                if (todo.checked) mundo.open = true;
+                actualizar();
+            });
+        });
+        $('[data-ninguna]', form)?.addEventListener('click', () => {
+            casillas().forEach(c => { c.checked = false; });
+            actualizar();
+        });
+        form.addEventListener('change', actualizar);
+        form.antesDeEnviar = () => {
+            if (casillas().some(c => c.checked)) return true;
+            toast('Elige al menos una misión con preguntas', 'warning');
+            return false;
+        };
+        actualizar();
+    }
+
     const INICIADORES = [
         iniciarFormMision, iniciarFormLogro, iniciarFormDiaria, iniciarFormArticulo, iniciarFormClase, iniciarFormMundo,
         iniciarFormNivel, iniciarFormAlumno, iniciarFormMasiva, iniciarFormEquipo, iniciarFormMeta, iniciarFormConducta,
-        iniciarFormJuego, iniciarFormQuitarLogro, iniciarFormApp,
+        iniciarFormJuego, iniciarFormQuitarLogro, iniciarFormApp, iniciarFormBatalla,
     ];
     function iniciarFormularios(raiz = document) {
         INICIADORES.forEach(iniciar => {
