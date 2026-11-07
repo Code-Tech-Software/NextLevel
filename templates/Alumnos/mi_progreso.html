@@ -39,41 +39,60 @@
 
                         {% if app.etiqueta_codigo %}
                             <div class="llave-dato">
-                                <span class="etq">🏫 {{ app.etiqueta_codigo }}</span>
+                                <div class="llave-texto">
+                                    <span class="llave-etq">🏫 {{ app.etiqueta_codigo }}</span>
+                                    {% if item.codigo %}<code class="val">{{ item.codigo }}</code>
+                                    {% else %}<span class="falta">Tu profe aún no lo agrega</span>{% endif %}
+                                </div>
                                 {% if item.codigo %}
-                                    <code class="val">{{ item.codigo }}</code>
-                                    <button type="button" class="llave-btn" data-copiar="{{ item.codigo }}" aria-label="Copiar {{ app.etiqueta_codigo }}"><i class="bi bi-clipboard"></i></button>
-                                {% else %}<span class="falta">Tu profe aún no lo agrega</span>{% endif %}
+                                    <div class="llave-acciones">
+                                        <button type="button" class="llave-btn" data-copiar="{{ item.codigo }}" aria-label="Copiar {{ app.etiqueta_codigo }}" title="Copiar"><i class="bi bi-clipboard"></i></button>
+                                    </div>
+                                {% endif %}
                             </div>
                         {% endif %}
                         {% if app.etiqueta_usuario %}
                             <div class="llave-dato">
-                                <span class="etq">👤 {{ app.etiqueta_usuario }}</span>
+                                <div class="llave-texto">
+                                    <span class="llave-etq">👤 {{ app.etiqueta_usuario }}</span>
+                                    {% if acceso.usuario %}<code class="val">{{ acceso.usuario }}</code>
+                                    {% elif alumno.es_prueba %}<span class="falta">Aquí cada alumno ve el suyo</span>
+                                    {% else %}<span class="falta">Pídeselo a tu profe</span>{% endif %}
+                                </div>
                                 {% if acceso.usuario %}
-                                    <code class="val">{{ acceso.usuario }}</code>
-                                    <button type="button" class="llave-btn" data-copiar="{{ acceso.usuario }}" aria-label="Copiar {{ app.etiqueta_usuario }}"><i class="bi bi-clipboard"></i></button>
-                                {% elif alumno.es_prueba %}<span class="falta">Aquí cada alumno ve el suyo</span>
-                                {% else %}<span class="falta">Pídeselo a tu profe</span>{% endif %}
+                                    <div class="llave-acciones">
+                                        <button type="button" class="llave-btn" data-copiar="{{ acceso.usuario }}" aria-label="Copiar {{ app.etiqueta_usuario }}" title="Copiar"><i class="bi bi-clipboard"></i></button>
+                                    </div>
+                                {% endif %}
                             </div>
                         {% endif %}
                         {% if app.etiqueta_contrasena %}
                             <div class="llave-dato">
-                                <span class="etq">🔒 {{ app.etiqueta_contrasena }}</span>
+                                <div class="llave-texto">
+                                    <span class="llave-etq">🔒 {{ app.etiqueta_contrasena }}</span>
+                                    {% if acceso.contrasena %}<code class="val tapado" data-secreto="{{ acceso.contrasena }}">••••••••</code>
+                                    {% elif alumno.es_prueba %}<span class="falta">Aquí cada alumno ve la suya</span>
+                                    {% else %}<span class="falta">Pídesela a tu profe</span>{% endif %}
+                                </div>
                                 {% if acceso.contrasena %}
-                                    <code class="val tapado" data-secreto="{{ acceso.contrasena }}">••••••••</code>
-                                    <button type="button" class="llave-btn" data-revelar aria-label="Mostrar {{ app.etiqueta_contrasena }}" aria-pressed="false"><i class="bi bi-eye"></i></button>
-                                    <button type="button" class="llave-btn" data-copiar="{{ acceso.contrasena }}" aria-label="Copiar {{ app.etiqueta_contrasena }}"><i class="bi bi-clipboard"></i></button>
-                                {% elif alumno.es_prueba %}<span class="falta">Aquí cada alumno ve la suya</span>
-                                {% else %}<span class="falta">Pídesela a tu profe</span>{% endif %}
+                                    <div class="llave-acciones">
+                                        <button type="button" class="llave-btn" data-revelar aria-label="Mostrar {{ app.etiqueta_contrasena }}" aria-pressed="false" title="Ver"><i class="bi bi-eye"></i></button>
+                                        <button type="button" class="llave-btn" data-copiar="{{ acceso.contrasena }}" aria-label="Copiar {{ app.etiqueta_contrasena }}" title="Copiar"><i class="bi bi-clipboard"></i></button>
+                                    </div>
+                                {% endif %}
                             </div>
                         {% endif %}
 
-                        {% if item.nota %}<div class="llave-nota">📌 {{ item.nota }}</div>{% endif %}
-                        {% if app.instrucciones %}
-                            <details class="llave-ayuda">
-                                <summary>❓ ¿Cómo entro?</summary>
-                                <div>{{ app.instrucciones|linebreaksbr }}</div>
-                            </details>
+                        {% if item.nota or app.instrucciones %}
+                            <div class="llave-pie">
+                                {% if item.nota %}<div class="llave-nota">📌 {{ item.nota }}</div>{% endif %}
+                                {% if app.instrucciones %}
+                                    <details class="llave-ayuda">
+                                        <summary>❓ ¿Cómo entro? <i class="bi bi-chevron-down"></i></summary>
+                                        <div>{{ app.instrucciones|linebreaksbr }}</div>
+                                    </details>
+                                {% endif %}
+                            </div>
                         {% endif %}
                     </article>
                 {% endwith %}{% endfor %}

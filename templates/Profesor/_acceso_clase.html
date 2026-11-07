@@ -1,13 +1,16 @@
-{% comment %}Botón del candado: abre o cierra la plataforma para los alumnos de `clase`.{% endcomment %}
-{% with abierta=clase.acceso_abierto %}
+{% comment %}Botón del candado: abre o cierra la plataforma para los alumnos de `clase` y, aparte, su Tienda y su Arcade.{% endcomment %}
+{% with abierta=clase.acceso_abierto cerradas=clase.secciones_cerradas %}
 <div class="dropdown acceso-clase">
     {# strategy fixed: el menú flota por encima aunque la tarjeta recorte lo que se sale (overflow hidden) #}
+    {# Si la Tienda o el Arcade están cerrados, un punto naranja en la esquina lo avisa sin hacer más ancho el botón #}
     <button type="button" class="p-btn sm acceso-btn {% if abierta %}abierta{% else %}cerrada{% endif %}" data-bs-toggle="dropdown"
             data-bs-popper-config='{"strategy": "fixed"}'
-            aria-label="Acceso de los alumnos: {% if abierta %}abierta{% else %}cerrada{% endif %}" title="Acceso de los alumnos">
+            aria-label="Acceso de los alumnos: {% if abierta %}abierta{% else %}cerrada{% endif %}{% for s in cerradas %}, {{ s.nombre }} {{ s.cerrada }}{% endfor %}"
+            title="Acceso de los alumnos{% for s in cerradas %} · {{ s.nombre }} {{ s.cerrada }}{% endfor %}">
         <i class="bi {% if abierta %}bi-unlock{% else %}bi-lock-fill{% endif %}"></i>
         <span>{% if clase.acceso == 'horario' %}<i class="bi bi-clock"></i> {% if abierta %}Abierta{% else %}Cerrada{% endif %}{% elif abierta %}Abierta{% else %}Cerrada{% endif %}</span>
         <i class="bi bi-chevron-down"></i>
+        {% if cerradas %}<span class="aviso-secciones" aria-hidden="true"></span>{% endif %}
     </button>
     <div class="dropdown-menu dropdown-menu-end acceso-menu">
         <div class="acceso-titulo">¿Pueden entrar los alumnos?</div>
@@ -24,6 +27,21 @@
                 <i class="bi bi-lock"></i><span><b>Cerrada</b><small>Solo ven la información de su cuenta.</small></span>
             </button>
         </form>
+        <hr class="dropdown-divider">
+        <div class="acceso-titulo">Secciones de este grupo</div>
+        {% for s in clase.secciones %}
+            <form method="post" action="{% url 'seccion_clase' clase.id %}">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                <input type="hidden" name="seccion" value="{{ s.clave }}">
+                <button name="abrir" value="{% if s.abierta_ahora %}0{% else %}1{% endif %}" class="dropdown-item seccion-item {% if not s.abierta_ahora %}cerrada{% endif %}"
+                        title="Clic para {% if s.abierta_ahora %}cerrar{% else %}abrir{% endif %} {{ s.el|lower }} {{ s.nombre }}">
+                    <span class="e" aria-hidden="true">{{ s.emoji }}</span>
+                    <span class="flex-grow-1"><b>{{ s.nombre }} · {{ s.estado }}</b><small>{{ s.texto }}</small></span>
+                    <span class="palanca {% if s.abierta_ahora %}on{% endif %}" aria-hidden="true"></span>
+                </button>
+            </form>
+        {% endfor %}
         <hr class="dropdown-divider">
         <a data-modal href="{% url 'editar_clase' clase.id %}" class="dropdown-item"><i class="bi bi-calendar-week"></i><span><b>Configurar horario…</b></span></a>
         <a href="{% url 'vista_alumno' clase.id %}" class="dropdown-item"><i class="bi bi-eye"></i><span><b>Entrar como alumno</b><small>Tú sí entras aunque esté cerrada. Nada se guarda.</small></span></a>

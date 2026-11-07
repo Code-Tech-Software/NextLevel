@@ -276,6 +276,27 @@ def acceso_clase(request, clase_id):
     return redirect(_siguiente(request, reverse('clases_lista')))
 
 
+@require_POST
+@login_required
+def seccion_clase(request, clase_id):
+    """Abre o cierra la Tienda o el Arcade de un grupo (el resto de la plataforma no cambia)."""
+    clase = get_object_or_404(Clase, id=clase_id)
+    seccion, abrir = request.POST.get('seccion'), request.POST.get('abrir')
+    if seccion not in Clase.SECCIONES or abrir not in ('0', '1'):
+        messages.error(request, 'Elige qué sección quieres abrir o cerrar.')
+        return redirect(_siguiente(request, reverse('clases_lista')))
+    info = Clase.SECCIONES[seccion]
+    setattr(clase, info['campo'], abrir == '1')
+    clase.save(update_fields=[info['campo']])
+    if abrir == '1':
+        messages.success(request, f'🔓 {info["el"]} {info["nombre"]} de «{clase.nombre}» quedó {info["abierta"]}. '
+                                  f'{info["si_abre"]}')
+    else:
+        messages.success(request, f'🔒 {info["el"]} {info["nombre"]} de «{clase.nombre}» quedó {info["cerrada"]}. '
+                                  f'{info["si_cierra"]}')
+    return redirect(_siguiente(request, reverse('clases_lista')))
+
+
 @login_required
 def vista_alumno(request, clase_id):
     """Entra a la clase como la ve un alumno: aunque esté cerrada, con todas las misiones abiertas y sin guardar nada."""

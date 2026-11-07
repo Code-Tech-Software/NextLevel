@@ -66,9 +66,41 @@ class Clase(models.Model):
                                     help_text='Días con clase: 0 = lunes … 6 = domingo, separados por comas')
     horario_inicio = models.TimeField(null=True, blank=True)
     horario_fin = models.TimeField(null=True, blank=True)
+    # Secciones que el profe puede cerrar a un grupo sin cerrarle la plataforma (el mapa y las misiones siguen abiertos)
+    tienda_abierta = models.BooleanField(default=True, help_text='Cerrada, sus alumnos no pueden comprar')
+    arcade_abierto = models.BooleanField(default=True, help_text='Cerrado, sus alumnos no pueden jugar en el Arcade')
+
+    SECCIONES = {
+        'tienda': {'campo': 'tienda_abierta', 'nombre': 'Tienda', 'el': 'La', 'emoji': '🛒', 'icono': 'bi-shop',
+                   'abierta': 'abierta', 'cerrada': 'cerrada',
+                   'si_abre': 'Sus alumnos pueden comprar premios con sus monedas.',
+                   'si_cierra': 'Sus alumnos no pueden comprar; sus monedas y su mochila se quedan guardadas.'},
+        'arcade': {'campo': 'arcade_abierto', 'nombre': 'Arcade', 'el': 'El', 'emoji': '🕹️', 'icono': 'bi-controller',
+                   'abierta': 'abierto', 'cerrada': 'cerrado',
+                   'si_abre': 'Sus alumnos pueden jugar y ganar monedas extra.',
+                   'si_cierra': 'Sus alumnos no pueden jugar ahí; los juegos de las misiones del mapa sí siguen.'},
+    }
 
     def __str__(self):
         return f"{self.grado} {self.grupo} - {self.nombre}"
+
+    def seccion_abierta(self, seccion):
+        return getattr(self, self.SECCIONES[seccion]['campo'])
+
+    @property
+    def secciones(self):
+        """La Tienda y el Arcade con su estado en este grupo (para los interruptores del panel)."""
+        lista = []
+        for clave, info in self.SECCIONES.items():
+            abierta = getattr(self, info['campo'])
+            lista.append({**info, 'clave': clave, 'abierta_ahora': abierta,
+                          'estado': info['abierta'] if abierta else info['cerrada'],
+                          'texto': info['si_abre'] if abierta else info['si_cierra']})
+        return lista
+
+    @property
+    def secciones_cerradas(self):
+        return [s for s in self.secciones if not s['abierta_ahora']]
 
     # --- Acceso de los alumnos ---
     @property

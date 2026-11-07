@@ -6,11 +6,25 @@
 <div class="contenedor">
     <section class="tienda-hero">
         <div class="fw-black text-uppercase" style="letter-spacing:2px;opacity:.85;font-size:.8rem">Mercado de recompensas</div>
-        <h1>¡Gasta tu botín! 🛍️</h1>
-        <p class="fw-bold mb-0" style="opacity:.9">Cambia tus monedas por premios, privilegios y avatares.</p>
+        <h1>{% if tienda_cerrada %}Tienda cerrada 🔒{% else %}¡Gasta tu botín! 🛍️{% endif %}</h1>
+        <p class="fw-bold mb-0" style="opacity:.9">{% if tienda_cerrada %}Tus monedas están a salvo hasta que vuelva a abrir.{% else %}Cambia tus monedas por premios, privilegios y avatares.{% endif %}</p>
         <div class="saldo"><i class="bi bi-coin" style="color:#fde047"></i> <span data-monedas>{{ alumno.monedas }}</span> <small style="font-size:.9rem;opacity:.85">monedas</small></div>
     </section>
 
+    {% if tienda_cerrada %}
+    <div class="aviso-cerrada aviso-seccion mt-4" role="status">
+        <span class="candado" aria-hidden="true">🔒</span>
+        <div class="min-w-0 flex-grow-1">
+            <div class="t">Tu profe cerró la tienda por ahora</div>
+            <div class="d">Tus monedas siguen guardadas: ¡sigue juntando para cuando vuelva a abrir!{% if por_entregar %} Los premios que ya compraste te los entrega tu profe igual.{% endif %}</div>
+            {% if alumno.es_prueba %}<div class="nota-profe">👀 Así la ven tus alumnos. Ábrela desde el candado de la clase en tu panel.</div>{% endif %}
+        </div>
+        <a href="{% url 'dashboard_alumno' clase.id %}" class="g-btn azul chico flex-shrink-0"><i class="bi bi-map-fill"></i> Ir al mapa</a>
+    </div>
+    {% if por_entregar %}
+        <a href="#mochila" class="chip oro text-decoration-none mt-3"><i class="bi bi-hourglass-split"></i> {{ por_entregar }} por recibir</a>
+    {% endif %}
+    {% else %}
     <div class="d-flex flex-wrap align-items-center gap-2 mt-4">
         <div class="filtros flex-grow-1">
             <button type="button" class="filtro activo" data-filtro="todos">✨ Todo</button>
@@ -94,6 +108,7 @@
             </div>
         {% endfor %}
     </div>
+    {% endif %}
 
     <h2 class="seccion-titulo" id="mochila">🎒 Mi mochila</h2>
     <section class="g-card">

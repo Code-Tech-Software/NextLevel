@@ -500,8 +500,21 @@ def leer_notificaciones(request, alumno, clase):
 # ========================
 # TIENDA
 # ========================
+TIENDA_CERRADA = '🔒 Tu profe cerró la tienda por ahora. Tus monedas siguen guardadas.'
+
+
 @alumno_requerido
 def tienda_alumno(request, alumno, clase):
+    if not clase.tienda_abierta:
+        # Cerrada: solo su saldo y su mochila (lo que ya compró y lo que le falta recibir)
+        return render(request, 'Alumnos/tienda.html', {
+            'alumno': alumno,
+            'clase': clase,
+            'tienda_cerrada': True,
+            'mis_compras': alumno.compras.select_related('articulo').order_by('-fecha_compra')[:30],
+            'por_entregar': alumno.compras.filter(estado='pendiente').count(),
+            'seccion': 'tienda',
+        })
     juego.registrar_evento(alumno, 'tienda', clase=clase)
     articulos = list(ArticuloTienda.objects.filter(activo=True).order_by('-destacado', 'costo_monedas'))
     compradas = dict(
@@ -534,6 +547,9 @@ def tienda_alumno(request, alumno, clase):
 @alumno_requerido
 def comprar_articulo(request, alumno, clase, articulo_id):
     articulo = get_object_or_404(ArticuloTienda, id=articulo_id)
+    if not clase.tienda_abierta:
+        messages.error(request, TIENDA_CERRADA)
+        return redirect('tienda_alumno', clase_id=clase.id)
     ok, mensaje = juego.comprar(alumno, articulo)
     (messages.success if ok else messages.error)(request, mensaje)
     return redirect('tienda_alumno', clase_id=clase.id)

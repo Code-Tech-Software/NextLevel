@@ -378,7 +378,14 @@ div.nl-choice-list { display: grid; grid-template-columns: repeat(auto-fill, min
 .clase-card .titulo { font-weight: 650; font-size: 1rem; line-height: 1.2; text-decoration: none; color: var(--text); }
 .clase-card .titulo:hover { text-decoration: underline; }
 .clase-card .meta { display: flex; gap: .9rem; flex-wrap: wrap; font-size: .8rem; color: var(--muted); }
-.clase-card .acciones-c { display: flex; gap: .4rem; flex-wrap: wrap; margin-top: auto; }
+.clase-card .acciones-c { display: flex; gap: .4rem; flex-wrap: wrap; margin-top: auto; container: acciones-clase / inline-size; }
+.clase-card .acciones-c .compacto > i { display: none; }
+/* Tarjeta angosta: Calificaciones y Alumnos quedan como íconos y el candado cabe en la misma línea */
+@container acciones-clase (max-width: 420px) {
+    .clase-card .acciones-c .compacto { padding: 0 .7rem; }
+    .clase-card .acciones-c .compacto > i { display: inline-block; font-size: 1rem; }
+    .clase-card .acciones-c .compacto > span { display: none; }
+}
 
 /* ---------- Estructura (mundos → niveles → misiones) ---------- */
 .mundo-bloque { margin-bottom: 1.25rem; overflow: hidden; }
@@ -1295,6 +1302,53 @@ body.modo-enfoque .contenido-p { max-width: none; }
     background: #fff7ed; color: #9a3412; border: 1px solid #fdba74; padding: .15rem .55rem; border-radius: 999px;
 }
 .mc-acciones .acceso-clase .acceso-btn { height: 100%; }
+
+/* ---------- Tienda y Arcade por grupo (abrir / cerrar secciones) ---------- */
+.palanca {
+    position: relative; flex-shrink: 0; width: 36px; height: 20px; border-radius: 999px;
+    background: var(--border-strong); transition: background .15s;
+}
+.palanca::after {
+    content: ''; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%;
+    background: #fff; box-shadow: 0 1px 2px rgba(15, 23, 42, .3); transition: transform .15s;
+}
+.palanca.on { background: var(--accent); }
+.palanca.on::after { transform: translateX(16px); }
+@media (prefers-reduced-motion: reduce) { .palanca, .palanca::after { transition: none; } }
+
+.acceso-menu form { margin: 0; }
+.acceso-menu .seccion-item { align-items: center; }
+.acceso-menu .seccion-item .e { font-size: 1.15rem; line-height: 1; width: 1.25rem; text-align: center; }
+.acceso-menu .seccion-item.cerrada b { color: var(--warning); }
+.acceso-menu .dropdown-item.seccion-item:active { background: var(--accent-soft); color: inherit; }
+
+/* En el botón del candado: punto naranja en la esquina si el grupo tiene la Tienda o el Arcade cerrados */
+.acceso-btn { position: relative; }
+.acceso-btn .aviso-secciones {
+    position: absolute; top: -4px; right: -4px; width: 11px; height: 11px; border-radius: 50%;
+    background: var(--warning); border: 2px solid var(--surface); pointer-events: none;
+}
+
+.secciones-grupos { display: flex; flex-wrap: wrap; align-items: center; gap: .8rem 1.5rem; padding: 1rem 1.15rem; }
+.secciones-grupos .sg-texto { flex: 1 1 260px; min-width: 0; }
+.secciones-grupos .sg-texto .t { font-weight: 650; font-size: .95rem; }
+.secciones-grupos .sg-texto .d { font-size: .8rem; color: var(--muted); line-height: 1.35; margin-top: .15rem; }
+.secciones-grupos .sg-lista { display: flex; flex-wrap: wrap; gap: .5rem; flex: 2 1 380px; }
+.secciones-grupos form { margin: 0; flex: 1 1 190px; max-width: 260px; }
+.sg-grupo {
+    display: flex; align-items: center; gap: .6rem; width: 100%; padding: .5rem .7rem; text-align: left;
+    border: 1px solid color-mix(in srgb, var(--warning) 45%, var(--border)); border-radius: 12px;
+    background: var(--warning-soft); color: var(--text); transition: border-color .12s, background .12s;
+}
+.sg-grupo.on { border-color: var(--border); background: var(--surface); }
+.sg-grupo:hover { border-color: var(--accent); }
+.sg-grupo:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
+.sg-grupo .e { font-size: 1.2rem; line-height: 1; }
+.sg-grupo .min-w-0 { flex: 1; }
+.sg-grupo .n { display: block; font-weight: 600; font-size: .86rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sg-grupo .s { display: block; font-size: .74rem; color: var(--warning); font-weight: 600; }
+.sg-grupo.on .s { color: var(--accent-strong); }
+@media (max-width: 575.98px) { .secciones-grupos form { max-width: none; } }
 
 /* ---------- Ver como alumno (menú del encabezado) ---------- */
 .menu-vista-alumno { min-width: 260px; max-height: 70vh; overflow-y: auto; padding: .4rem; }

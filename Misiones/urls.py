@@ -44,6 +44,7 @@ urlpatterns = [
     path('profesor/clases/<int:clase_id>/', profe.clase_detalle, name='clase_detalle'),
     path('profesor/clases/<int:clase_id>/proyector/', profe.proyector, name='proyector'),
     path('profesor/clases/<int:clase_id>/acceso/', profe.acceso_clase, name='acceso_clase'),
+    path('profesor/clases/<int:clase_id>/secciones/', profe.seccion_clase, name='seccion_clase'),
     path('profesor/clases/<int:clase_id>/vista-alumno/', profe.vista_alumno, name='vista_alumno'),
 
     path('profesor/mundos/nuevo/', profe.mundo_form, name='alta_mundo'),

@@ -133,11 +133,14 @@ def actualizar_racha(alumno, clase=None):
 # MISIONES DEL DÍA
 # ========================
 def seleccionar_diarias(clase, fecha=None):
-    """Las misiones del día cambian a diario, pero son las mismas para toda la clase."""
+    """Las misiones del día cambian a diario, pero son las mismas para toda la clase.
+
+    Con la tienda cerrada no sale «Visitar la tienda»: el grupo no podría cumplirla."""
     fecha = fecha or timezone.localdate()
-    pool = list(
-        MisionDiaria.objects.filter(activa=True).filter(Q(clase=clase) | Q(clase__isnull=True)).order_by('id')
-    )
+    diarias = MisionDiaria.objects.filter(activa=True).filter(Q(clase=clase) | Q(clase__isnull=True))
+    if not clase.tienda_abierta:
+        diarias = diarias.exclude(objetivo='tienda')
+    pool = list(diarias.order_by('id'))
     if len(pool) <= DIARIAS_POR_DIA:
         return pool
 

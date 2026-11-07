@@ -43,11 +43,13 @@
                     <span><i class="bi bi-globe-americas"></i> {{ clase.total_mundos }} mundos</span>
                     <span><i class="bi bi-flag"></i> {{ clase.total_misiones }} misiones</span>
                     {% if clase.activa %}<span class="p-badge verde"><span class="punto"></span> Visible</span>{% else %}<span class="p-badge">Oculta</span>{% endif %}
+                    {% for s in clase.secciones_cerradas %}<span class="p-badge ambar" title="Ábrela desde el candado"><i class="bi {{ s.icono }}"></i> Sin {{ s.nombre|lower }}</span>{% endfor %}
                 </div>
                 <div class="acciones-c">
                     <a href="{% url 'clase_detalle' clase.id %}" class="p-btn sm primario">Abrir</a>
-                    <a href="{% url 'matriz_calificaciones' clase.id %}" class="p-btn sm">Calificaciones</a>
-                    <a href="{% url 'alumnos_lista' %}?clase={{ clase.id }}" class="p-btn sm">Alumnos</a>
+                    {# En tarjetas angostas estos dos se vuelven solo ícono para que el candado no se baje de línea #}
+                    <a href="{% url 'matriz_calificaciones' clase.id %}" class="p-btn sm compacto" title="Calificaciones" aria-label="Calificaciones"><i class="bi bi-table"></i><span>Calificaciones</span></a>
+                    <a href="{% url 'alumnos_lista' %}?clase={{ clase.id }}" class="p-btn sm compacto" title="Alumnos" aria-label="Alumnos"><i class="bi bi-people"></i><span>Alumnos</span></a>
                     <div class="ms-auto">{% include 'Profesor/_acceso_clase.html' %}</div>
                 </div>
             </div>

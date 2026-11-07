@@ -15,6 +15,17 @@
         </div>
     </section>
 
+    {% if arcade_cerrado %}
+    <div class="aviso-cerrada aviso-seccion mt-4" role="status">
+        <span class="candado" aria-hidden="true">🔒</span>
+        <div class="min-w-0 flex-grow-1">
+            <div class="t">Tu profe apagó el Arcade por ahora</div>
+            <div class="d">Tus récords y tus monedas están guardados. Mientras tanto, ¡avanza en el mapa! Los juegos de tus misiones sí funcionan.</div>
+            {% if alumno.es_prueba %}<div class="nota-profe">👀 Así lo ven tus alumnos. Ábrelo desde el candado de la clase en tu panel.</div>{% endif %}
+        </div>
+        <a href="{% url 'dashboard_alumno' clase.id %}" class="g-btn azul chico flex-shrink-0"><i class="bi bi-map-fill"></i> Ir al mapa</a>
+    </div>
+    {% else %}
     <div class="row g-4 mt-1">
         {% for m in maquinas %}
             <div class="col-12 col-sm-6 col-lg-4">
@@ -56,5 +67,6 @@
             </div>
         {% endfor %}
     </div>
+    {% endif %}
 </div>
 {% endblock %}

@@ -1,0 +1,31 @@
+{% comment %}Interruptores por grupo para abrir o cerrar una sección a sus alumnos.
+Uso: {% include 'Profesor/_secciones_grupos.html' with seccion='tienda' titulo='…' ayuda='…' %}{% endcomment %}
+{% load nextlevel %}
+{% clases_vista_alumno as grupos %}
+{% if grupos %}
+<section class="p-card secciones-grupos mb-3">
+    <div class="sg-texto">
+        <div class="t">{{ titulo }}</div>
+        <div class="d">{{ ayuda }}</div>
+    </div>
+    <div class="sg-lista">
+        {% for c in grupos %}{% for s in c.secciones %}{% if s.clave == seccion %}
+            <form method="post" action="{% url 'seccion_clase' c.id %}">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                <input type="hidden" name="seccion" value="{{ s.clave }}">
+                <button name="abrir" value="{% if s.abierta_ahora %}0{% else %}1{% endif %}"
+                        class="sg-grupo {% if s.abierta_ahora %}on{% endif %}"
+                        title="Clic para {% if s.abierta_ahora %}cerrar{% else %}abrir{% endif %} {{ s.el|lower }} {{ s.nombre }} de {{ c.nombre }}">
+                    <span class="e" aria-hidden="true">{{ c.icono }}</span>
+                    <span class="min-w-0">
+                        <span class="n">{{ c.nombre }}</span>
+                        <span class="s">{{ s.nombre }} {{ s.estado }}</span>
+                    </span>
+                    <span class="palanca {% if s.abierta_ahora %}on{% endif %}" aria-hidden="true"></span>
+                </button>
+            </form>
+        {% endif %}{% endfor %}{% endfor %}
+    </div>
+</section>
+{% endif %}

@@ -22,18 +22,24 @@ ICONOS_JUEGO = ['🎮', '☄️', '⌨️', '🚀', '👾', '🕹️', '🛸', '
 # ========================
 # ALUMNO: ARCADE Y PARTIDAS
 # ========================
+ARCADE_CERRADO = '🔒 Tu profe cerró el Arcade por ahora. ¡Sigue avanzando en el mapa!'
+
+
 @alumno_requerido
 def arcade(request, alumno, clase):
     return render(request, 'Alumnos/arcade.html', {
         'alumno': alumno,
         'clase': clase,
-        'maquinas': minijuegos.estado_arcade(alumno, clase),
+        'arcade_cerrado': not clase.arcade_abierto,
+        'maquinas': minijuegos.estado_arcade(alumno, clase) if clase.arcade_abierto else [],
         'seccion': 'arcade',
     })
 
 
 @alumno_requerido
 def arcade_juego(request, alumno, clase, juego_id):
+    if not clase.arcade_abierto:
+        return redirect('arcade', clase_id=clase.id)
     juego = get_object_or_404(minijuegos.juegos_arcade(clase), id=juego_id)
     if minijuegos.bloqueado_en_arcade(alumno, clase, juego):
         messages.warning(request, '🔒 Completa primero su misión en el mapa para jugarlo en el Arcade.')
@@ -64,6 +70,8 @@ def iniciar_partida(request, alumno, clase, juego_id):
         if not minijuegos.mision_jugable(alumno, clase, mision):
             return JsonResponse({'ok': False, 'mensaje': '🔒 Esta misión aún está bloqueada.'}, status=403)
     else:
+        if not clase.arcade_abierto:
+            return JsonResponse({'ok': False, 'mensaje': ARCADE_CERRADO}, status=403)
         if not minijuegos.juegos_arcade(clase).filter(pk=juego.pk).exists() \
                 or minijuegos.bloqueado_en_arcade(alumno, clase, juego):
             return JsonResponse({'ok': False, 'mensaje': '🔒 Este juego no está disponible en tu Arcade.'}, status=403)

@@ -253,6 +253,11 @@ a { color: inherit; }
     .nav-inferior { display: none; }
     body.juego { padding-bottom: 2rem; }
 }
+/* Laptops angostas: el menú de arriba no cabía con el Arcade y se salía de la pantalla */
+@media (min-width: 992px) and (max-width: 1199.98px) {
+    .hud-nav { margin-left: .5rem; gap: .1rem; }
+    .hud-nav a { padding: .55rem .6rem; letter-spacing: 0; }
+}
 @media (max-width: 575.98px) {
     .hud-texto { display: none; }
     .stat { padding: .3rem .4rem; font-size: .92rem; }
@@ -1352,6 +1357,17 @@ a.maquina:hover { transform: translateY(-6px); color: var(--texto); box-shadow: 
 .aviso-cerrada .d { font-weight: 700; color: #7c2d12; font-size: .92rem; margin-top: .15rem; }
 @keyframes candado-mueve { 0%, 30%, 100% { transform: rotate(0); } 10% { transform: rotate(-12deg); } 20% { transform: rotate(10deg); } }
 @media (prefers-reduced-motion: reduce) { .aviso-cerrada .candado { animation: none; } }
+
+/* Tienda o Arcade cerrados a este grupo (el resto de la plataforma sigue abierta) */
+.aviso-seccion .nota-profe {
+    margin-top: .5rem; font-size: .82rem; font-weight: 800; color: #6d28d9;
+    background: #f5f3ff; border: 2px dashed #c4b5fd; border-radius: 12px; padding: .35rem .7rem; display: inline-block;
+}
+.hud-nav a.cerrada, .nav-inferior a.cerrada { opacity: .75; }
+/* El candado va encima del ícono como insignia: no le quita espacio al menú */
+.hud-nav a, .nav-inferior a { position: relative; }
+.hud-nav .nav-candado { position: absolute; top: .05rem; left: 1.7rem; font-size: .68rem; line-height: 1; }
+.nav-inferior .nav-candado { position: absolute; top: .1rem; left: calc(50% + .45rem); font-size: .72rem; line-height: 1; }
 .avance-mundo { display: flex; align-items: center; gap: .75rem; padding: .6rem 0; border-bottom: 2px dashed var(--borde); }
 .avance-mundo:last-child { border-bottom: 0; }
 .avance-mundo .e { font-size: 1.6rem; line-height: 1; }
@@ -1545,45 +1561,59 @@ a.maquina:hover { transform: translateY(-6px); color: var(--texto); box-shadow: 
 }
 
 /* ---------- Mi llavero de apps (perfil del alumno) ---------- */
-.llavero { border-color: #fde68a; box-shadow: 0 6px 0 #fcd34d; }
-.llavero-sub { font-weight: 700; font-size: .88rem; color: var(--texto-suave); margin: -.4rem 0 1rem; }
-.llavero-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); }
+/* margin-bottom: la sección tiene sombra 3D de 6px; sin aire se encima en las estadísticas de abajo */
+.llavero { border-color: #fde68a; box-shadow: 0 6px 0 #fcd34d; margin-bottom: 2rem; }
+.llavero-sub { font-weight: 700; font-size: .88rem; color: var(--texto-suave); margin: -.4rem 0 1.1rem; }
+.llavero-grid { display: grid; gap: 1.1rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); }
 .llave {
-    background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 22px; padding: .9rem;
-    display: flex; flex-direction: column; gap: .45rem;
+    background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 20px; padding: 1rem;
+    box-shadow: 0 4px 0 #e2e8f0;
+    display: flex; flex-direction: column; gap: .55rem;
 }
-.llave-cabeza { display: flex; align-items: center; gap: .6rem; margin-bottom: .2rem; }
+.llave-cabeza { display: flex; align-items: center; gap: .7rem; padding-bottom: .7rem; margin-bottom: .1rem; border-bottom: 2px dashed #e2e8f0; }
 .llave-icono {
     width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; font-size: 1.6rem; flex-shrink: 0;
     background: #fff; box-shadow: 0 3px 0 #e2e8f0;
 }
-.llave-nombre { flex: 1; min-width: 0; font-family: var(--fuente-titulo); font-weight: 700; font-size: 1.1rem; color: var(--navy); line-height: 1.1; }
+.llave-nombre { flex: 1; min-width: 0; font-family: var(--fuente-titulo); font-weight: 700; font-size: 1.1rem; color: var(--navy); line-height: 1.15; }
 .llave-abrir { flex-shrink: 0; }
+
+/* Cada dato: etiqueta chiquita arriba, el valor grande abajo y los botones a la derecha */
 .llave-dato {
-    display: flex; align-items: center; gap: .4rem; background: #fff; border-radius: 14px; padding: .45rem .5rem .45rem .75rem;
-    border: 2px solid #eef2f7;
+    display: flex; align-items: center; gap: .6rem;
+    background: #fff; border: 2px solid #eef2f7; border-radius: 14px; padding: .55rem .6rem .55rem .85rem;
 }
-.llave-dato .etq { font-weight: 800; font-size: .78rem; color: var(--texto-suave); white-space: nowrap; }
+.llave-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .15rem; }
+.llave-etq { font-weight: 800; font-size: .7rem; text-transform: uppercase; letter-spacing: .04em; color: var(--texto-suave); }
 .llave-dato .val {
-    flex: 1; min-width: 0; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-    font-family: ui-monospace, Consolas, monospace; font-weight: 800; font-size: .95rem; color: var(--navy); background: none; padding: 0;
+    display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-family: ui-monospace, Consolas, monospace; font-weight: 800; font-size: 1.05rem; line-height: 1.3;
+    color: var(--navy); background: none; padding: 0;
 }
-.llave-dato .val.tapado { letter-spacing: 2px; color: #94a3b8; }
-.llave-dato .falta { flex: 1; text-align: right; font-weight: 700; font-size: .78rem; color: #94a3b8; }
+.llave-dato .val.tapado { letter-spacing: 3px; color: #94a3b8; }
+.llave-dato .falta { font-weight: 700; font-size: .82rem; line-height: 1.3; color: #94a3b8; }
+.llave-acciones { display: flex; gap: .35rem; flex-shrink: 0; }
 .llave-btn {
-    width: 34px; height: 34px; border-radius: 10px; border: 0; flex-shrink: 0; display: grid; place-items: center;
+    width: 36px; height: 36px; border-radius: 11px; border: 0; display: grid; place-items: center;
     background: #eef2ff; color: #4338ca; font-size: 1rem; cursor: pointer; transition: transform .1s, background .12s;
 }
 .llave-btn:hover { background: #e0e7ff; }
 .llave-btn:active { transform: scale(.92); }
 .llave-btn.copiado { background: #dcfce7; color: #15803d; }
-.llave-nota { font-weight: 700; font-size: .82rem; color: #92400e; background: #fffbeb; border-radius: 12px; padding: .4rem .7rem; }
-.llave-ayuda summary { cursor: pointer; font-weight: 800; font-size: .82rem; color: #6d28d9; list-style: none; }
+
+/* Nota y ayuda siempre al fondo, para que las tarjetas de una misma fila se vean parejas */
+.llave-pie { margin-top: auto; display: flex; flex-direction: column; gap: .5rem; padding-top: .15rem; }
+.llave-nota { font-weight: 700; font-size: .82rem; color: #92400e; background: #fffbeb; border: 2px solid #fef3c7; border-radius: 12px; padding: .45rem .75rem; }
+.llave-ayuda { background: #f5f3ff; border-radius: 12px; }
+.llave-ayuda summary {
+    cursor: pointer; font-weight: 800; font-size: .82rem; color: #6d28d9; list-style: none;
+    display: flex; align-items: center; gap: .3rem; padding: .45rem .75rem;
+}
 .llave-ayuda summary::-webkit-details-marker { display: none; }
-.llave-ayuda div { font-weight: 600; font-size: .85rem; line-height: 1.45; margin-top: .35rem; color: var(--texto); }
+.llave-ayuda summary .bi { margin-left: auto; transition: transform .15s; }
+.llave-ayuda[open] summary .bi { transform: rotate(180deg); }
+.llave-ayuda div { font-weight: 600; font-size: .85rem; line-height: 1.5; color: var(--texto); padding: 0 .75rem .6rem; }
 @media (max-width: 420px) {
-    /* En celular la etiqueta va arriba y el dato tiene todo el ancho */
-    .llave-dato { flex-wrap: wrap; row-gap: .1rem; }
-    .llave-dato .etq { flex-basis: 100%; }
-    .llave-dato .val, .llave-dato .falta { text-align: left; }
+    .llavero { padding: 1rem; }
+    .llave { padding: .85rem; }
 }

@@ -165,11 +165,14 @@ ETIQUETAS_MISION = ('💡 Tip:', '📤 Entrega:')
 
 @register.filter
 def titulo_codigo(mision):
-    """El nombre del recuadro de código de una misión: el sketch de Arduino o los bloques de Scratch o MakeCode."""
+    """El nombre del recuadro de código de una misión: el sketch de Arduino, los bloques de Scratch o MakeCode o un
+    diagrama de flujo."""
     codigo, link = mision.codigo or '', mision.link or ''
     if mision.tipo == 'arduino' or 'void setup' in codigo:
         return 'sketch.ino'
-    if 'makecode.com' in link:
+    if codigo.startswith('( INICIO )'):
+        return 'diagrama de flujo'
+    if 'makecode' in link:      # Arcade (arcade.makecode.com) y micro:bit (makecode.microbit.org)
         return 'bloques de MakeCode'
     if 'scratch.mit.edu' in link or '🏁' in codigo or 'OBJETO:' in codigo:
         return 'bloques de Scratch'

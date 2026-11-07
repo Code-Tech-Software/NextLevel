@@ -11,6 +11,8 @@
     <div class="acciones"><a data-modal href="{% url 'alta_juego' %}" class="p-btn primario"><i class="bi bi-plus-lg"></i> Nuevo juego</a></div>
 </div>
 
+{% include 'Profesor/_secciones_grupos.html' with seccion='arcade' titulo='🕹️ ¿Qué grupos pueden jugar en el Arcade?' ayuda='Apágale el Arcade a un grupo y sus alumnos no podrán jugar ahí. Los juegos que son misión del mapa sí siguen funcionando.' %}
+
 {% if juegos %}
     <div class="row g-3">
         {% for j in juegos %}

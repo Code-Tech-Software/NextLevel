@@ -373,7 +373,7 @@
             }
         }
         function alternarSecreto(boton, mostrar) {
-            const valor = boton.parentElement.querySelector('[data-secreto]');
+            const valor = boton.closest('.llave-dato')?.querySelector('[data-secreto]');
             if (!valor) return;
             valor.textContent = mostrar ? valor.dataset.secreto : '••••••••';
             valor.classList.toggle('tapado', !mostrar);

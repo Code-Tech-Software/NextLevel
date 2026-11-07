@@ -984,6 +984,43 @@ class CursoTics4Tests(BaseJuego):
         self.assertEqual(self.clase.mundos.count(), 1)
 
 
+class CursoTics5Tests(BaseJuego):
+    def test_carga_completo_y_cada_recuadro_de_codigo_tiene_su_nombre(self):
+        from io import StringIO
+
+        from django.core.management import call_command
+
+        from . import cursos, minijuegos
+        from .models import Juego, Mision
+        from .templatetags.nextlevel import titulo_codigo
+
+        call_command('cargar_curso', 'tics5', '--clase', str(self.clase.id), stdout=StringIO())
+        curso = cursos.obtener('tics5')
+        nuevas = Mision.objects.filter(clase=self.clase).exclude(nivel__mundo=self.mundo)
+        self.assertEqual(self.clase.mundos.exclude(pk=self.mundo.pk).count(), len(curso['mundos']))
+        self.assertEqual(nuevas.filter(es_jefe=True).count(), len(curso['mundos']))
+        self.assertEqual(nuevas.count(), sum(len(n['misiones']) for w in curso['mundos'] for n in w['niveles']))
+
+        # Solo juegos de tarjetas, cada uno con su misión y su configuración del curso
+        juegos = Juego.objects.filter(clase=self.clase)
+        self.assertEqual(set(juegos.values_list('plantilla', flat=True)), {'clasifica'})
+        for juego in juegos:
+            self.assertTrue(juego.misiones.exists(), juego.nombre)
+            self.assertEqual([c['nombre'] for c in minijuegos.configuracion(juego)['categorias']],
+                             [c['nombre'] for c in juego.configuracion['categorias']])
+        for mision in nuevas.filter(tipo='cuestionario'):
+            for pregunta in mision.preguntas.all():
+                self.assertEqual(pregunta.opciones.filter(es_correcta=True).count(), 1)
+
+        # Scratch, micro:bit y el diagrama de flujo se reconocen en el recuadro de código
+        self.assertEqual(titulo_codigo(nuevas.get(nombre='Rompecabezas paso 2: piezas que encajan')),
+                         'bloques de Scratch')
+        self.assertEqual(titulo_codigo(nuevas.get(nombre='Programa la alarma')), 'bloques de MakeCode')
+        self.assertEqual(titulo_codigo(nuevas.get(nombre='Del diagrama al pseudocódigo')), 'diagrama de flujo')
+
+        self.assertIn('al liberarse pin [P1]', nuevas.get(nombre='Programa la alarma').codigo)
+
+
 class CursoRoboticaBajaTests(BaseJuego):
     def test_curso_de_robotica_con_pocos_minijuegos(self):
         from io import StringIO
@@ -1459,3 +1496,120 @@ class LlaveroAppsTests(BaseJuego):
         self.client.logout()
         for url in ['/profesor/apps/', f'/profesor/apps/{app.id}/clase/{self.clase.id}/', '/profesor/apps/nueva/']:
             self.assertEqual(self.client.get(url).status_code, 302, url)
+
+
+class SeccionesClaseTests(BaseJuego):
+    """El profe cierra la Tienda o el Arcade a un grupo sin cerrarle la plataforma."""
+
+    def setUp(self):
+        super().setUp()
+        from .models import Juego
+        self.otra = Clase.objects.create(nombre='TIC', grado='5', grupo='B', anio=2026)
+        self.articulo = ArticuloTienda.objects.create(nombre='Llavero', descripcion='x', costo_monedas=30)
+        self.juego_arcade = Juego.objects.create(nombre='Lluvia', plantilla='meteoros', monedas_arcade=5, configuracion={
+            'palabras': ['monitor', 'teclado', 'mouse', 'bocina', 'cpu'], 'duracion': 60, 'velocidad': 'normal', 'meta': 10})
+        self.alumno.monedas = 100
+        self.alumno.save()
+        self.profe = User.objects.create_superuser('profe14', 'p@x.com', 'x')
+
+    def cambiar(self, seccion, abrir, clase=None):
+        self.client.force_login(self.profe)
+        respuesta = self.client.post(f'/profesor/clases/{(clase or self.clase).id}/secciones/',
+                                     {'seccion': seccion, 'abrir': abrir, 'next': '/profesor/clases/'})
+        self.client.logout()
+        return respuesta
+
+    def test_el_profe_abre_y_cierra_cada_seccion_solo_en_ese_grupo(self):
+        self.assertRedirects(self.cambiar('tienda', '0'), '/profesor/clases/', fetch_redirect_response=False)
+        self.cambiar('arcade', '0')
+        self.clase.refresh_from_db()
+        self.otra.refresh_from_db()
+        self.assertEqual((self.clase.tienda_abierta, self.clase.arcade_abierto), (False, False))
+        self.assertEqual((self.otra.tienda_abierta, self.otra.arcade_abierto), (True, True))
+        self.assertEqual([s['clave'] for s in self.clase.secciones_cerradas], ['tienda', 'arcade'])
+
+        self.cambiar('tienda', '1')
+        self.clase.refresh_from_db()
+        self.assertTrue(self.clase.tienda_abierta)
+        # Valores raros no cambian nada
+        self.cambiar('ranking', '0')
+        self.cambiar('arcade', 'si')
+        self.clase.refresh_from_db()
+        self.assertFalse(self.clase.arcade_abierto)
+
+    def test_solo_el_profe_puede_cambiarlas(self):
+        respuesta = self.client.post(f'/profesor/clases/{self.clase.id}/secciones/', {'seccion': 'tienda', 'abrir': '0'})
+        self.assertEqual(respuesta.status_code, 302)
+        self.clase.refresh_from_db()
+        self.assertTrue(self.clase.tienda_abierta)
+
+    def test_tienda_cerrada_no_vende_pero_muestra_la_mochila(self):
+        self.cambiar('tienda', '0')
+        self.entrar()
+        base = f'/clase/{self.clase.id}'
+        pagina = self.client.get(f'{base}/tienda/')
+        self.assertContains(pagina, 'Tu profe cerró la tienda')
+        self.assertContains(pagina, 'Mi mochila')
+        self.assertNotContains(pagina, 'Llavero')       # no se ven los artículos
+        self.assertContains(self.client.get(f'{base}/dashboard/'), 'nav-candado')
+
+        self.client.post(f'{base}/tienda/comprar/{self.articulo.id}/')
+        self.assertFalse(CompraAlumno.objects.filter(alumno=self.alumno).exists())
+        self.alumno.refresh_from_db()
+        self.assertEqual(self.alumno.monedas, 100)
+
+        # El mapa sigue abierto y, al reabrirla, compra normal
+        self.assertEqual(self.client.get(f'{base}/dashboard/').status_code, 200)
+        self.cambiar('tienda', '1')
+        self.entrar()
+        self.client.post(f'{base}/tienda/comprar/{self.articulo.id}/')
+        self.assertTrue(CompraAlumno.objects.filter(alumno=self.alumno, articulo=self.articulo).exists())
+
+    def test_arcade_cerrado_no_deja_jugar_pero_las_misiones_de_juego_si(self):
+        self.cambiar('arcade', '0')
+        self.entrar()
+        base = f'/clase/{self.clase.id}'
+        pagina = self.client.get(f'{base}/arcade/')
+        self.assertContains(pagina, 'Tu profe apagó el Arcade')
+        self.assertNotContains(pagina, f'/arcade/{self.juego_arcade.id}/')
+        self.assertRedirects(self.client.get(f'{base}/arcade/{self.juego_arcade.id}/'), f'{base}/arcade/',
+                             fetch_redirect_response=False)
+        partida = self.client.post(f'{base}/juegos/{self.juego_arcade.id}/iniciar/')
+        self.assertEqual(partida.status_code, 403)
+        self.assertIn('cerró el Arcade', partida.json()['mensaje'])
+
+        # El mismo juego como misión del mapa sí se puede jugar
+        mision = Mision.objects.create(clase=self.clase, nivel=self.nivel, nombre='Juego', descripcion='x', tipo='juego',
+                                       juego=self.juego_arcade, orden=0, xp_recompensa=40, monedas_recompensa=20)
+        self.assertEqual(self.client.post(f'{base}/juegos/{self.juego_arcade.id}/iniciar/',
+                                          {'mision': mision.id}).status_code, 200)
+
+        # Al reabrirlo se vuelve a jugar en el Arcade
+        self.cambiar('arcade', '1')
+        self.entrar()
+        self.assertEqual(self.client.post(f'{base}/juegos/{self.juego_arcade.id}/iniciar/').status_code, 200)
+
+    def test_con_la_tienda_cerrada_no_sale_la_diaria_de_visitarla(self):
+        from .models import MisionDiaria
+        MisionDiaria.objects.create(titulo='Tienda', objetivo='tienda')
+        MisionDiaria.objects.create(titulo='Entrar', objetivo='login')
+        self.assertIn('tienda', [d.objetivo for d in juego.seleccionar_diarias(self.clase)])
+        self.cambiar('tienda', '0')
+        self.clase.refresh_from_db()
+        self.assertNotIn('tienda', [d.objetivo for d in juego.seleccionar_diarias(self.clase)])
+
+    def test_el_panel_muestra_los_interruptores(self):
+        self.cambiar('arcade', '0')
+        self.client.force_login(self.profe)
+        clases = self.client.get('/profesor/clases/')
+        self.assertContains(clases, 'Secciones de este grupo')
+        self.assertContains(clases, 'Arcade · cerrado')
+        self.assertContains(clases, 'Sin arcade')           # etiqueta en la tarjeta de la clase
+        self.assertContains(clases, 'aviso-secciones')      # punto naranja en el botón del candado
+        self.assertNotContains(clases, 'Sin tienda')
+        self.assertContains(self.client.get('/profesor/tienda/'), '¿Qué grupos pueden comprar?')
+        self.assertContains(self.client.get('/profesor/juegos/'), '¿Qué grupos pueden jugar en el Arcade?')
+
+        # En la vista de alumno el profe ve lo mismo que sus alumnos, con una nota para reabrirlo
+        self.client.get(f'/profesor/clases/{self.clase.id}/vista-alumno/')
+        self.assertContains(self.client.get(f'/clase/{self.clase.id}/arcade/'), 'Así lo ven tus alumnos')

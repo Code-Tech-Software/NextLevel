@@ -8,6 +8,7 @@ from Misiones.models import Juego, Mision, Mundo, Nivel, OpcionRespuesta, Pregun
 
 CURSOS = {
     'tics4': ('Misiones.cursos.tics4', 'TIC 4° · Pinion Learn 6.1'),
+    'tics5': ('Misiones.cursos.tics5', 'TIC 5° · Pinion Learn 6.1'),
     'tics6': ('Misiones.cursos.tics6', 'TIC 6° · Pinion Learn 6.1'),
     'robotica-baja': ('Misiones.cursos.robotica_primaria_baja', 'Robótica · Primaria Baja (Dash, Blockly y Bee-Bot)'),
     'robotica-alta': ('Misiones.cursos.robotica_primaria_alta', 'Robótica · Primaria Alta (kit Arduino Rexqualis R3)'),
