@@ -5,20 +5,17 @@ El profe proyecta una pregunta, los alumnos contestan desde su dispositivo y gan
 No hay una conexión abierta con cada dispositivo: cada uno pregunta cada segundo «¿cambió algo?» enviando la
 versión que tiene (su «ficha»), y el servidor solo le manda la pantalla completa cuando sí cambió.
 
-Esa señal (qué batalla tiene la clase y en qué versión va) vive en Redis cuando hay REDIS_URL, así las consultas
-de cada segundo no tocan la base de datos. Si no hay Redis, o si Redis falla, la señal se lee de la base de datos
-y todo funciona igual (solo un poco más de trabajo para el servidor).
+Esa señal (qué batalla tiene la clase y en qué versión va) vive en Redis cuando hay REDIS_URL (ver `memoria.py`),
+así las consultas de cada segundo no tocan la base de datos. Si no hay Redis, o si Redis falla, la señal se lee de
+la base de datos y todo funciona igual (solo un poco más de trabajo para el servidor).
 
 Los cambios de pantalla usan la versión como candado: si el profe da doble clic en «Siguiente» o tiene el
 proyector abierto en dos pestañas, solo cuenta el primero.
 """
-import logging
 import random
 import time
 from datetime import timedelta
 
-from django.conf import settings
-from django.core.cache import cache
 from django.db import IntegrityError, transaction
 from django.db.models import Count, F, Q
 from django.db.models.signals import post_delete
@@ -26,9 +23,8 @@ from django.dispatch import receiver
 from django.utils import timezone
 
 from . import gamificacion as juego
+from .memoria import memoria
 from .models import Batalla, JugadorBatalla, Mision, Pregunta, PreguntaBatalla, RespuestaBatalla
-
-log = logging.getLogger(__name__)
 
 PREPARACION = 3        # «¡Prepárate! 3, 2, 1» antes de poder contestar
 GRACIA = 1.5           # segundos extra para las respuestas que vienen en camino por la red de la escuela
@@ -52,69 +48,6 @@ LETRAS = 'ABCDEF'
 
 TTL_SENAL = 20             # segundos que Redis guarda la señal antes de volver a leerla de la base de datos
 TTL_ACTIVIDAD = 6 * 3600
-
-
-# ========================
-# REDIS (con respaldo en la base de datos)
-# ========================
-class _Cache:
-    """Usa la caché solo si la comparten todos los procesos del servidor (Redis).
-
-    Una caché en memoria de cada proceso daría versiones distintas según qué proceso conteste, así que en ese caso
-    no se usa. Si Redis falla, se aparta 30 segundos para no hacer esperar a nadie.
-    """
-    PAUSA = 30
-
-    def __init__(self):
-        self._apagada_hasta = 0.0
-
-    @property
-    def disponible(self):
-        backend = settings.CACHES.get('default', {}).get('BACKEND', '')
-        return 'redis' in backend.lower() and time.monotonic() >= self._apagada_hasta
-
-    def _fallo(self, error):
-        self._apagada_hasta = time.monotonic() + self.PAUSA
-        log.warning('Redis no respondió (%s); la Batalla en vivo usa la base de datos por %s s.', error, self.PAUSA)
-
-    def get(self, clave):
-        if not self.disponible:
-            return None
-        try:
-            return cache.get(clave)
-        except Exception as error:  # noqa: BLE001 — cualquier falla de Redis se trata igual
-            self._fallo(error)
-            return None
-
-    def set(self, clave, valor, ttl):
-        if not self.disponible:
-            return
-        try:
-            cache.set(clave, valor, ttl)
-        except Exception as error:  # noqa: BLE001
-            self._fallo(error)
-
-    def delete(self, clave):
-        if not self.disponible:
-            return
-        try:
-            cache.delete(clave)
-        except Exception as error:  # noqa: BLE001
-            self._fallo(error)
-
-    def incr(self, clave, ttl):
-        if not self.disponible:
-            return
-        try:
-            try:
-                cache.incr(clave)
-            except ValueError:  # la clave no existía todavía
-                cache.set(clave, 1, ttl)
-        except Exception as error:  # noqa: BLE001
-            self._fallo(error)
-
-
-memoria = _Cache()
 
 
 def _clave_senal(clase_id):
@@ -264,6 +197,7 @@ def crear_batalla(clase, mision_ids, cantidad=10, segundos=20, mezclar=True, por
                             opciones=random.sample(opciones, len(opciones)) if mezclar else opciones)
             for i, (mision, texto, opciones) in enumerate(lista)
         ])
+        _avisar_relevo(batalla)
     _publicar(clase.id)
     return batalla
 
@@ -285,8 +219,22 @@ def repetir(batalla):
                             opciones=random.sample(p.opciones, len(p.opciones)))
             for i, p in enumerate(preguntas)
         ])
+        _avisar_relevo(nueva)
     _publicar(nueva.clase_id)
     return nueva
+
+
+def _avisar_relevo(nueva):
+    """Las pantallas que siguen mostrando una batalla anterior de la clase (el proyector con el podio, el control en
+    el celular) se enteran de que empezó otra y se pasan solas a la nueva."""
+    Batalla.objects.filter(clase_id=nueva.clase_id, estado='final', id__lt=nueva.id,
+                           terminada__gte=timezone.now() - timedelta(hours=Batalla.HORAS_VIGENCIA)
+                           ).update(version=F('version') + 1)
+
+
+def relevo(batalla):
+    """La batalla que la clase abrió después de esta (o None)."""
+    return Batalla.objects.filter(clase_id=batalla.clase_id, id__gt=batalla.id).order_by('-id').values_list('id', flat=True).first()
 
 
 # ========================
@@ -548,7 +496,7 @@ def _equipos_dict(jugadores):
 
 
 def estado_profesor(batalla):
-    """Todo lo que pinta el proyector."""
+    """Todo lo que pintan el proyector y el control del celular (solo los ve el profe)."""
     jugadores = list(batalla.jugadores.select_related('alumno', 'equipo'))
     total = batalla.preguntas.count()
     datos = {
@@ -569,6 +517,7 @@ def estado_profesor(batalla):
             'opciones': [{'letra': LETRAS[i], 'texto': o['texto'],
                           **({'correcta': bool(o.get('correcta')), 'votos': votos.get(i, 0)} if revelada else {})}
                          for i, o in enumerate(pregunta.opciones)],
+            'correctas': pregunta.correctas,   # el control del celular se la muestra al profe si la pide
         }
         datos['respondieron'] = sum(votos.values())
         contestaron = set(pregunta.respuestas.values_list('jugador_id', flat=True))
@@ -585,6 +534,7 @@ def estado_profesor(batalla):
                           for j in sorted(participaron, key=orden_jugador)[:3]]
         datos['resumen'] = resumen_preguntas(batalla)[:3]
         datos['participaron'] = len(participaron)
+        datos['relevo'] = relevo(batalla)
     return datos
 
 

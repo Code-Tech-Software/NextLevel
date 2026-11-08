@@ -26,6 +26,7 @@
             <div class="s">{{ b.clase.icono }} {{ b.clase.nombre }} · {{ b.get_estado_display }}{% if b.estado != 'sala' %} · pregunta {{ b.indice|add:1 }} de {{ b.n_preguntas }}{% endif %} · {{ b.n_jugadores }} jugando</div>
         </div>
         <a href="{% url 'batalla_proyector' b.id %}" class="p-btn primario sm"><i class="bi bi-display"></i> Abrir el proyector</a>
+        <a href="{% url 'batalla_control' b.id %}" class="p-btn sm" title="Maneja la batalla desde tu celular mientras caminas por el salón"><i class="bi bi-phone"></i> Control</a>
         <form method="post" action="{% url 'batalla_accion' b.id %}" data-batalla-terminar data-confirmar="Se cierra la batalla y se reparten los premios con los puntos de ahora." data-titulo="¿Terminar «{{ b.titulo }}»?" data-boton="Terminar">
             {% csrf_token %}<input type="hidden" name="accion" value="terminar"><input type="hidden" name="v" value="{{ b.version }}">
             <button class="p-btn sm fantasma"><i class="bi bi-flag"></i> Terminar</button>

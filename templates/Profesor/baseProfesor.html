@@ -86,7 +86,9 @@
         <div class="acciones">
             {% batallas_abiertas as bt_abiertas %}
             {% for b in bt_abiertas|slice:":1" %}
-                <a href="{% url 'batalla_proyector' b.id %}" class="chip-batalla" title="«{{ b.titulo }}» sigue abierta en {{ b.clase.nombre }}"><span class="pulso" aria-hidden="true"></span>⚔️ <span>Batalla en curso</span></a>
+                {# En el celular, el aviso lleva al control; en la computadora, al proyector #}
+                <a href="{% url 'batalla_proyector' b.id %}" class="chip-batalla d-none d-sm-inline-flex" title="«{{ b.titulo }}» sigue abierta en {{ b.clase.nombre }}"><span class="pulso" aria-hidden="true"></span>⚔️ <span>Batalla en curso</span></a>
+                <a href="{% url 'batalla_control' b.id %}" class="chip-batalla d-sm-none" title="Controla «{{ b.titulo }}» desde tu celular" aria-label="Batalla en curso: abrir el control"><span class="pulso" aria-hidden="true"></span>⚔️</a>
             {% endfor %}
             <a data-modal="xl" href="{% url 'alta_mision' %}" class="p-btn sm primario d-none d-sm-inline-flex"><i class="bi bi-plus-lg"></i> Nueva misión</a>
             <div class="dropdown">

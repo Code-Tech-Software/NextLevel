@@ -132,26 +132,53 @@
             <span class="v">${numero(e.promedio)}</span></div>`).join('')}</div>`;
     }
 
+    function boton(el, texto, alHacer, icono = '') {
+        el.hidden = !texto;
+        if (!texto) return;
+        el.innerHTML = `${icono ? `<i class="bi ${icono}"></i> ` : ''}${texto}`;
+        el.onclick = alHacer;
+    }
+
+    async function confirmar({ titulo, texto, si, no = 'Cancelar', peligro = true }) {
+        if (typeof Swal === 'undefined') return window.confirm(titulo);
+        const r = await Swal.fire({
+            title: titulo, text: texto, showCancelButton: true, confirmButtonText: si, cancelButtonText: no, reverseButtons: true,
+            buttonsStyling: false, customClass: { popup: 'swal-juego', confirmButton: peligro ? 'g-btn rojo' : 'g-btn', cancelButton: 'g-btn blanco' },
+        });
+        return r.isConfirmed;
+    }
+
     // =====================================================
-    // PROYECTOR (profe)
+    // MANDO DEL PROFE (lo comparten el proyector y el control del celular)
+    // Las dos pantallas pueden mandar a la vez: el servidor usa la versión como candado y la que llega tarde
+    // simplemente recibe cómo quedó la batalla.
     // =====================================================
-    function iniciarProyector() {
-        const urls = raiz.dataset;
-        const principal = $('[data-principal]', raiz);
-        const secundario = $('[data-secundario]', raiz);
-        const contador = $('[data-contador]', raiz);
-        let escenaActual = '';
+    function mando({ pintar, principal, plantillaRelevo }) {
         let ocupado = false;
-        let revelando = false;
-        let ultimoSegundo = null;
-        let celebrado = false;
+        let relevando = false;
+
+        function aplicar(nuevo) {
+            if (!nuevo || (nuevo.v < estado.v)) return;   // una respuesta vieja que llegó tarde
+            estado = nuevo;
+            recibido = performance.now();
+            pintar();
+            revisarRelevo();
+        }
+
+        // La clase abrió otra batalla (desde esta pantalla o desde la otra): las dos se pasan solas a la nueva
+        function revisarRelevo() {
+            if (relevando || estado.estado !== 'final' || !estado.relevo) return;
+            relevando = true;
+            aviso('⚔️ ¡Empieza otra batalla!');
+            setTimeout(() => { location.href = plantillaRelevo.replace('/0/', `/${estado.relevo}/`); }, 1500);
+        }
 
         async function accion(nombre, extra = {}) {
             if (ocupado) return;
             ocupado = true;
             principal.disabled = true;
             try {
-                const datos = await pedir(urls.urlAccion, { accion: nombre, v: estado.v, ...extra });
+                const datos = await pedir(raiz.dataset.urlAccion, { accion: nombre, v: estado.v, ...extra });
                 if (datos.estado) aplicar(datos.estado);
             } catch (e) {
                 aviso('No se pudo. Revisa la conexión e inténtalo otra vez.', 'error');
@@ -161,19 +188,36 @@
             }
         }
 
-        function aplicar(nuevo) {
-            if (!nuevo || (nuevo.v < estado.v)) return;   // una respuesta vieja que llegó tarde
-            estado = nuevo;
-            recibido = performance.now();
-            pintar();
+        async function quitar(jugador) {
+            if (!jugador) return;
+            if (await confirmar({ titulo: `¿Sacar a ${jugador.nombre}?`, texto: 'Si fue un error, puede volver a entrar.', si: 'Sacar' })) {
+                accion('quitar', { jugador: jugador.id });
+            }
         }
 
-        function boton(el, texto, alHacer, icono = '') {
-            el.hidden = !texto;
-            if (!texto) return;
-            el.innerHTML = `${icono ? `<i class="bi ${icono}"></i> ` : ''}${texto}`;
-            el.onclick = alHacer;
+        async function terminarYa() {
+            if (await confirmar({ titulo: '¿Terminar la batalla ya?', texto: 'Se reparten los premios con los puntos que llevan.',
+                                  si: 'Terminar', no: 'Seguir jugando' })) {
+                accion('terminar');
+            }
         }
+
+        return { aplicar, accion, quitar, terminarYa, revisarRelevo };
+    }
+
+    // =====================================================
+    // PROYECTOR (profe)
+    // =====================================================
+    function iniciarProyector() {
+        const urls = raiz.dataset;
+        const principal = $('[data-principal]', raiz);
+        const secundario = $('[data-secundario]', raiz);
+        const contador = $('[data-contador]', raiz);
+        let escenaActual = '';
+        let revelando = false;
+        let ultimoSegundo = null;
+        let celebrado = false;
+        const { aplicar, accion, quitar, terminarYa, revisarRelevo } = mando({ pintar, principal, plantillaRelevo: urls.urlRelevo });
 
         function pintar() {
             $('[data-total-jugadores]', raiz).textContent = estado.total_jugadores;
@@ -234,18 +278,6 @@
             boton(principal, estado.jugadores.length ? '¡Empezar!' : 'Esperando jugadores…', () => accion('empezar'), 'bi-play-fill');
             principal.disabled = !estado.jugadores.length;
             boton(secundario, '');
-        }
-
-        async function quitar(jugador) {
-            if (typeof Swal !== 'undefined') {
-                const r = await Swal.fire({
-                    title: `¿Sacar a ${jugador.nombre}?`, text: 'Si fue un error, puede volver a entrar.',
-                    showCancelButton: true, confirmButtonText: 'Sacar', cancelButtonText: 'Cancelar', reverseButtons: true,
-                    buttonsStyling: false, customClass: { popup: 'swal-juego', confirmButton: 'g-btn rojo', cancelButton: 'g-btn blanco' },
-                });
-                if (!r.isConfirmed) return;
-            }
-            accion('quitar', { jugador: jugador.id });
         }
 
         function pintarQr() {
@@ -370,18 +402,6 @@
             boton(secundario, 'Ver el resumen', () => { location.href = urls.urlResumen; });
         }
 
-        async function terminarYa() {
-            if (typeof Swal !== 'undefined') {
-                const r = await Swal.fire({
-                    title: '¿Terminar la batalla ya?', text: 'Se reparten los premios con los puntos que llevan.',
-                    showCancelButton: true, confirmButtonText: 'Terminar', cancelButtonText: 'Seguir jugando', reverseButtons: true,
-                    buttonsStyling: false, customClass: { popup: 'swal-juego', confirmButton: 'g-btn rojo', cancelButton: 'g-btn blanco' },
-                });
-                if (!r.isConfirmed) return;
-            }
-            accion('terminar');
-        }
-
         // ---------- Reloj (corre aquí; el servidor solo dice cuánto faltaba) ----------
         function reloj() {
             if (estado.estado === 'pregunta' && escena.querySelector('.bp-pregunta')) {
@@ -414,7 +434,38 @@
             else document.documentElement.requestFullscreen?.().catch(() => {});
         };
         $('[data-pantalla]', raiz).addEventListener('click', pantalla);
+
+        // Control desde el celular: el QR solo aparece cuando el profe lo pide (y pide entrar como profe)
+        const panel = $('[data-panel-control]');
+        function panelControl(abrir) {
+            panel.hidden = !abrir;
+            if (!abrir || panel.dataset.qr || typeof window.qrcode !== 'function') return;
+            try {
+                const qr = window.qrcode(0, 'M');
+                qr.addData(urls.urlControl);
+                qr.make();
+                $('[data-qr-control]', panel).innerHTML = qr.createSvgTag({ cellSize: 4, margin: 0, scalable: true });
+                panel.dataset.qr = '1';
+            } catch (e) { /* sin QR: queda la dirección escrita */ }
+        }
+        $('[data-abrir-control]', raiz).addEventListener('click', () => panelControl(panel.hidden));
+        panel.addEventListener('click', e => {
+            if (e.target === panel || e.target.closest('[data-cerrar-control]')) panelControl(false);
+        });
+        // Si abrieron el proyector en un celular, lo cómodo es el control
+        if (window.matchMedia('(max-width: 640px)').matches) {
+            const atajo = document.createElement('a');
+            atajo.className = 'bp-al-control';
+            atajo.href = urls.urlControl;
+            atajo.innerHTML = '<i class="bi bi-phone"></i> Estás en un celular: <b>abre el control</b>';
+            raiz.prepend(atajo);
+        }
+
         document.addEventListener('keydown', e => {
+            if (!panel.hidden) {
+                if (e.key === 'Escape') panelControl(false);
+                return;
+            }
             if (e.target.closest('input, textarea, select') || $('.swal2-container')) return;
             // Espacio o Enter sobre un botón ya lo presionan solos: no hay que hacerlo dos veces
             if ([' ', 'Enter'].includes(e.key) && e.target.closest('button, a')) return;
@@ -427,11 +478,258 @@
 
         const conexion = $('[data-conexion]', raiz);
         pintar();
+        revisarRelevo();
         requestAnimationFrame(reloj);
         consultar({
             url: urls.urlEstado,
             ficha: () => estado.ficha,
             intervalo: () => 1000,
+            aplicar: datos => { if (datos.cambio && datos.estado) aplicar(datos.estado); },
+            alFallar: () => { conexion.hidden = false; },
+            alVolver: () => { conexion.hidden = true; },
+        });
+    }
+
+    // =====================================================
+    // CONTROL EN EL CELULAR DEL PROFE
+    // Maneja la batalla mientras camina por el salón. Sin sonidos (eso es del proyector): vibra cuando ya
+    // contestaron todos o se acabó el tiempo. La respuesta correcta solo se ve si la pide (los alumnos se asoman).
+    // =====================================================
+    function iniciarControl() {
+        const urls = raiz.dataset;
+        const principal = $('[data-principal]', raiz);
+        const secundario = $('[data-secundario]', raiz);
+        const contador = $('[data-contador]', raiz);
+        let escenaActual = '';
+        let revelando = false;
+        let tVer = null;
+        const vibrados = new Set();
+        const { aplicar, accion, quitar, terminarYa, revisarRelevo } = mando({ pintar, principal, plantillaRelevo: urls.urlRelevo });
+
+        function vibrar(clave, patron) {
+            if (vibrados.has(clave)) return;
+            vibrados.add(clave);
+            try { navigator.vibrate?.(patron); } catch (e) { /* sin vibración */ }
+        }
+
+        // Medallas solo en el podio final; durante la batalla, números (como en el proyector)
+        function filas(lista, vacio, medallas = false) {
+            if (!lista || !lista.length) return `<p class="bc-vacio">${vacio}</p>`;
+            return lista.map(j => `
+                <div class="bc-jugador">
+                    <span class="pos">${medallas && j.posicion <= 3 ? MEDALLAS[j.posicion - 1] : j.posicion}</span>
+                    <img src="${escapar(j.avatar)}" alt="" class="avatar">
+                    <span class="n">${escapar(j.nombre)} ${escapar(j.apellido)} ${escapar(j.equipo || '')}</span>
+                    ${j.sube > 0 ? `<span class="sube">▲${j.sube}</span>` : ''}
+                    <span class="pts">${numero(j.puntos)}</span>
+                </div>`).join('');
+        }
+        const tarjetaEquipos = () => (estado.equipos?.length ? `<div class="bc-tarjeta">${htmlEquipos(estado.equipos)}</div>` : '');
+
+        function pintar() {
+            $('[data-total-jugadores]', raiz).textContent = estado.total_jugadores;
+            contador.hidden = !['pregunta', 'resultado'].includes(estado.estado);
+            contador.textContent = `${estado.indice + 1}/${estado.total}`;
+            const clave = `${estado.estado}:${estado.indice}`;
+            const nueva = clave !== escenaActual;
+            escenaActual = clave;
+            if (nueva) { clearTimeout(tVer); window.scrollTo(0, 0); }
+            ({ sala: pintarSala, pregunta: pintarPregunta, resultado: pintarResultado, final: pintarFinal })[estado.estado](nueva);
+        }
+
+        // ---------- Sala de espera ----------
+        function pintarSala() {
+            const jugadores = estado.jugadores || [];
+            escena.innerHTML = `
+                <div class="bc-tarjeta bc-grande">
+                    <div class="num">${jugadores.length}</div>
+                    <div class="lbl">${jugadores.length === 1 ? 'jugador en la sala' : 'jugadores en la sala'}</div>
+                </div>
+                <div class="bc-tarjeta">
+                    <h3>Ya entraron</h3>
+                    ${jugadores.length ? jugadores.map(j => `
+                        <div class="bc-jugador">
+                            <img src="${escapar(j.avatar)}" alt="" class="avatar">
+                            <span class="n">${escapar(j.nombre)} ${escapar(j.apellido)} ${escapar(j.equipo || '')}</span>
+                            <button type="button" class="bc-quitar" data-quitar="${j.id}" aria-label="Sacar a ${escapar(j.nombre)}"><i class="bi bi-x-lg"></i></button>
+                        </div>`).join('')
+                        : '<p class="bc-vacio">Todavía nadie. En el proyector están los pasos para entrar.</p>'}
+                </div>`;
+            $$('[data-quitar]', escena).forEach(b => b.addEventListener('click', () => {
+                quitar(jugadores.find(j => String(j.id) === b.dataset.quitar));
+            }));
+            boton(principal, jugadores.length ? '¡Empezar!' : 'Esperando jugadores…', () => accion('empezar'), 'bi-play-fill');
+            principal.disabled = !jugadores.length;
+            boton(secundario, '');
+        }
+
+        // ---------- Pregunta ----------
+        function pintarPregunta(nueva) {
+            const p = estado.pregunta;
+            if (nueva) {
+                revelando = false;
+                escena.innerHTML = `
+                    <div class="bc-tarjeta bc-tiempo">
+                        <div class="bc-prep" data-prep>¡Prepárense! <b data-prep-n>3</b></div>
+                        <div class="bc-reloj" data-reloj hidden><span class="seg" data-seg>${estado.segundos}</span><div class="barra"><span data-barra></span></div></div>
+                    </div>
+                    <div>
+                        ${p.mision ? `<div class="bc-mision">${escapar(p.mision)}</div>` : ''}
+                        <div class="bc-enunciado">${escapar(p.texto)}</div>
+                    </div>
+                    <div class="bc-opciones" data-opciones>${p.opciones.map((o, i) => `
+                        <div class="bc-op c-${COLORES[i % COLORES.length]} ${(p.correctas || []).includes(i) ? 'correcta' : ''}">
+                            <span class="letra">${o.letra}</span><span class="txt">${escapar(o.texto)}</span><i class="bi bi-check-circle-fill marca" aria-hidden="true"></i>
+                        </div>`).join('')}
+                    </div>
+                    <button type="button" class="bc-ver" data-ver></button>
+                    <div class="bc-tarjeta">
+                        <div class="bc-cuantos"><b data-resp>0</b> de <b data-de>0</b> contestaron</div>
+                        <div class="barra-bp"><span data-resp-barra></span></div>
+                        <div class="bc-faltan" data-faltan></div>
+                    </div>`;
+                const ver = $('[data-ver]', escena);
+                ver.addEventListener('click', () => verRespuesta(!$('[data-opciones]', escena).classList.contains('ver')));
+                verRespuesta(false);
+            }
+            const total = estado.total_jugadores || 0;
+            const resp = estado.respondieron || 0;
+            $('[data-resp]', escena).textContent = resp;
+            $('[data-de]', escena).textContent = total;
+            $('[data-resp-barra]', escena).style.width = (total ? resp * 100 / total : 0) + '%';
+            const faltan = estado.faltan || [];
+            const otros = Math.max(0, total - resp - faltan.length);   // el servidor manda hasta 12 nombres
+            $('[data-faltan]', escena).innerHTML = faltan.length
+                ? `<span class="t">Faltan:</span>${faltan.map(n => `<span>${escapar(n)}</span>`).join('')}${otros ? `<span>+${otros}</span>` : ''}`
+                : (total ? '<span class="t">✅ ¡Ya contestaron todos!</span>' : '');
+            boton(principal, 'Mostrar respuesta', () => accion('revelar'), 'bi-eye-fill');
+            boton(secundario, 'Terminar', terminarYa);
+            if (total && resp >= total && !faltaPreparar()) {
+                vibrar(`todos:${estado.indice}`, [80, 60, 80]);
+                revelarPronto(700);
+            }
+        }
+
+        // La correcta se ve solo si el profe la pide, y se esconde sola (los alumnos se asoman al celular)
+        function verRespuesta(mostrar) {
+            const caja = $('[data-opciones]', escena);
+            const btn = $('[data-ver]', escena);
+            if (!caja || !btn) return;
+            clearTimeout(tVer);
+            caja.classList.toggle('ver', mostrar);
+            btn.classList.toggle('activo', mostrar);
+            btn.innerHTML = mostrar
+                ? '<i class="bi bi-eye-slash"></i> Ocultar la respuesta'
+                : '<i class="bi bi-eye"></i> Ver la respuesta <small>(solo tú)</small>';
+            if (mostrar) tVer = setTimeout(() => verRespuesta(false), 5000);
+        }
+
+        function revelarPronto(retraso) {
+            if (revelando) return;
+            revelando = true;
+            setTimeout(() => accion('revelar'), retraso);
+        }
+
+        // ---------- Resultado ----------
+        function pintarResultado(nueva) {
+            const p = estado.pregunta;
+            const ultima = estado.indice + 1 >= estado.total;
+            if (nueva) {
+                const maximo = Math.max(1, ...p.opciones.map(o => o.votos));
+                escena.innerHTML = `
+                    <div class="bc-tarjeta bc-grande">
+                        <div class="num">${estado.aciertos_pregunta}<small> / ${estado.respondieron}</small></div>
+                        <div class="lbl">acertaron esta pregunta</div>
+                    </div>
+                    <div class="bc-opciones ver">${p.opciones.map((o, i) => `
+                        <div class="bc-op c-${COLORES[i % COLORES.length]} ${o.correcta ? 'correcta' : 'apagada'}" style="--ancho:${o.votos * 100 / maximo}%">
+                            <span class="relleno"></span><span class="letra">${o.letra}</span><span class="txt">${escapar(o.texto)}</span><span class="votos">${o.votos}</span>
+                        </div>`).join('')}
+                    </div>
+                    <div class="bc-tarjeta"><h3>🏆 Los mejores</h3>${filas(estado.ranking, 'Nadie ha sumado puntos todavía.')}</div>
+                    ${tarjetaEquipos()}`;
+            }
+            boton(principal, ultima ? 'Ver el podio' : 'Siguiente pregunta', () => accion('siguiente'), ultima ? 'bi-trophy-fill' : 'bi-arrow-right');
+            boton(secundario, ultima ? '' : 'Terminar', terminarYa);
+        }
+
+        // ---------- Final ----------
+        function pintarFinal(nueva) {
+            if (nueva || !estado.premios_entregados || !escena.dataset.listo) {
+                escena.dataset.listo = estado.premios_entregados ? '1' : '';
+                if (nueva) vibrar(`final:${estado.id}`, [60, 40, 60, 40, 120]);
+                const ganador = estado.por_equipos && estado.equipos?.length
+                    ? `Ganó ${escapar(estado.equipos[0].emoji)} ${escapar(estado.equipos[0].nombre)}` : '¡Terminó la batalla!';
+                escena.innerHTML = `
+                    <div class="bc-tarjeta bc-grande">
+                        <div class="num">🏆</div>
+                        <div class="lbl">${ganador}</div>
+                        <div class="bc-premios">${estado.premios_entregados
+                            ? `<i class="bi bi-check-circle-fill"></i> ${estado.con_premios ? 'Premios entregados' : 'Batalla de práctica: sin monedas'}`
+                            : '<span class="spinner-border spinner-border-sm"></span> Repartiendo premios…'}</div>
+                    </div>
+                    <div class="bc-tarjeta"><h3>Podio</h3>${filas(estado.podio, 'Nadie contestó esta vez.', true)}</div>
+                    ${tarjetaEquipos()}
+                    ${(estado.resumen || []).length ? `<div class="bc-tarjeta"><h3>💡 Para repasar</h3>${estado.resumen.map(f => `
+                        <div class="bp-repaso"><span class="pct ${f.pct >= 75 ? 'bien' : f.pct >= 50 ? 'regular' : 'mal'}">${f.pct}%</span><span class="t">${escapar(f.texto)}</span></div>`).join('')}</div>` : ''}`;
+            }
+            boton(principal, 'Jugar otra vez', jugarOtraVez, 'bi-arrow-repeat');
+            boton(secundario, 'Resumen', () => { location.href = urls.urlResumen; });
+        }
+
+        async function jugarOtraVez() {
+            if (await confirmar({ titulo: '¿Jugar otra vez?', texto: 'Se abre una batalla nueva con las mismas preguntas en otro orden. El proyector se pasa solo.',
+                                  si: '¡Otra vez!', peligro: false })) {
+                principal.disabled = true;
+                $('[data-form-repetir]').submit();
+            }
+        }
+
+        // ---------- Reloj ----------
+        function reloj() {
+            const caja = $('[data-reloj]', escena);
+            if (estado.estado === 'pregunta' && caja) {
+                const prep = faltaPreparar();
+                $('[data-prep]', escena).hidden = prep <= 0;
+                caja.hidden = prep > 0;
+                if (prep > 0) {
+                    $('[data-prep-n]', escena).textContent = Math.ceil(prep / 1000);
+                } else {
+                    const resta = faltaContestar();
+                    const seg = Math.ceil(resta / 1000);
+                    const urgente = seg <= 5;
+                    const num = $('[data-seg]', escena);
+                    num.textContent = seg;
+                    num.classList.toggle('urgente', urgente);
+                    const barra = $('[data-barra]', escena);
+                    barra.style.width = (resta * 100 / (estado.segundos * 1000)) + '%';
+                    barra.classList.toggle('urgente', urgente);
+                    if (resta <= 0) {
+                        vibrar(`tiempo:${estado.indice}`, 200);
+                        revelarPronto(900);   // un respiro para las respuestas que vienen en camino
+                    }
+                }
+            }
+            requestAnimationFrame(reloj);
+        }
+
+        // Que la pantalla del celular no se apague a media batalla
+        async function despierto() {
+            try {
+                if ('wakeLock' in navigator && !document.hidden) await navigator.wakeLock.request('screen');
+            } catch (e) { /* el navegador no lo permite: no pasa nada */ }
+        }
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) despierto(); });
+        despierto();
+
+        const conexion = $('[data-conexion]', raiz);
+        pintar();
+        revisarRelevo();
+        requestAnimationFrame(reloj);
+        consultar({
+            url: urls.urlEstado,
+            ficha: () => estado.ficha,
+            intervalo: () => (estado.estado === 'final' && estado.premios_entregados ? 3000 : 1000),
             aplicar: datos => { if (datos.cambio && datos.estado) aplicar(datos.estado); },
             alFallar: () => { conexion.hidden = false; },
             alVolver: () => { conexion.hidden = true; },
@@ -692,5 +990,6 @@
     }
 
     if (raiz.dataset.modo === 'proyector') iniciarProyector();
+    else if (raiz.dataset.modo === 'control') iniciarControl();
     else iniciarAlumno();
 })();

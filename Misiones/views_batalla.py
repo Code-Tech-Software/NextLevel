@@ -109,7 +109,17 @@ def batalla_proyector(request, pk):
     return render(request, 'Profesor/batalla_proyector.html', {
         'batalla': batalla, 'clase': batalla.clase, 'estado': motor.estado_profesor(batalla),
         'url_entrar': request.build_absolute_uri(reverse('lista_alumnos', args=[batalla.clase_id])),
+        'url_control': request.build_absolute_uri(reverse('batalla_control', args=[batalla.id])),
         'sitio': request.get_host(),
+    })
+
+
+@login_required
+def batalla_control(request, pk):
+    """El control remoto en el celular del profe: maneja la batalla mientras camina por el salón."""
+    batalla = get_object_or_404(Batalla.objects.select_related('clase'), pk=pk)
+    return render(request, 'Profesor/batalla_control.html', {
+        'batalla': batalla, 'clase': batalla.clase, 'estado': motor.estado_profesor(batalla),
     })
 
 
@@ -152,7 +162,8 @@ def batalla_accion(request, pk):
 @login_required
 def batalla_repetir(request, pk):
     nueva = motor.repetir(get_object_or_404(Batalla, pk=pk))
-    return redirect('batalla_proyector', pk=nueva.pk)
+    # Desde el celular se sigue en el control; el proyector se pasa solo a la nueva batalla
+    return redirect('batalla_control' if request.POST.get('desde') == 'control' else 'batalla_proyector', pk=nueva.pk)
 
 
 @login_required

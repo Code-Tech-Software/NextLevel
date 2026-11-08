@@ -89,8 +89,10 @@ WSGI_APPLICATION = 'NextLevel.wsgi.application'
 #    }
 #}
 
+# Conexiones reutilizadas (hasta 60 s): abrir una nueva con la base de datos de Railway en cada visita es lento.
+# Antes de reutilizar una se revisa que siga viva, así una conexión cortada no termina en error.
 DATABASES = {
-    'default': dj_database_url.config(default=os.getenv("DATABASE_URL"))
+    'default': dj_database_url.config(default=os.getenv("DATABASE_URL"), conn_max_age=60, conn_health_checks=True)
 }
 
 # Caché compartida entre los procesos del servidor. Con REDIS_URL (Railway) es Redis: la Batalla en vivo la usa para
@@ -108,6 +110,10 @@ if REDIS_URL:
     }
 else:
     CACHES = {'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'}}
+
+# Sesiones en Redis con respaldo en la base de datos (Misiones/sesiones.py): así las consultas de cada segundo no
+# leen la base solo para saber quién es el alumno. Sin Redis, o si falla, funcionan como siempre desde la base.
+SESSION_ENGINE = 'Misiones.sesiones'
 
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators

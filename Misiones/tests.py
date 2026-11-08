@@ -1591,6 +1591,7 @@ class SeccionesClaseTests(BaseJuego):
 
     def test_con_la_tienda_cerrada_no_sale_la_diaria_de_visitarla(self):
         from .models import MisionDiaria
+        MisionDiaria.objects.update(activa=False)   # solo estas dos: que no dependa del sorteo de cada día
         MisionDiaria.objects.create(titulo='Tienda', objetivo='tienda')
         MisionDiaria.objects.create(titulo='Entrar', objetivo='login')
         self.assertIn('tienda', [d.objetivo for d in juego.seleccionar_diarias(self.clase)])
@@ -1844,6 +1845,50 @@ class BatallaEnVivoTests(BaseJuego):
         nueva.refresh_from_db()
         self.assertEqual(nueva.estado, 'final')
 
+    def test_control_desde_el_celular_del_profe(self):
+        from django.test import Client
+        batalla = self.crear()
+        control = self.profe.get(f'/profesor/batallas/{batalla.id}/control/')
+        self.assertContains(control, 'data-modo="control"')
+        self.assertContains(self.profe.get(f'/profesor/batallas/{batalla.id}/'), f'/profesor/batallas/{batalla.id}/control/')
+        # Un alumno que escanee el QR del proyector solo llega al inicio de sesión del profe
+        self.entrar()
+        for cliente in (self.client, Client()):
+            self.assertEqual(cliente.get(f'/profesor/batallas/{batalla.id}/control/').status_code, 302)
+
+        # El profe ve cuál es la correcta antes de revelarla; el alumno nunca
+        self.unirse(self.client)
+        self.accion(batalla, 'empezar')
+        self.assertEqual(self.profe.get(f'/profesor/batallas/{batalla.id}/estado/').json()['estado']['pregunta']['correctas'], [0])
+        alumno = self.estado(self.client)['estado']
+        self.assertNotIn('correctas', alumno)
+        self.assertNotIn('correctas', alumno['pregunta'])
+
+        # El proyector y el control mandan a la vez: el que llega tarde no se salta nada
+        batalla.refresh_from_db()
+        version = batalla.version
+        for _ in range(2):
+            self.profe.post(f'/profesor/batallas/{batalla.id}/accion/', {'accion': 'revelar', 'v': version},
+                            HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        batalla.refresh_from_db()
+        self.assertEqual((batalla.estado, batalla.indice), ('resultado', 0))
+
+    def test_jugar_otra_vez_pasa_las_dos_pantallas_a_la_nueva_batalla(self):
+        self.con_redis()   # con Redis la ficha vieja contestaría «sin cambios» si no se avisara
+        batalla = self.crear()
+        self.accion(batalla, 'terminar')
+        estado = self.profe.get(f'/profesor/batallas/{batalla.id}/estado/').json()['estado']
+        self.assertIsNone(estado['relevo'])
+
+        # Desde el celular se sigue en el control…
+        respuesta = self.profe.post(f'/profesor/batallas/{batalla.id}/repetir/', {'desde': 'control'})
+        nueva = self.Batalla.objects.order_by('-id').first()
+        self.assertRedirects(respuesta, f'/profesor/batallas/{nueva.id}/control/', fetch_redirect_response=False)
+        # …y el proyector, que seguía con el podio, se entera aunque pregunte con su ficha de antes
+        viejo = self.profe.get(f'/profesor/batallas/{batalla.id}/estado/', {'ficha': estado['ficha']}).json()
+        self.assertTrue(viejo['cambio'])
+        self.assertEqual(viejo['estado']['relevo'], nueva.id)
+
     def test_por_equipos_gana_el_mejor_promedio(self):
         from .models import Equipo, JugadorBatalla
         rojos = Equipo.objects.create(clase=self.clase, nombre='Rojos', emoji='🔴')
@@ -1881,33 +1926,67 @@ class BatallaEnVivoTests(BaseJuego):
                          {'Guerrero', 'Campeón'})
         self.assertEqual(sorted(juego.alumnos_que_cumplen('batallas', 1)), [self.alumno.id])
 
-    def test_con_redis_la_consulta_sin_cambios_no_toca_la_base_de_datos(self):
+    def con_redis(self):
+        """Como si hubiera Redis: la caché de las pruebas (en memoria) hace de Redis compartido."""
         from unittest import mock
         from django.core.cache import cache
-        from . import batallas as motor
+        from .memoria import Memoria, memoria
         cache.clear()
-        with mock.patch.object(motor._Cache, 'disponible', new_callable=mock.PropertyMock, return_value=True):
-            # Los avisos a Redis salen al confirmarse cada cambio en la base de datos
-            with self.captureOnCommitCallbacks(execute=True):
-                batalla = self.crear()
-            self.entrar()
-            ficha = self.estado(self.client)['estado']['ficha']
-            with self.assertNumQueries(1):   # solo la sesión
-                self.assertEqual(self.estado(self.client, ficha), {'cambio': False})
-            with self.captureOnCommitCallbacks(execute=True):
-                self.accion(batalla, 'siguiente')
-            self.assertTrue(self.estado(self.client, ficha)['cambio'])   # Redis se actualizó al cambiar de pantalla
-        cache.clear()
+        self.addCleanup(cache.clear)
+        self.addCleanup(memoria._pendientes.clear)
+        self.addCleanup(setattr, memoria, '_apagada_hasta', 0)
+        parche = mock.patch.object(Memoria, 'compartida', new_callable=mock.PropertyMock, return_value=True)
+        parche.start()
+        self.addCleanup(parche.stop)
+        return memoria
+
+    def test_con_redis_la_consulta_sin_cambios_no_toca_la_base_de_datos(self):
+        self.con_redis()
+        # Los avisos a Redis salen al confirmarse cada cambio en la base de datos
+        with self.captureOnCommitCallbacks(execute=True):
+            batalla = self.crear()
+        self.entrar()
+        ficha = self.estado(self.client)['estado']['ficha']
+        with self.assertNumQueries(0):   # ni la batalla ni la sesión: todo sale de Redis
+            self.assertEqual(self.estado(self.client, ficha), {'cambio': False})
+        with self.captureOnCommitCallbacks(execute=True):
+            self.accion(batalla, 'siguiente')
+        self.assertTrue(self.estado(self.client, ficha)['cambio'])   # Redis se actualizó al cambiar de pantalla
+
+    def test_las_sesiones_viven_en_redis_y_nunca_quedan_viejas(self):
+        from django.core.cache import cache
+        from .sesiones import PREFIJO, SessionStore
+        memoria = self.con_redis()
+        self.entrar()
+        clave = self.client.session.session_key
+        self.assertEqual(cache.get(PREFIJO + clave)['alumno_id'], self.alumno.id)
+        self.assertEqual(self.client.get(f'/clase/{self.clase.id}/batalla/').status_code, 200)
+
+        # Redis falla mientras la sesión cambia: se guarda en la base de datos y Redis se queda con la vieja…
+        memoria._fallo('prueba')
+        sesion = SessionStore(clave)
+        sesion['alumno_id'] = self.leo.id
+        sesion.save()
+        self.assertEqual(cache.get(PREFIJO + clave)['alumno_id'], self.alumno.id)
+        # …pero en cuanto Redis vuelve, se borra lo viejo y se lee lo nuevo de la base de datos
+        memoria._apagada_hasta = 0
+        self.assertEqual(SessionStore(clave).load()['alumno_id'], self.leo.id)
+        self.assertEqual(cache.get(PREFIJO + clave)['alumno_id'], self.leo.id)
+
+        SessionStore(clave).delete()   # cerrar sesión la borra de los dos lados
+        self.assertIsNone(cache.get(PREFIJO + clave))
+        self.assertEqual(SessionStore(clave).load(), {})
 
     def test_si_redis_no_responde_todo_sigue_desde_la_base_de_datos(self):
-        from . import batallas as motor
+        from .memoria import memoria
         caido = {'default': {'BACKEND': 'django.core.cache.backends.redis.RedisCache', 'LOCATION': 'redis://127.0.0.1:1/0',
                              'OPTIONS': {'socket_connect_timeout': 0.2, 'socket_timeout': 0.2}}}
-        try:
-            with override_settings(CACHES=caido):
-                batalla = self.crear()
-                self.entrar()
-                self.assertEqual(self.estado(self.client)['estado']['titulo'], batalla.titulo)
-                self.assertFalse(motor.memoria.disponible)   # se aparta un rato para no hacer esperar a nadie
-        finally:
-            motor.memoria._apagada_hasta = 0
+        self.addCleanup(memoria._pendientes.clear)
+        self.addCleanup(setattr, memoria, '_apagada_hasta', 0)
+        with override_settings(CACHES=caido):
+            batalla = self.crear()
+            memoria._apagada_hasta = 0   # que también la sesión se tope con Redis caído
+            self.entrar()
+            self.assertEqual(self.client.session['alumno_id'], self.alumno.id)   # se entra igual (desde la base)
+            self.assertEqual(self.estado(self.client)['estado']['titulo'], batalla.titulo)
+            self.assertFalse(memoria.disponible)   # se aparta un rato para no hacer esperar a nadie

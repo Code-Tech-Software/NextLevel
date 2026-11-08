@@ -132,6 +132,7 @@ urlpatterns = [
     path('profesor/batallas/', batalla.batallas_lista, name='batallas_lista'),
     path('profesor/batallas/nueva/', batalla.batalla_nueva, name='batalla_nueva'),
     path('profesor/batallas/<int:pk>/', batalla.batalla_proyector, name='batalla_proyector'),
+    path('profesor/batallas/<int:pk>/control/', batalla.batalla_control, name='batalla_control'),
     path('profesor/batallas/<int:pk>/estado/', batalla.batalla_estado, name='batalla_estado'),
     path('profesor/batallas/<int:pk>/accion/', batalla.batalla_accion, name='batalla_accion'),
     path('profesor/batallas/<int:pk>/repetir/', batalla.batalla_repetir, name='batalla_repetir'),

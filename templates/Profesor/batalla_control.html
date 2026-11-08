@@ -1,0 +1,37 @@
+{% extends 'Alumnos/base_publica.html' %}
+{% load static %}
+{% block title %}📱 Control · {{ batalla.titulo }}{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/batalla.css' %}">{% endblock %}
+{% block body_class %}batalla-control{% endblock %}
+
+{% block cuerpo %}
+<div class="bc" id="batalla" data-modo="control"
+     data-url-estado="{% url 'batalla_estado' batalla.id %}"
+     data-url-accion="{% url 'batalla_accion' batalla.id %}"
+     data-url-resumen="{% url 'batalla_resumen' batalla.id %}"
+     data-url-relevo="{% url 'batalla_control' 0 %}">
+    <header class="bc-cabeza">
+        <a href="{% url 'batallas_lista' %}" class="bc-ctl" title="Volver al panel (la batalla sigue abierta)" aria-label="Volver al panel"><i class="bi bi-arrow-left"></i></a>
+        <div class="t">
+            <span class="k">📱 Control · {{ clase.icono|default:'🚀' }} {{ clase.nombre }}</span>
+            <span class="n">{{ batalla.titulo }}</span>
+        </div>
+        <span class="bc-pill" data-contador hidden></span>
+        <span class="bc-pill" title="Jugadores"><i class="bi bi-people-fill"></i> <span data-total-jugadores>{{ estado.total_jugadores }}</span></span>
+    </header>
+    <div class="bc-conexion" data-conexion hidden><i class="bi bi-wifi-off"></i> Reconectando…</div>
+
+    <main class="bc-escena" data-escena aria-live="polite"></main>
+
+    <footer class="bc-pie">
+        <button type="button" class="bc-sec" data-secundario hidden></button>
+        <button type="button" class="g-btn grande" data-principal hidden></button>
+    </footer>
+</div>
+<form method="post" action="{% url 'batalla_repetir' batalla.id %}" data-form-repetir hidden>{% csrf_token %}<input type="hidden" name="desde" value="control"></form>
+{{ estado|json_script:"batalla-estado" }}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/batalla.js' %}"></script>
+{% endblock %}

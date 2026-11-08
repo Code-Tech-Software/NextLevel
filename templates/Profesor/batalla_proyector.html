@@ -11,6 +11,8 @@
      data-url-resumen="{% url 'batalla_resumen' batalla.id %}"
      data-url-repetir="{% url 'batalla_repetir' batalla.id %}"
      data-url-entrar="{{ url_entrar }}"
+     data-url-control="{{ url_control }}"
+     data-url-relevo="{% url 'batalla_proyector' 0 %}"
      data-sitio="{{ sitio }}"
      data-clase="{{ clase.nombre }}">
     <header class="bp-cabeza">
@@ -29,11 +31,29 @@
         <a href="{% url 'batallas_lista' %}" class="bp-ctl" title="Volver al panel (la batalla sigue abierta)" aria-label="Volver al panel"><i class="bi bi-arrow-left"></i></a>
         <button type="button" class="bp-ctl" data-sonido title="Sonido (M)" aria-label="Activar o silenciar sonidos"><i class="bi bi-volume-up-fill ico-on"></i><i class="bi bi-volume-mute-fill ico-off"></i></button>
         <button type="button" class="bp-ctl" data-pantalla title="Pantalla completa (F)" aria-label="Pantalla completa"><i class="bi bi-arrows-fullscreen"></i></button>
+        <button type="button" class="bp-ctl" data-abrir-control title="Controlar desde tu celular" aria-label="Controlar desde tu celular"><i class="bi bi-phone"></i></button>
         <span class="bp-conexion" data-conexion hidden><i class="bi bi-wifi-off"></i> Reconectando…</span>
         <div class="flex-grow-1"></div>
         <button type="button" class="bp-ctl texto" data-secundario hidden></button>
         <button type="button" class="g-btn grande" data-principal hidden></button>
     </footer>
+
+    <div class="bp-panel-control" data-panel-control hidden role="dialog" aria-modal="true" aria-labelledby="titulo-control">
+        <div class="caja">
+            <button type="button" class="cerrar" data-cerrar-control aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+            <h2 id="titulo-control">📱 Controla la batalla desde tu celular</h2>
+            <div class="cuerpo">
+                <div class="qr" data-qr-control></div>
+                <ol>
+                    <li>Escanea el código con la cámara de tu celular.</li>
+                    <li>Entra con tu usuario de profe (solo la primera vez).</li>
+                    <li>Pasa de pregunta y mira quién falta mientras caminas por el salón.</li>
+                </ol>
+            </div>
+            <p class="nota"><i class="bi bi-shield-lock-fill"></i> Si un alumno lo escanea no puede hacer nada: le pide tu usuario y contraseña.</p>
+            <div class="url">{{ url_control }}</div>
+        </div>
+    </div>
 </div>
 <form method="post" action="{% url 'batalla_repetir' batalla.id %}" data-form-repetir hidden>{% csrf_token %}</form>
 {{ estado|json_script:"batalla-estado" }}
