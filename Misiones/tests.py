@@ -1990,3 +1990,58 @@ class BatallaEnVivoTests(BaseJuego):
             self.assertEqual(self.client.session['alumno_id'], self.alumno.id)   # se entra igual (desde la base)
             self.assertEqual(self.estado(self.client)['estado']['titulo'], batalla.titulo)
             self.assertFalse(memoria.disponible)   # se aparta un rato para no hacer esperar a nadie
+
+
+@override_settings(STORAGES=ALMACEN_PRUEBAS)
+class CalidadTests(BaseJuego):
+    """Páginas de error amigables, imágenes optimizadas y archivos estáticos (DEBUG apagado, como en Railway)."""
+
+    def test_pagina_no_encontrada_amigable(self):
+        respuesta = self.client.get('/esta-pagina-no-existe/')
+        self.assertContains(respuesta, 'Esta página no existe', status_code=404)
+        self.assertNotContains(respuesta, 'URLconf', status_code=404)   # nunca la lista de rutas del sitio
+        self.assertContains(respuesta, 'href="/"', status_code=404)
+        # El alumno que se pierde vuelve a su mapa; el profe a su panel
+        self.entrar()
+        self.assertContains(self.client.get('/no-existe/'), f'/clase/{self.clase.id}/dashboard/', status_code=404)
+        profe = self.client_class()
+        profe.force_login(User.objects.create_superuser('profe_err', 'e@x.com', 'x'))
+        self.assertContains(profe.get('/no-existe/'), '/profesor/dashboard/', status_code=404)
+
+    def test_error_del_servidor_amigable_y_sin_detalles(self):
+        from django.test import RequestFactory
+        from django.views.defaults import server_error
+        respuesta = server_error(RequestFactory().get('/'))   # se pinta sin contexto, como cuando algo falla de verdad
+        self.assertEqual(respuesta.status_code, 500)
+        self.assertIn('Algo se descompuso', respuesta.content.decode())
+        self.assertNotIn('Traceback', respuesta.content.decode())
+
+    def test_formulario_con_pagina_vieja_explica_que_hacer(self):
+        cliente = self.client_class(enforce_csrf_checks=True)
+        respuesta = cliente.post(f'/clase/{self.clase.id}/alumno/{self.alumno.id}/ingresar/', {'pin': '1234'})
+        self.assertContains(respuesta, 'La página se quedó abierta mucho tiempo', status_code=403)
+
+    def test_imagenes_de_cloudinary_optimizadas(self):
+        from .templatetags.nextlevel import avatar_url, imagen_optimizada, imagen_web
+        url = 'https://res.cloudinary.com/demo/image/upload/v1/media/avatares/robot_abc.png'
+        self.assertEqual(imagen_optimizada(url, 'avatar'),
+                         'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,c_limit,w_300,h_300/v1/media/avatares/robot_abc.png')
+        self.assertIn('w_1200,h_1200', imagen_web(url, 'mision'))
+        # Lo que no es de Cloudinary, o ya trae ajustes, queda igual
+        for otra in ['https://api.dicebear.com/9.x/bottts/svg?seed=1', '/media/x.png', '',
+                     'https://res.cloudinary.com/demo/image/upload/w_100/v1/media/x.png']:
+            self.assertEqual(imagen_optimizada(otra, 'mini'), otra)
+        self.assertEqual(imagen_web(Mision().imagen, 'mision'), '')   # misión sin imagen
+        self.assertIn('api.dicebear.com', avatar_url(self.alumno))     # sin avatar: el robot de siempre
+
+    def test_todos_los_archivos_estaticos_existen(self):
+        """Con DEBUG apagado, un {% static %} que apunte a un archivo que no existe tumba la página entera."""
+        import re
+        from pathlib import Path
+        from django.contrib.staticfiles import finders
+        faltan = []
+        for plantilla in Path(settings.BASE_DIR, 'templates').rglob('*.html'):
+            for ruta in re.findall(r"\{%\s*static\s+['\"]([^'\"]+)['\"]", plantilla.read_text(encoding='utf-8')):
+                if not finders.find(ruta):
+                    faltan.append(f'{plantilla.name}: {ruta}')
+        self.assertEqual(faltan, [])

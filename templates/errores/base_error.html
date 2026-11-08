@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+{# Página de error con el estilo del juego. Es independiente a propósito: no usa la base de alumno ni la del profe #}
+{# ni archivos estáticos, para que se vea bien aunque lo que falló sea justo eso (la 500 se pinta sin contexto). #}
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex">
+    <meta name="theme-color" content="#142c45">
+    <title>{% block titulo %}Algo salió mal{% endblock %} · Next-Level</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root { --navy: #142c45; --texto: #475569; --suave: #f1f5f9; --borde: #cbd5e1; --verde: #22c55e; --verde-osc: #15803d; }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; min-height: 100vh; min-height: 100dvh; padding: 1.2rem;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.2rem;
+            font-family: 'Nunito', system-ui, -apple-system, 'Segoe UI', sans-serif; color: #fff;
+            background: linear-gradient(135deg, #0f1f35 0%, #1e3a5f 55%, #0f766e 120%); background-attachment: fixed;
+        }
+        .caja {
+            width: min(480px, 100%); background: #fff; color: var(--navy); border-radius: 28px;
+            padding: 2.2rem 1.5rem 1.7rem; text-align: center; box-shadow: 0 10px 0 rgba(0, 0, 0, .22);
+        }
+        .emoji { font-size: 4.6rem; line-height: 1; display: inline-block; animation: flota 2.4s ease-in-out infinite; }
+        .codigo {
+            display: inline-block; margin-top: .9rem; padding: .2rem .75rem; border-radius: 999px; background: var(--suave);
+            font-weight: 900; font-size: .74rem; letter-spacing: .12em; text-transform: uppercase; color: #64748b;
+        }
+        h1 { font-family: 'Fredoka', system-ui, sans-serif; font-weight: 700; font-size: clamp(1.6rem, 6vw, 2.1rem); line-height: 1.15; margin: .6rem 0 .5rem; }
+        p { margin: 0 0 1.5rem; font-weight: 700; font-size: 1.05rem; line-height: 1.45; color: var(--texto); }
+        .botones { display: flex; flex-wrap: wrap; justify-content: center; gap: .7rem; }
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: .4rem; min-height: 50px; padding: 0 1.3rem;
+            border: 0; border-radius: 16px; font: inherit; font-weight: 900; font-size: 1rem; text-decoration: none; cursor: pointer;
+            transition: transform .1s ease, box-shadow .1s ease;
+        }
+        .btn:active { transform: translateY(4px); box-shadow: none; }
+        .btn:focus-visible { outline: 3px solid #38bdf8; outline-offset: 3px; }
+        .btn.principal { background: var(--verde); color: #fff; box-shadow: 0 5px 0 var(--verde-osc); }
+        .btn.secundario { background: var(--suave); color: var(--navy); box-shadow: 0 5px 0 var(--borde); }
+        .marca { font-family: 'Fredoka', system-ui, sans-serif; font-weight: 600; font-size: .95rem; color: rgba(255, 255, 255, .75); }
+        @keyframes flota { 50% { transform: translateY(-8px); } }
+        @media (prefers-reduced-motion: reduce) { .emoji { animation: none; } }
+    </style>
+</head>
+<body>
+    <main class="caja">
+        <div class="emoji" aria-hidden="true">{% block emoji %}🧭{% endblock %}</div>
+        <div><span class="codigo">{% block codigo %}Error{% endblock %}</span></div>
+        <h1>{% block encabezado %}Algo salió mal{% endblock %}</h1>
+        <p>{% block texto %}Inténtalo de nuevo en un momento.{% endblock %}</p>
+        <div class="botones">
+            {% block botones %}
+                <button type="button" class="btn secundario" onclick="history.length > 1 ? history.back() : location.assign('/')">← Volver</button>
+                <a class="btn principal" href="{% if user.is_authenticated %}{% url 'dashboard_profesor' %}{% elif request.session.clase_id %}{% url 'dashboard_alumno' request.session.clase_id %}{% else %}/{% endif %}">🏠 Ir al inicio</a>
+            {% endblock %}
+        </div>
+    </main>
+    <div class="marca">⚡ Next-Level</div>
+</body>
+</html>

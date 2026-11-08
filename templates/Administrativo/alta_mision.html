@@ -142,7 +142,7 @@
                         <div class="campo mb-0">
                             <label data-label-imagen>Imagen de apoyo <span class="text-muted-p fw-normal">(opcional)</span></label>
                             <div class="imagen-campo">
-                                <img data-imagen-previa {% if mision.imagen %}src="{{ mision.imagen.url }}"{% else %}class="d-none"{% endif %} alt="">
+                                <img data-imagen-previa {% if mision.imagen %}src="{{ mision.imagen|imagen_web:'mini' }}"{% else %}class="d-none"{% endif %} alt="">
                                 <div class="min-w-0 flex-grow-1">{{ form.imagen }}</div>
                             </div>
                         </div>

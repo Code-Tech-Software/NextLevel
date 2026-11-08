@@ -1,0 +1,10 @@
+{% extends 'errores/base_error.html' %}
+{% block titulo %}Algo se descompuso{% endblock %}
+{% block emoji %}🛠️{% endblock %}
+{% block codigo %}Error 500{% endblock %}
+{% block encabezado %}Algo se descompuso{% endblock %}
+{% block texto %}No es tu culpa: el error ya quedó registrado para arreglarlo. Espera un momento e inténtalo otra vez.{% endblock %}
+{% block botones %}
+    <button type="button" class="btn secundario" onclick="location.reload()">↻ Intentar otra vez</button>
+    <a class="btn principal" href="/">🏠 Ir al inicio</a>
+{% endblock %}

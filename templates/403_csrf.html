@@ -1,0 +1,14 @@
+{% extends 'errores/base_error.html' %}
+{% comment %}
+Sale cuando se envía un formulario con una página vieja (se quedó abierta mucho tiempo o se borraron las cookies).
+Volver a la página anterior la carga de nuevo con todo al día.
+{% endcomment %}
+{% block titulo %}Vuelve a intentarlo{% endblock %}
+{% block emoji %}⏳{% endblock %}
+{% block codigo %}La página expiró{% endblock %}
+{% block encabezado %}La página se quedó abierta mucho tiempo{% endblock %}
+{% block texto %}Por seguridad no se guardó lo último que hiciste. Regresa, y la página se cargará de nuevo para que lo intentes otra vez.{% endblock %}
+{% block botones %}
+    <button type="button" class="btn principal" onclick="location.assign(document.referrer || '/')">↻ Regresar e intentar</button>
+    <a class="btn secundario" href="/">🏠 Ir al inicio</a>
+{% endblock %}

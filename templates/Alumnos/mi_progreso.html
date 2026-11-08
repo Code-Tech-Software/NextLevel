@@ -232,7 +232,7 @@
                     {% for compra in avatares %}
                         <form method="POST" action="{% url 'equipar_avatar' clase.id compra.id %}" class="avatar-opcion {% if alumno.avatar.name == compra.articulo.imagen.name %}equipado{% endif %}">
                             {% csrf_token %}
-                            <button type="submit" title="{{ compra.articulo.nombre }}"><img src="{{ compra.articulo.imagen.url }}" alt="{{ compra.articulo.nombre }}" loading="lazy"></button>
+                            <button type="submit" title="{{ compra.articulo.nombre }}"><img src="{{ compra.articulo.imagen|imagen_web:'avatar' }}" alt="{{ compra.articulo.nombre }}" loading="lazy"></button>
                             <div class="n">{{ compra.articulo.nombre }}</div>
                         </form>
                     {% endfor %}

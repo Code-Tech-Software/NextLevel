@@ -1,4 +1,5 @@
 {% extends 'Profesor/baseProfesor.html' %}
+{% load nextlevel %}
 {% block title %}Tienda{% endblock %}
 {% block titulo_pagina %}Tienda · Artículos{% endblock %}
 
@@ -31,7 +32,7 @@
                 <tr class="{% if not a.activo %}fila-inactiva{% endif %}">
                     <td>
                         <div class="persona">
-                            {% if a.imagen %}<img src="{{ a.imagen.url }}" alt="" style="border-radius:10px;object-fit:contain;background:var(--surface-2)">{% else %}<span class="ini" style="border-radius:10px">🎁</span>{% endif %}
+                            {% if a.imagen %}<img src="{{ a.imagen|imagen_web:'mini' }}" alt="" loading="lazy" style="border-radius:10px;object-fit:contain;background:var(--surface-2)">{% else %}<span class="ini" style="border-radius:10px">🎁</span>{% endif %}
                             <span class="min-w-0">
                                 <span class="n d-block">{{ a.nombre }} {% if a.destacado %}<i class="bi bi-star-fill text-warning" title="Destacado"></i>{% endif %}</span>
                                 <span class="s d-block text-truncate" style="max-width:260px">{{ a.descripcion }}</span>

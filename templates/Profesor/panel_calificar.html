@@ -50,7 +50,7 @@
                         </div>
                         <div class="d-flex gap-3 mt-2 align-items-start">
                             {% if e.evidencia %}
-                                <img src="{{ e.evidencia.url }}" data-ampliar="{{ e.evidencia.url }}" alt="Evidencia de {{ e.alumno.nombre }}" class="evidencia-mini" title="Clic para ampliar">
+                                <img src="{{ e.evidencia|imagen_web:'mini' }}" data-ampliar="{{ e.evidencia|imagen_web:'grande' }}" loading="lazy" alt="Evidencia de {{ e.alumno.nombre }}" class="evidencia-mini" title="Clic para ampliar">
                             {% endif %}
                             {% if e.respuesta_texto %}
                                 <div class="respuesta flex-grow-1 mt-0">{{ e.respuesta_texto }}</div>

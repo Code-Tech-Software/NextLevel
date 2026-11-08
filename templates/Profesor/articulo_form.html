@@ -1,4 +1,5 @@
 {% extends base_plantilla|default:"Profesor/baseProfesor.html" %}
+{% load nextlevel %}
 {% block title %}{% if articulo %}Editar artículo{% else %}Nuevo artículo{% endif %}{% endblock %}
 {% block migas %}<a href="{% url 'tienda_admin' %}">Tienda</a><i class="bi bi-chevron-right"></i><span class="actual">{% if articulo %}{{ articulo.nombre }}{% else %}Nuevo artículo{% endif %}</span>{% endblock %}
 
@@ -56,7 +57,7 @@
                         <div class="campo mb-0 {% if form.imagen.errors %}con-error{% endif %}">
                             <label data-label-imagen>Foto del premio <span class="text-muted-p fw-normal">(opcional)</span></label>
                             <div class="imagen-campo">
-                                <img data-imagen-previa {% if articulo.imagen %}src="{{ articulo.imagen.url }}"{% else %}class="d-none"{% endif %} alt="">
+                                <img data-imagen-previa {% if articulo.imagen %}src="{{ articulo.imagen|imagen_web:'mini' }}"{% else %}class="d-none"{% endif %} alt="">
                                 <div class="min-w-0 flex-grow-1">{{ form.imagen }}</div>
                             </div>
                             {% for e in form.imagen.errors %}<div class="error">{{ e }}</div>{% endfor %}

@@ -26,11 +26,44 @@ COLORES_CLASE = {
 ZIGZAG = [0, 0.9, 1.4, 0.9, 0, -0.9, -1.4, -0.9]
 
 
+# Imágenes de Cloudinary: tamaño máximo (en píxeles reales, el doble de lo que se ve, para pantallas nítidas)
+TAMANOS_IMAGEN = {
+    'avatar': 300,    # avatares (se ven de 26 a 150 px)
+    'mini': 480,      # tienda, miniaturas de evidencias y vistas previas
+    'mision': 1200,   # la imagen de la misión
+    'grande': 1920,   # imagen ampliada (para leer bien una evidencia)
+}
+_SUBIDA_CLOUDINARY = '/image/upload/'
+
+
+def imagen_optimizada(url, tamano='mini'):
+    """La misma imagen de Cloudinary, en el formato más ligero que acepte el navegador (WebP/AVIF), con calidad
+    automática y nunca más grande que `tamano`. No la recorta ni la agranda: se ve igual, pero pesa mucho menos.
+    Cualquier otra dirección (DiceBear, archivos locales) se devuelve tal cual."""
+    if not url or 'res.cloudinary.com' not in url or _SUBIDA_CLOUDINARY not in url:
+        return url
+    base, resto = url.split(_SUBIDA_CLOUDINARY, 1)
+    if not re.match(r'v\d+/', resto):   # ya trae ajustes de Cloudinary: no se tocan
+        return url
+    lado = TAMANOS_IMAGEN.get(tamano, TAMANOS_IMAGEN['mini'])
+    return f'{base}{_SUBIDA_CLOUDINARY}f_auto,q_auto,c_limit,w_{lado},h_{lado}/{resto}'
+
+
+@register.filter
+def imagen_web(archivo, tamano='mini'):
+    """{{ mision.imagen|imagen_web:'mision' }} → dirección optimizada de una imagen subida ('' si no hay)."""
+    try:
+        url = archivo.url if archivo else ''
+    except (ValueError, AttributeError):
+        url = archivo if isinstance(archivo, str) else ''
+    return imagen_optimizada(url, tamano)
+
+
 @register.filter
 def avatar_url(alumno):
     try:
         if alumno.avatar:
-            return alumno.avatar.url
+            return imagen_optimizada(alumno.avatar.url, 'avatar')
     except (ValueError, AttributeError):
         pass
     return (f'https://api.dicebear.com/9.x/bottts/svg?seed=nextlevel-{alumno.pk}'

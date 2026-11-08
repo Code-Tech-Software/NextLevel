@@ -25,8 +25,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-362+my=6#wjjfx-1#%wnyf_rdk5$09%($j^p=rc)cp!jg61fjn'
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# DEBUG solo en tu computadora (pon DEBUG=1 en tu .env). En Railway queda apagado: si una página falla, nadie ve tu
+# código ni tu configuración (sale la página de error amigable y el detalle queda en los registros de Railway), y los
+# CSS/JS llevan su huella en el nombre para que el navegador los guarde en vez de pedirlos en cada página.
+DEBUG = os.getenv('DEBUG', '').strip().lower() in ('1', 'true', 'si', 'sí', 'yes')
 ALLOWED_HOSTS = ['*']
 
 CSRF_TRUSTED_ORIGINS = [
@@ -171,6 +173,23 @@ CLOUDINARY_STORAGE = {
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# Los errores (con su detalle completo) y los avisos se escriben en los registros de Railway (Deploy Logs).
+# Sin esto, con DEBUG apagado Django no los mostraría en ningún lado.
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'simple': {'format': '[{levelname}] {name}: {message}', 'style': '{'},
+    },
+    'handlers': {
+        'consola': {'class': 'logging.StreamHandler', 'formatter': 'simple'},
+    },
+    'root': {'handlers': ['consola'], 'level': 'WARNING'},
+    'loggers': {
+        'django': {'handlers': ['consola'], 'level': 'WARNING', 'propagate': False},
+    },
+}
 
 LOGIN_REDIRECT_URL = 'dashboard_profesor'
 LOGIN_URL = 'login'
