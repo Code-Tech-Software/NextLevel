@@ -160,10 +160,15 @@ STORAGES = {
     "default": {
         "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
     },
+    # Sin «Manifest»: con DEBUG apagado, ese modo exige que `collectstatic` haya corrido en el servidor, y en Railway
+    # no corre (todas las páginas daban error 500). Así no se necesita: WhiteNoise toma los CSS/JS de `static/`.
     "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
     },
 }
+# WhiteNoise sirve los CSS/JS directo de las carpetas `static/` (como cuando DEBUG estaba encendido), aunque
+# `collectstatic` no haya corrido.
+WHITENOISE_USE_FINDERS = True
 
 CLOUDINARY_STORAGE = {
     'CLOUD_NAME': os.getenv('CLOUDINARY_CLOUD_NAME'),

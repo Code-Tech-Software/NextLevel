@@ -2045,3 +2045,20 @@ class CalidadTests(BaseJuego):
                 if not finders.find(ruta):
                     faltan.append(f'{plantilla.name}: {ruta}')
         self.assertEqual(faltan, [])
+
+
+class EstaticosEnRailwayTests(TestCase):
+    """Así está Railway: DEBUG apagado y `collectstatic` sin correr. Las páginas y sus CSS/JS deben cargar igual
+    (el 2026-11-07 todas las páginas dieron error 500 por depender del manifiesto de `collectstatic`)."""
+
+    def test_paginas_y_estaticos_sin_collectstatic(self):
+        import tempfile
+        from django.test import Client
+        with tempfile.TemporaryDirectory() as vacia, override_settings(STATIC_ROOT=vacia):
+            cliente = Client()
+            for url in ('/login/', '/seleccionar-clase/'):
+                self.assertEqual(cliente.get(url).status_code, 200, url)
+            for archivo in ('/static/css/alumno.css', '/static/css/profesor.css', '/static/js/alumno.js'):
+                respuesta = cliente.get(archivo)
+                self.assertEqual(respuesta.status_code, 200, archivo)
+                respuesta.close()
