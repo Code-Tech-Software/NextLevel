@@ -1663,6 +1663,12 @@ body.modo-enfoque .contenido-p { max-width: none; }
 
 .entrega { position: relative; transition: opacity .25s, transform .25s; }
 .entrega-calificar { min-width: 260px; }
+/* Comentario + calificación libre + palomita: la palomita es un cuadro que nunca se aplasta */
+.calif-otra { display: flex; align-items: center; gap: .5rem; }
+.calif-otra .p-input { height: 34px; font-size: .8rem; }
+.calif-otra [name=comentario] { flex: 1 1 auto; min-width: 0; }
+.calif-otra [name=calificacion] { flex: 0 0 64px; width: 64px; }
+.calif-otra .p-btn.icono { flex: 0 0 34px; width: 34px; height: 34px; padding: 0; border-radius: 9px; font-size: 1rem; }
 .etiqueta-mini { display: block; font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin-bottom: .3rem; }
 .entrega .etiqueta-mini { margin: 0; }
 .rv-le-pediste { margin-top: .5rem; font-size: .78rem; color: var(--violet); background: var(--violet-soft); border-radius: 8px; padding: .35rem .6rem; }
