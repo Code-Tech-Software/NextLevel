@@ -2062,3 +2062,203 @@ class EstaticosEnRailwayTests(TestCase):
                 respuesta = cliente.get(archivo)
                 self.assertEqual(respuesta.status_code, 200, archivo)
                 respuesta.close()
+
+
+class InicioProfesorTests(BaseJuego):
+    """El inicio del profe: la clase que toca, quién necesita atención, fechas de entrega e indicadores."""
+
+    def setUp(self):
+        super().setUp()
+        from django.utils import timezone
+        self.profe = User.objects.create_superuser('profe_inicio', 'i@x.com', 'x')
+        self.client.force_login(self.profe)
+        self.hoy = timezone.localdate()
+        # Cuatro misiones más para que el grupo tenga avance con qué comparar
+        self.extra = [Mision.objects.create(clase=self.clase, nivel=self.nivel, nombre=f'Extra {i}', descripcion='x',
+                                            tipo='arduino', orden=3 + i) for i in range(4)]
+        self.companeros = []
+        for nombre in ('Beto', 'Caro', 'Dani'):
+            alumno = Alumno.objects.create(nombre=nombre, apellido='Ruiz', pin='1111', ultima_actividad=self.hoy)
+            alumno.clases.add(self.clase)
+            for mision in self.extra:
+                ProgresoMision.objects.create(alumno=alumno, mision=mision, estado='aprobado')
+            self.companeros.append(alumno)
+
+    def _momento(self, dia_semana, hora, minuto=0):
+        """Un momento fijo (hora local) en el día de la semana pedido: 0 = lunes."""
+        from datetime import datetime, timedelta
+        from django.utils import timezone
+        lunes = self.hoy - timedelta(days=self.hoy.weekday())
+        fecha = lunes + timedelta(days=dia_semana)
+        return timezone.make_aware(datetime(fecha.year, fecha.month, fecha.day, hora, minuto))
+
+    def test_horario_de_hoy(self):
+        from datetime import time
+        from .inicio_profesor import horario_de_hoy
+        Clase.objects.filter(pk=self.clase.pk).update(horario_dias='0,2', horario_inicio=time(10), horario_fin=time(11))
+        self.clase.refresh_from_db()
+        self.assertEqual(horario_de_hoy(self.clase, self._momento(0, 9))['estado'], 'despues')
+        self.assertEqual(horario_de_hoy(self.clase, self._momento(0, 10, 30))['estado'], 'ahora')
+        self.assertEqual(horario_de_hoy(self.clase, self._momento(2, 11))['estado'], 'termino')
+        self.assertIsNone(horario_de_hoy(self.clase, self._momento(1, 10, 30)))   # el martes no tiene clase
+
+    def test_lanzador_pone_primero_la_clase_que_toca(self):
+        from datetime import time
+        from .inicio_profesor import clases_del_inicio
+        tarde = Clase.objects.create(nombre='Tarde', grado='5', grupo='B', anio=2026, horario_dias='0',
+                                     horario_inicio=time(12), horario_fin=time(13))
+        ahora = Clase.objects.create(nombre='Ahora', grado='6', grupo='C', anio=2026, horario_dias='0',
+                                     horario_inicio=time(10), horario_fin=time(11))
+        Clase.objects.create(nombre='Inactiva', grado='1', grupo='A', anio=2026, activa=False)
+        clases, lanzador, sugerida = clases_del_inicio(self._momento(0, 10, 15))
+        self.assertEqual([c.nombre for c in lanzador], ['Ahora', 'Tarde', 'Robótica'])   # la inactiva no sale
+        self.assertEqual(sugerida, ahora)
+        self.assertEqual(len(clases), 4)                                                  # en «Mis clases» sí
+        _, lanzador, sugerida = clases_del_inicio(self._momento(1, 10, 15))               # martes: no toca ninguna
+        self.assertIsNone(sugerida)
+        self.assertEqual(lanzador, [self.clase, tarde, ahora])                            # el orden de siempre
+
+    def test_alumnos_que_necesitan_atencion(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        from .inicio_profesor import alumnos_con_atencion
+        # Ana: no lleva ninguna misión (su grupo lleva 4), nunca ha entrado y tiene una misión por corregir
+        Alumno.objects.filter(pk=self.alumno.pk).update(fecha_registro=timezone.now() - timedelta(days=30))
+        ProgresoMision.objects.create(alumno=self.alumno, mision=self.m1, estado='rechazado')
+        # Beto no entra desde hace 12 días (pero va al corriente)
+        Alumno.objects.filter(pk=self.companeros[0].pk).update(ultima_actividad=self.hoy - timedelta(days=12))
+        # Recién dado de alta: todavía no cuenta como ausente
+        nuevo = Alumno.objects.create(nombre='Nuevo', apellido='X', pin='1')
+        nuevo.clases.add(self.clase)
+
+        lista = alumnos_con_atencion(self.hoy)
+        por_nombre = {f['alumno'].nombre: f for f in lista}
+        self.assertEqual(lista[0]['alumno'], self.alumno)                     # la más urgente, primero
+        self.assertEqual([m['tipo'] for m in por_nombre['Ana']['motivos']], ['atraso', 'ausente', 'corregir'])
+        self.assertIn('su grupo lleva 4', por_nombre['Ana']['motivos'][0]['texto'])
+        self.assertEqual([m['tipo'] for m in por_nombre['Beto']['motivos']], ['ausente'])
+        self.assertIn('12 días', por_nombre['Beto']['motivos'][0]['texto'])
+        self.assertNotIn('Caro', por_nombre)
+        self.assertEqual([m['tipo'] for m in por_nombre['Nuevo']['motivos']], ['atraso'])   # solo va atrasado
+        # Las clases inactivas no cuentan
+        Clase.objects.filter(pk=self.clase.pk).update(activa=False)
+        self.assertEqual(alumnos_con_atencion(self.hoy), [])
+
+    def test_fechas_de_entrega(self):
+        from datetime import timedelta
+        from .inicio_profesor import entregas_que_vencen
+        Mision.objects.filter(pk=self.m1.pk).update(fecha_limite=self.hoy + timedelta(days=1))
+        Mision.objects.filter(pk=self.m2.pk).update(fecha_limite=self.hoy + timedelta(days=10))   # todavía lejos
+        ProgresoMision.objects.create(alumno=self.companeros[0], mision=self.m1, estado='pendiente')
+        ajena = Alumno.objects.create(nombre='Otra', apellido='Clase', pin='1')   # entregó, pero no es del grupo
+        ProgresoMision.objects.create(alumno=ajena, mision=self.m1, estado='pendiente')
+        [mision] = entregas_que_vencen(self.hoy)
+        self.assertEqual((mision.id, mision.entregaron, mision.total, mision.cuando), (self.m1.id, 1, 4, 'Vence mañana'))
+
+    def test_indicadores_comparan_con_la_semana_anterior(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        from .inicio_profesor import indicadores
+        from .models import Movimiento
+        Movimiento.objects.create(alumno=self.alumno, tipo='mision', descripcion='x', xp=150)
+        viejo = Movimiento.objects.create(alumno=self.alumno, tipo='mision', descripcion='x', xp=100)
+        Movimiento.objects.filter(pk=viejo.pk).update(fecha=timezone.now() - timedelta(days=10))
+        kpi = indicadores(timezone.localtime())
+        self.assertEqual(kpi['xp'], {'actual': 150, 'anterior': 100, 'pct': 50, 'sube': True})
+        self.assertEqual((kpi['activos'], kpi['alumnos'], kpi['sin_entrar']), (3, 4, 1))
+
+    def test_inicio_no_hace_una_consulta_por_clase(self):
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+        self.assertEqual(self.client.get('/profesor/dashboard/').status_code, 200)
+        with CaptureQueriesContext(connection) as antes:
+            respuesta = self.client.get('/profesor/dashboard/')
+        self.assertContains(respuesta, 'Necesitan tu atención')
+        self.assertContains(respuesta, 'Empezar clase')
+        for i in range(4):
+            otra = Clase.objects.create(nombre=f'Grupo {i}', grado='3', grupo=str(i), anio=2026)
+            alumno = Alumno.objects.create(nombre=f'Al {i}', apellido='Z', pin='1')
+            alumno.clases.add(otra)
+        with CaptureQueriesContext(connection) as despues:
+            respuesta = self.client.get('/profesor/dashboard/')
+        self.assertContains(respuesta, 'Grupo 3')
+        self.assertEqual(len(despues.captured_queries), len(antes.captured_queries))
+
+
+class RevisionRapidaTests(BaseJuego):
+    """La bandeja de revisiones califica sin recargar, sin premiar dos veces y avisa de las entregas nuevas."""
+
+    FETCH = {'HTTP_X_REQUESTED_WITH': 'XMLHttpRequest'}
+
+    def setUp(self):
+        super().setUp()
+        self.client.force_login(User.objects.create_superuser('profe_rev', 'r@x.com', 'x'))
+        self.entrega = ProgresoMision.objects.create(alumno=self.alumno, mision=self.m1, estado='pendiente')
+
+    def test_aprobar_sin_recargar_y_sin_premiar_dos_veces(self):
+        url = f'/progreso/{self.entrega.id}/aprobar/'
+        r = self.client.post(url, {'calificacion': '9', 'comentario': '¡Muy bien!'}, **self.FETCH)
+        datos = r.json()
+        self.assertTrue(datos['ok'])
+        self.assertEqual(datos['pendientes'], 0)
+        self.assertEqual(datos['revisada']['calificacion'], '9.0')
+        self.alumno.refresh_from_db()
+        self.assertEqual(self.alumno.xp_total, 50)
+        # Doble clic (o el mismo profe en otro dispositivo): no vuelve a dar XP ni monedas
+        monedas = self.alumno.monedas
+        datos = self.client.post(url, {'calificacion': '10'}, **self.FETCH).json()
+        self.assertFalse(datos['ok'])
+        self.assertTrue(datos['ya_revisada'])
+        self.alumno.refresh_from_db()
+        self.assertEqual((self.alumno.xp_total, self.alumno.monedas), (50, monedas))
+        self.entrega.refresh_from_db()
+        self.assertEqual((self.entrega.puntuacion, self.entrega.comentario_profesor), (90, '¡Muy bien!'))
+
+    def test_devolver_sin_recargar(self):
+        url = f'/progreso/{self.entrega.id}/rechazar/'
+        datos = self.client.post(url, {'comentario': 'Revisa las conexiones'}, **self.FETCH).json()
+        self.assertTrue(datos['ok'])
+        self.assertEqual(datos['revisada']['estado'], 'rechazado')
+        self.entrega.refresh_from_db()
+        self.assertEqual((self.entrega.estado, self.entrega.comentario_profesor), ('rechazado', 'Revisa las conexiones'))
+        self.assertTrue(self.client.post(url, {}, **self.FETCH).json()['ya_revisada'])
+
+    def test_el_formulario_de_siempre_sigue_funcionando(self):
+        r = self.client.post(f'/progreso/{self.entrega.id}/aprobar/', {'calificacion': '8', 'next': '/profesor/revisiones/'})
+        self.assertRedirects(r, '/profesor/revisiones/', fetch_redirect_response=False)
+        self.entrega.refresh_from_db()
+        self.assertEqual((self.entrega.estado, self.entrega.puntuacion), ('aprobado', 80))
+
+    def test_aprobar_todas_las_de_una_mision(self):
+        otros = []
+        for nombre in ('Beto', 'Caro'):
+            alumno = Alumno.objects.create(nombre=nombre, apellido='X', pin='1')
+            alumno.clases.add(self.clase)
+            otros.append(ProgresoMision.objects.create(alumno=alumno, mision=self.m1, estado='pendiente'))
+        ya = Alumno.objects.create(nombre='Dani', apellido='X', pin='1')
+        aprobada = ProgresoMision.objects.create(alumno=ya, mision=self.m1, estado='aprobado', puntuacion=100)
+        ids = [self.entrega.id, otros[0].id, otros[1].id, aprobada.id]
+        datos = self.client.post('/profesor/revisiones/aprobar-varias/', {'ids': ids, 'calificacion': '8'}, **self.FETCH).json()
+        self.assertEqual((datos['ok'], datos['aprobadas'], datos['pendientes']), (True, 3, 0))
+        self.assertEqual(set(ProgresoMision.objects.filter(id__in=ids[:3]).values_list('estado', 'puntuacion')), {('aprobado', 80)})
+        aprobada.refresh_from_db()
+        self.assertEqual(aprobada.puntuacion, 100)   # la que ya estaba calificada no se toca
+
+    def test_entregas_nuevas_mientras_revisa(self):
+        beto = Alumno.objects.create(nombre='Beto', apellido='X', pin='1')
+        beto.clases.add(self.clase)
+        nueva = ProgresoMision.objects.create(alumno=beto, mision=self.m1, estado='pendiente', intentos=2,
+                                              comentario_profesor='Falta la foto')
+        datos = self.client.get(f'/profesor/revisiones/nuevas/?conocidas={self.entrega.id}').json()
+        self.assertEqual([e['id'] for e in datos['entregas']], [nueva.id])
+        self.assertEqual(datos['entregas'][0]['comentario_anterior'], 'Falta la foto')   # lo que le pidió corregir
+        otra_clase = Clase.objects.create(nombre='Otra', grado='5', grupo='B', anio=2026)
+        self.assertEqual(self.client.get(f'/profesor/revisiones/nuevas/?clase={otra_clase.id}').json()['entregas'], [])
+
+    def test_la_pagina_recuerda_la_vista_por_mision(self):
+        r = self.client.get('/profesor/revisiones/?vista=mision')
+        self.assertContains(r, 'data-rv-grupo')
+        self.assertContains(r, 'id="rv-entregas"')
+        self.assertContains(r, 'Revisión rápida')
+        self.assertEqual(self.client.get('/profesor/revisiones/').context['vista'], 'mision')
+        self.assertEqual(self.client.get('/profesor/revisiones/?vista=llegada').context['vista'], 'llegada')

@@ -15,40 +15,114 @@
     </div>
 </div>
 
-<div class="row g-3 mb-4">
-    <div class="col-6 col-xl-3">
-        <a href="{% url 'alumnos_lista' %}" class="p-card kpi">
-            <span class="etiqueta"><i class="bi bi-people ico-azul"></i> Alumnos activos</span>
-            <span class="valor">{{ kpi_alumnos }}</span>
-            <span class="nota">En todas tus clases</span>
-        </a>
+{# ===== Empezar clase: el grupo que toca ahora (según su horario) con sus atajos a la mano ===== #}
+{% if lanzador %}
+<section class="p-card lanzador mb-4" data-lanzador data-sugerida="{{ sugerida.id|default:'' }}" aria-label="Empezar clase">
+    <div class="lanzador-top">
+        <div class="lanzador-titulo">
+            <i class="bi bi-play-circle-fill"></i>
+            <span>{% if sugerida.hoy.estado == 'ahora' %}Estás en clase{% else %}Empezar clase{% endif %}</span>
+        </div>
+        <div class="lanzador-chips" role="tablist" aria-label="Elige el grupo">
+            {% for c in lanzador %}
+                <button type="button" role="tab" class="chip-clase" id="lz-tab-{{ c.id }}" data-clase="{{ c.id }}" aria-controls="lz-{{ c.id }}"
+                        aria-selected="{% if forloop.first %}true{% else %}false{% endif %}" tabindex="{% if forloop.first %}0{% else %}-1{% endif %}"
+                        style="--c: {{ c.color|color_clase:0 }}" title="{{ c.nombre }} · {{ c.grado }} {{ c.grupo }}">
+                    <span class="e" aria-hidden="true">{{ c.icono|default:'🚀' }}</span>
+                    <span class="n">{{ c.nombre }}</span><span class="g">{{ c.grado }}{% if c.grupo %} {{ c.grupo }}{% endif %}</span>
+                    {% if c.hoy.estado == 'ahora' %}<span class="ahora" title="En clase ahora"><span class="visually-hidden">En clase ahora</span></span>
+                    {% elif c.hoy.estado == 'despues' %}<span class="hora">{{ c.hoy.inicio|time:"H:i" }}</span>{% endif %}
+                </button>
+            {% endfor %}
+        </div>
     </div>
+
+    {% for c in lanzador %}
+        <div class="lanzador-panel" id="lz-{{ c.id }}" role="tabpanel" aria-labelledby="lz-tab-{{ c.id }}" data-panel="{{ c.id }}" style="--c: {{ c.color|color_clase:0 }}" {% if not forloop.first %}hidden{% endif %}>
+            <div class="lz-info">
+                <span class="icono" aria-hidden="true">{{ c.icono|default:'🚀' }}</span>
+                <div class="min-w-0 flex-grow-1">
+                    <div class="lz-nombre text-truncate">{{ c.nombre }} <span>· {{ c.grado }} {{ c.grupo }}</span></div>
+                    <div class="lz-estado">
+                        {% if c.hoy.estado == 'ahora' %}
+                            <span class="p-badge verde"><span class="punto-vivo" aria-hidden="true"></span> En clase ahora · hasta las {{ c.hoy.fin|time:"H:i" }}</span>
+                        {% elif c.hoy.estado == 'despues' %}
+                            <span class="p-badge azul"><i class="bi bi-clock"></i> Hoy a las {{ c.hoy.inicio|time:"H:i" }}</span>
+                        {% elif c.hoy.estado == 'termino' %}
+                            <span class="p-badge">Hoy ya tuvo clase</span>
+                        {% endif %}
+                        <span><i class="bi bi-person-check"></i> {{ c.activos_semana }} de {{ c.total_alumnos }} entraron esta semana</span>
+                        {% if c.misiones_pendientes %}
+                            <a href="{% url 'revisiones' %}?clase={{ c.id }}" class="lz-pendientes"><i class="bi bi-inbox"></i> {{ c.misiones_pendientes }} por revisar</a>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="lz-acceso">{% include 'Profesor/_acceso_clase.html' with clase=c %}</div>
+            </div>
+            <div class="lz-acciones">
+                <a href="{% url 'modo_clase' c.id %}" class="lz-accion principal">
+                    <i class="bi bi-phone"></i><span><b>Modo clase</b><small>Puntos, conducta y equipos</small></span>
+                </a>
+                {% if c.batalla %}
+                    <a href="{% url 'batalla_proyector' c.batalla.id %}" class="lz-accion vivo" title="«{{ c.batalla.titulo }}»">
+                        <i class="bi bi-lightning-charge-fill"></i><span><b>Volver a la batalla</b><small class="text-truncate">«{{ c.batalla.titulo }}»</small></span>
+                    </a>
+                {% else %}
+                    <a data-modal="xl" href="{% url 'batalla_nueva' %}?clase={{ c.id }}" class="lz-accion">
+                        <i class="bi bi-lightning-charge"></i><span><b>Batalla en vivo</b><small>Concurso de preguntas</small></span>
+                    </a>
+                {% endif %}
+                <a href="{% url 'proyector' c.id %}" target="_blank" rel="noopener" class="lz-accion">
+                    <i class="bi bi-display"></i><span><b>Proyector</b><small>Ranking y avance en pantalla</small></span>
+                </a>
+                <a href="{% url 'clase_detalle' c.id %}" class="lz-accion">
+                    <i class="bi bi-diagram-3"></i><span><b>Contenido</b><small>Mundos y misiones</small></span>
+                </a>
+                <a href="{% url 'vista_alumno' c.id %}" class="lz-accion">
+                    <i class="bi bi-eye"></i><span><b>Ver como alumno</b><small>Sin guardar nada</small></span>
+                </a>
+            </div>
+        </div>
+    {% endfor %}
+</section>
+{% endif %}
+
+{# ===== Indicadores de la semana ===== #}
+<div class="row g-3 mb-4">
     <div class="col-6 col-xl-3">
         <a href="{% url 'revisiones' %}" class="p-card kpi">
             <span class="etiqueta"><i class="bi bi-inbox ico-ambar"></i> Por revisar</span>
-            <span class="valor">{{ kpi_revisiones }}</span>
-            <span class="nota">{% if kpi_revisiones %}Entregas esperando calificación{% else %}Bandeja al día ✓{% endif %}</span>
+            <span class="valor">{{ kpi.revisiones }}</span>
+            <span class="nota">{% if kpi.revisiones %}La más antigua espera {% if kpi.revision_dias == 0 %}desde hoy{% elif kpi.revision_dias == 1 %}desde ayer{% else %}desde hace {{ kpi.revision_dias }} días{% endif %}{% else %}Bandeja al día <i class="bi bi-check2"></i>{% endif %}</span>
         </a>
     </div>
     <div class="col-6 col-xl-3">
-        <a href="{% url 'pedidos' %}" class="p-card kpi">
-            <span class="etiqueta"><i class="bi bi-box-seam ico-violeta"></i> Pedidos por entregar</span>
-            <span class="valor">{{ kpi_pedidos }}</span>
-            <span class="nota">Premios de la tienda</span>
+        <a href="{% url 'alumnos_lista' %}" class="p-card kpi">
+            <span class="etiqueta"><i class="bi bi-person-check ico-azul"></i> Entraron esta semana</span>
+            <span class="valor">{{ kpi.activos }}<span class="de"> de {{ kpi.alumnos }}</span></span>
+            <span class="progreso azul" role="img" aria-label="{{ kpi.participacion }}% de tus alumnos"><span style="width: {{ kpi.participacion }}%"></span></span>
+            <span class="nota">{% if not kpi.alumnos %}Aún no tienes alumnos{% elif kpi.sin_entrar %}{{ kpi.sin_entrar }} no ha{{ kpi.sin_entrar|pluralize:"n" }} entrado en 7 días{% else %}¡Entraron todos!{% endif %}</span>
         </a>
     </div>
     <div class="col-6 col-xl-3">
         <a href="{% url 'actividad' %}" class="p-card kpi">
             <span class="etiqueta"><i class="bi bi-lightning-charge ico-verde"></i> XP ganada (7 días)</span>
-            <span class="valor">{{ kpi_xp_semana }}</span>
-            <span class="nota">{{ kpi_aprobadas_semana }} misiones aprobadas esta semana</span>
+            <span class="valor">{{ kpi.xp.actual }}</span>
+            <span class="nota">{% include 'Profesor/_tendencia.html' with c=kpi.xp %}</span>
+        </a>
+    </div>
+    <div class="col-6 col-xl-3">
+        <a href="{% url 'calificaciones' %}" class="p-card kpi">
+            <span class="etiqueta"><i class="bi bi-flag ico-violeta"></i> Misiones aprobadas (7 días)</span>
+            <span class="valor">{{ kpi.aprobadas.actual }}</span>
+            <span class="nota">{% include 'Profesor/_tendencia.html' with c=kpi.aprobadas %}</span>
         </a>
     </div>
 </div>
 
-<div class="row g-3 mb-4">
+<div class="row g-3">
     <div class="col-lg-8">
-        <section class="p-card h-100">
+        <section class="p-card mb-4">
             <div class="p-card-head">
                 <div>
                     <h2>Actividad de los últimos 14 días</h2>
@@ -92,51 +166,7 @@
                 </div>
             </div>
         </section>
-    </div>
 
-    <div class="col-lg-4 d-flex flex-column gap-3">
-        <section class="p-card">
-            <div class="p-card-head">
-                <h2>Premios por entregar</h2>
-                <div class="derecha"><a href="{% url 'pedidos' %}" class="p-btn xs fantasma">Ver todos</a></div>
-            </div>
-            <div class="p-card-body sin-pad">
-                {% for compra in entregas_tienda %}
-                    <div class="feed-item">
-                        <img src="{{ compra.alumno|avatar_url }}" alt="" style="width:32px;height:32px;border-radius:50%;object-fit:cover">
-                        <div class="min-w-0">
-                            <div class="t text-truncate"><b>{{ compra.articulo.nombre }}</b></div>
-                            <div class="f">{{ compra.alumno.nombre }} {{ compra.alumno.apellido }} · hace {{ compra.fecha_compra|timesince }}</div>
-                        </div>
-                        <form method="post" action="{% url 'entregar_articulo_tienda' compra.id %}" class="ms-auto">
-                            {% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}">
-                            <button type="submit" class="p-btn xs exito" title="Marcar como entregado"><i class="bi bi-check2"></i> Entregar</button>
-                        </form>
-                    </div>
-                {% empty %}
-                    <div class="vacio-p"><i class="bi bi-gift"></i>No hay premios pendientes.</div>
-                {% endfor %}
-            </div>
-        </section>
-
-        {% if stock_bajo %}
-            <section class="p-card">
-                <div class="p-card-head"><h2><i class="bi bi-exclamation-triangle text-warning me-1"></i> Poco stock</h2></div>
-                <div class="p-card-body sin-pad">
-                    {% for a in stock_bajo %}
-                        <div class="feed-item">
-                            <div class="min-w-0"><div class="t">{{ a.nombre }}</div><div class="f">{{ a.get_tipo_display }}</div></div>
-                            <span class="v"><span class="p-badge {% if a.stock == 0 %}rojo{% else %}ambar{% endif %}">{% if a.stock == 0 %}Agotado{% else %}Quedan {{ a.stock }}{% endif %}</span></span>
-                        </div>
-                    {% endfor %}
-                </div>
-            </section>
-        {% endif %}
-    </div>
-</div>
-
-<div class="row g-3">
-    <div class="col-lg-8">
         <div class="d-flex align-items-center justify-content-between mb-2">
             <h2 class="h6 mb-0 fw-semibold">Mis clases</h2>
             <a data-modal href="{% url 'alta_clase' %}" class="p-btn xs fantasma"><i class="bi bi-plus"></i> Nueva clase</a>
@@ -144,7 +174,7 @@
         <div class="row g-3">
             {% for clase in clases %}
                 <div class="col-md-6">
-                    <div class="p-card clase-card" style="--c: {{ clase.color|color_clase:0 }}">
+                    <div class="p-card clase-card {% if not clase.activa %}inactiva{% endif %}" style="--c: {{ clase.color|color_clase:0 }}">
                         <div class="d-flex gap-3 align-items-start">
                             <span class="icono">{{ clase.icono|default:'🚀' }}</span>
                             <div class="min-w-0 flex-grow-1">
@@ -155,10 +185,21 @@
                                 <a href="{% url 'revisiones' %}?clase={{ clase.id }}" class="p-badge ambar text-decoration-none">{{ clase.misiones_pendientes }} por revisar</a>
                             {% endif %}
                         </div>
+                        {% if clase.activa %}
+                            {% if clase.hoy.estado == 'ahora' or clase.hoy.estado == 'despues' or clase.acceso != 'abierto' or clase.batalla %}
+                                <div class="estado-clase">
+                                    {% if clase.hoy.estado == 'ahora' %}<span class="p-badge verde"><span class="punto-vivo" aria-hidden="true"></span> En clase ahora</span>
+                                    {% elif clase.hoy.estado == 'despues' %}<span class="p-badge azul"><i class="bi bi-clock"></i> Hoy a las {{ clase.hoy.inicio|time:"H:i" }}</span>{% endif %}
+                                    {% if clase.acceso == 'cerrado' %}<span class="p-badge"><i class="bi bi-lock-fill"></i> Cerrada para los alumnos</span>
+                                    {% elif clase.acceso == 'horario' %}<span class="p-badge" title="{{ clase.texto_horario }}"><i class="bi bi-clock-history"></i> Abre solo en su horario</span>{% endif %}
+                                    {% if clase.batalla %}<a href="{% url 'batalla_proyector' clase.batalla.id %}" class="p-badge violeta text-decoration-none"><i class="bi bi-lightning-charge-fill"></i> Batalla abierta</a>{% endif %}
+                                </div>
+                            {% endif %}
+                        {% endif %}
                         <div class="meta">
-                            <span><i class="bi bi-people"></i> {{ clase.total_alumnos }} alumnos</span>
-                            <span><i class="bi bi-globe-americas"></i> {{ clase.total_mundos }} mundos</span>
-                            <span><i class="bi bi-flag"></i> {{ clase.total_misiones }} misiones</span>
+                            <span title="Alumnos que entraron en los últimos 7 días"><i class="bi bi-person-check"></i> {{ clase.activos_semana }}/{{ clase.total_alumnos }} esta semana</span>
+                            <span><i class="bi bi-globe-americas"></i> {{ clase.total_mundos }} mundo{{ clase.total_mundos|pluralize }}</span>
+                            <span><i class="bi bi-flag"></i> {{ clase.total_misiones }} misi{{ clase.total_misiones|pluralize:"ón,ones" }}</span>
                         </div>
                         <div>
                             <div class="d-flex justify-content-between text-muted-p mb-1" style="font-size:.76rem"><span>Avance del grupo</span><span class="tnum">{{ clase.avance }}%</span></div>
@@ -167,7 +208,8 @@
                         <div class="acciones-c">
                             <a href="{% url 'clase_detalle' clase.id %}" class="p-btn sm"><i class="bi bi-diagram-3"></i> Contenido</a>
                             <a href="{% url 'matriz_calificaciones' clase.id %}" class="p-btn sm"><i class="bi bi-table"></i> Notas</a>
-                            <a href="{% url 'proyector' clase.id %}" class="p-btn sm icono fantasma ms-auto" target="_blank" title="Modo proyector"><i class="bi bi-display"></i></a>
+                            <a href="{% url 'modo_clase' clase.id %}" class="p-btn sm icono fantasma ms-auto" title="Modo clase" aria-label="Modo clase"><i class="bi bi-phone"></i></a>
+                            <a href="{% url 'proyector' clase.id %}" class="p-btn sm icono fantasma" target="_blank" rel="noopener" title="Modo proyector" aria-label="Modo proyector"><i class="bi bi-display"></i></a>
                         </div>
                     </div>
                 </div>
@@ -184,7 +226,136 @@
         </div>
     </div>
 
-    <div class="col-lg-4 d-flex flex-column gap-3">
+    {# En el celular esta columna va primero: lo urgente antes que la gráfica y las tarjetas de clase #}
+    <div class="col-lg-4 d-flex flex-column gap-3 order-first order-lg-0">
+        {# ===== Alumnos que necesitan atención ===== #}
+        <section class="p-card atencion" data-atencion>
+            <div class="p-card-head">
+                <div>
+                    <h2>Necesitan tu atención</h2>
+                    <div class="sub">{% if atencion %}{{ atencion|length }} alumno{{ atencion|length|pluralize }} · del más urgente al menos urgente{% else %}En tus clases activas{% endif %}</div>
+                </div>
+            </div>
+            <div class="p-card-body sin-pad">
+                {% for f in atencion %}
+                    <a href="{% url 'alumno_detalle' f.alumno.id %}" class="feed-item atencion-item" {% if forloop.counter > atencion_visibles %}hidden data-extra{% endif %}>
+                        <img src="{{ f.alumno|avatar_url }}" alt="" class="av">
+                        <div class="min-w-0 flex-grow-1">
+                            <div class="t text-truncate"><b>{{ f.alumno.nombre }} {{ f.alumno.apellido }}</b> <span class="text-muted-p">· {{ f.clase }}</span></div>
+                            <div class="motivos">
+                                {% for m in f.motivos %}<span class="motivo {{ m.tipo }}"><i class="bi {{ m.icono }}" aria-hidden="true"></i> {{ m.texto }}</span>{% endfor %}
+                            </div>
+                        </div>
+                        <i class="bi bi-chevron-right flecha" aria-hidden="true"></i>
+                    </a>
+                {% empty %}
+                    <div class="vacio-p">
+                        <i class="bi bi-emoji-smile"></i>
+                        <h3>Todos van al día</h3>
+                        <p class="mb-0" style="font-size:.85rem">Nadie va atrasado, nadie lleva días sin entrar y no hay misiones por corregir.</p>
+                    </div>
+                {% endfor %}
+                {% if atencion_extra %}
+                    <button type="button" class="ver-mas" data-ver-mas data-mas="Ver {{ atencion_extra }} más" data-menos="Ver menos">Ver {{ atencion_extra }} más</button>
+                {% endif %}
+            </div>
+            {% if atencion %}
+                <div class="atencion-pie">
+                    <span><i class="bi bi-hourglass-split"></i> Atrasado: lleva la mitad o menos de lo que lleva su grupo</span>
+                    <span><i class="bi bi-moon-stars"></i> {{ dias_ausente }} días o más sin entrar</span>
+                    <span><i class="bi bi-arrow-repeat"></i> Le regresaste una misión para corregir</span>
+                </div>
+            {% endif %}
+        </section>
+
+        {% if entregas_tienda %}
+            <section class="p-card">
+                <div class="p-card-head">
+                    <h2>Premios por entregar</h2>
+                    <div class="derecha"><a href="{% url 'pedidos' %}" class="p-btn xs fantasma">Ver todos</a></div>
+                </div>
+                <div class="p-card-body sin-pad">
+                    {% for compra in entregas_tienda %}
+                        <div class="feed-item">
+                            <img src="{{ compra.alumno|avatar_url }}" alt="" style="width:32px;height:32px;border-radius:50%;object-fit:cover">
+                            <div class="min-w-0">
+                                <div class="t text-truncate"><b>{{ compra.articulo.nombre }}</b></div>
+                                <div class="f">{{ compra.alumno.nombre }} {{ compra.alumno.apellido }} · hace {{ compra.fecha_compra|timesince }}</div>
+                            </div>
+                            <form method="post" action="{% url 'entregar_articulo_tienda' compra.id %}" class="ms-auto">
+                                {% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}">
+                                <button type="submit" class="p-btn xs exito" title="Marcar como entregado"><i class="bi bi-check2"></i> Entregar</button>
+                            </form>
+                        </div>
+                    {% endfor %}
+                </div>
+            </section>
+        {% endif %}
+
+        {% if vencen %}
+            <section class="p-card">
+                <div class="p-card-head">
+                    <div>
+                        <h2>Fechas de entrega</h2>
+                        <div class="sub">Misiones que vencen esta semana</div>
+                    </div>
+                </div>
+                <div class="p-card-body sin-pad">
+                    {% for m in vencen %}
+                        <a href="{% url 'clase_detalle' m.clase_id %}" class="feed-item vence">
+                            <span class="fecha-chip {% if m.dias < 0 %}vencida{% elif m.dias <= 1 %}pronto{% endif %}" aria-hidden="true">
+                                <b>{{ m.fecha_limite|date:"j" }}</b><small>{{ m.fecha_limite|date:"M" }}</small>
+                            </span>
+                            <div class="min-w-0 flex-grow-1">
+                                <div class="t text-truncate"><b>{{ m.nombre }}</b></div>
+                                <div class="f">{{ m.clase.grado }} {{ m.clase.grupo }} · {{ m.cuando }}</div>
+                                <div class="progreso mt-1" role="img" aria-label="{{ m.entregaron }} de {{ m.total }} entregaron"><span style="width: {{ m.pct }}%"></span></div>
+                            </div>
+                            <span class="v">{{ m.entregaron }}/{{ m.total }}<small>entregaron</small></span>
+                        </a>
+                    {% endfor %}
+                </div>
+            </section>
+        {% endif %}
+
+        {% if metas %}
+            <section class="p-card">
+                <div class="p-card-head">
+                    <h2>Metas del grupo</h2>
+                    <div class="derecha"><a href="{% url 'metas_lista' %}" class="p-btn xs fantasma">Ver todas</a></div>
+                </div>
+                <div class="p-card-body sin-pad">
+                    {% for meta in metas %}
+                        <div class="meta-mini">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="e" aria-hidden="true">{{ meta.icono }}</span>
+                                <div class="min-w-0 flex-grow-1">
+                                    <div class="t text-truncate">{{ meta.titulo }}</div>
+                                    <div class="f">{{ meta.clase.grado }} {{ meta.clase.grupo }} · {% if meta.faltan %}faltan {{ meta.faltan }}{% else %}¡lista!{% endif %}{% if meta.dias is not None %} · {% if meta.dias < 0 %}venció{% elif meta.dias == 0 %}termina hoy{% else %}queda{{ meta.dias|pluralize:"n" }} {{ meta.dias }} día{{ meta.dias|pluralize }}{% endif %}{% endif %}</div>
+                                </div>
+                                <span class="tnum fw-semibold" style="font-size:.85rem">{{ meta.pct }}%</span>
+                            </div>
+                            <div class="progreso mt-2"><span style="width: {{ meta.pct }}%"></span></div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </section>
+        {% endif %}
+
+        {% if stock_bajo %}
+            <section class="p-card">
+                <div class="p-card-head"><h2><i class="bi bi-exclamation-triangle text-warning me-1"></i> Poco stock</h2></div>
+                <div class="p-card-body sin-pad">
+                    {% for a in stock_bajo %}
+                        <div class="feed-item">
+                            <div class="min-w-0"><div class="t">{{ a.nombre }}</div><div class="f">{{ a.get_tipo_display }}</div></div>
+                            <span class="v"><span class="p-badge {% if a.stock == 0 %}rojo{% else %}ambar{% endif %}">{% if a.stock == 0 %}Agotado{% else %}Quedan {{ a.stock }}{% endif %}</span></span>
+                        </div>
+                    {% endfor %}
+                </div>
+            </section>
+        {% endif %}
+
         <section class="p-card">
             <div class="p-card-head"><h2>Top de la semana</h2></div>
             <div class="p-card-body sin-pad">

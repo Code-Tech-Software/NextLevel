@@ -139,6 +139,7 @@
     function iniciarCalificacion() {
         $$('[data-calif]').forEach(btn => btn.addEventListener('click', () => {
             const form = btn.closest('form');
+            if (!form) return;   // la bandeja de revisiones califica sin recargar (revisiones.js)
             form.querySelector('[name=calificacion]').value = btn.dataset.calif;
             form.dataset.confirmado = '1';
             form.submit();
@@ -240,6 +241,54 @@
             tabla.classList.toggle('d-none');
             e.currentTarget.textContent = tabla.classList.contains('d-none') ? 'Ver como tabla' : 'Ocultar tabla';
         });
+    }
+
+    // ---------- Inicio: «Empezar clase» y «Necesitan tu atención» ----------
+    function iniciarInicio() {
+        const lanzador = $('[data-lanzador]');
+        if (lanzador) {
+            const LLAVE = 'nl-inicio-clase';
+            const chips = $$('.chip-clase', lanzador);
+            const contenedor = $('.lanzador-chips', lanzador);
+            const elegir = id => {
+                const chip = chips.find(c => c.dataset.clase === String(id));
+                if (!chip) return false;
+                chips.forEach(c => {
+                    c.setAttribute('aria-selected', c === chip ? 'true' : 'false');
+                    c.tabIndex = c === chip ? 0 : -1;
+                });
+                $$('[data-panel]', lanzador).forEach(p => { p.hidden = p.dataset.panel !== chip.dataset.clase; });
+                // Que el grupo elegido se vea en la fila de chips (sin mover la página)
+                const caja = contenedor.getBoundingClientRect();
+                const r = chip.getBoundingClientRect();
+                if (r.left < caja.left || r.right > caja.right) contenedor.scrollLeft += r.left - caja.left - 8;
+                return chip;
+            };
+            let guardada = null;
+            try { guardada = localStorage.getItem(LLAVE); } catch (e) { /* sin almacenamiento */ }
+            // Manda la clase que toca según el horario; si ninguna, la última que eligió el profe
+            elegir(lanzador.dataset.sugerida) || elegir(guardada);
+            chips.forEach((chip, i) => {
+                chip.addEventListener('click', () => {
+                    elegir(chip.dataset.clase);
+                    try { localStorage.setItem(LLAVE, chip.dataset.clase); } catch (e) { /* sin almacenamiento */ }
+                });
+                chip.addEventListener('keydown', e => {
+                    const destino = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: chips.length - 1 }[e.key];
+                    if (destino === undefined) return;
+                    e.preventDefault();
+                    const otro = chips[(destino + chips.length) % chips.length];
+                    otro.click();
+                    otro.focus();
+                });
+            });
+        }
+        $$('[data-ver-mas]').forEach(btn => btn.addEventListener('click', () => {
+            const extras = $$('[data-extra]', btn.closest('[data-atencion]'));
+            const abrir = extras.some(x => x.hidden);
+            extras.forEach(x => { x.hidden = !abrir; });
+            btn.textContent = abrir ? btn.dataset.menos : btn.dataset.mas;
+        }));
     }
 
     // ---------- Copiar ----------
@@ -2693,6 +2742,7 @@
         iniciarInterruptores();
         iniciarStock();
         iniciarGrafica();
+        iniciarInicio();
         iniciarCopiar();
         iniciarCredenciales();
 

@@ -20,7 +20,9 @@ from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
 from . import gamificacion as juego
+from . import inicio_profesor as inicio
 from . import minijuegos
+from . import revisiones as bandeja
 from .forms import (
     AltaMasivaForm, AlumnoForm, AppExternaForm, ArticuloTiendaForm, ClaseForm, LogroForm, MisionDiariaForm, MisionForm,
     MundoForm, NivelForm, OtorgarLogroForm, separar_nombre,
@@ -148,26 +150,29 @@ def _grafica_actividad(actividad):
             'total_aprobadas': sum(d['aprobadas'] for d in actividad)}
 
 
+ATENCION_VISIBLES = 5   # alumnos que «Necesitan tu atención» a la vista; el resto con «Ver más»
+
+
 @login_required
 def dashboard_profesor(request):
     ahora = timezone.now()
     ahora_local = timezone.localtime()
     hace_7 = ahora - timedelta(days=7)
-    hoy = timezone.localdate()
+    hoy = ahora_local.date()
 
     # Actividad de los últimos 14 días: entregas y misiones aprobadas
-    inicio = hoy - timedelta(days=13)
+    desde = hoy - timedelta(days=13)
     entregas = dict(
-        ProgresoMision.objects.filter(fecha__date__gte=inicio).annotate(dia=TruncDate('fecha'))
+        ProgresoMision.objects.filter(fecha__date__gte=desde).annotate(dia=TruncDate('fecha'))
         .values_list('dia').annotate(total=Count('id'))
     )
     aprobadas = dict(
-        ProgresoMision.objects.filter(estado='aprobado', fecha_revision__date__gte=inicio)
+        ProgresoMision.objects.filter(estado='aprobado', fecha_revision__date__gte=desde)
         .annotate(dia=TruncDate('fecha_revision')).values_list('dia').annotate(total=Count('id'))
     )
     actividad = []
     for i in range(14):
-        dia = inicio + timedelta(days=i)
+        dia = desde + timedelta(days=i)
         actividad.append({
             'fecha': dia.isoformat(),
             'etiqueta': dia.strftime('%d/%m'),
@@ -175,33 +180,26 @@ def dashboard_profesor(request):
             'aprobadas': aprobadas.get(dia, 0),
         })
 
-    clases = list(Clase.objects.annotate(
-        total_alumnos=Count('alumnos', filter=Q(alumnos__activo=True), distinct=True),
-        total_misiones=Count('misiones', filter=Q(misiones__activa=True), distinct=True),
-        total_mundos=Count('mundos', distinct=True),
-    ).order_by('-activa', 'anio', 'grado', 'grupo'))
-    for clase in clases:
-        clase.misiones_pendientes = ProgresoMision.objects.filter(mision__clase=clase, estado='pendiente').count()
-        posibles = clase.total_alumnos * clase.total_misiones
-        hechas = ProgresoMision.objects.filter(
-            mision__clase=clase, mision__activa=True, estado='aprobado', alumno__activo=True, alumno__clases=clase
-        ).count()
-        clase.avance = int(hechas * 100 / posibles) if posibles else 0
+    clases, lanzador, sugerida = inicio.clases_del_inicio(ahora_local)
+    atencion = inicio.alumnos_con_atencion(hoy)
 
     top_semana = Alumno.objects.filter(activo=True).annotate(
         puntos=Coalesce(Sum('movimientos__xp', filter=Q(movimientos__fecha__gte=hace_7)), Value(0))
     ).filter(puntos__gt=0).order_by('-puntos')[:5]
 
     return render(request, 'Profesor/dashboard_principal.html', {
-        'kpi_alumnos': Alumno.objects.filter(activo=True).count(),
-        'kpi_revisiones': ProgresoMision.objects.filter(estado='pendiente').count(),
-        'kpi_pedidos': CompraAlumno.objects.filter(estado='pendiente').count(),
-        'kpi_xp_semana': Movimiento.objects.filter(fecha__gte=hace_7, xp__gt=0).aggregate(
-            t=Coalesce(Sum('xp'), Value(0)))['t'],
-        'kpi_aprobadas_semana': ProgresoMision.objects.filter(estado='aprobado', fecha_revision__gte=hace_7).count(),
+        'kpi': inicio.indicadores(ahora_local),
         'actividad': actividad,
         'grafica': _grafica_actividad(actividad),
         'clases': clases,
+        'lanzador': lanzador,
+        'sugerida': sugerida,
+        'atencion': atencion,
+        'atencion_visibles': ATENCION_VISIBLES,
+        'atencion_extra': max(0, len(atencion) - ATENCION_VISIBLES),
+        'dias_ausente': inicio.DIAS_AUSENTE,
+        'vencen': inicio.entregas_que_vencen(hoy),
+        'metas': inicio.metas_en_curso(hoy),
         'entregas_tienda': CompraAlumno.objects.filter(estado='pendiente').select_related(
             'alumno', 'articulo').order_by('fecha_compra')[:6],
         'stock_bajo': ArticuloTienda.objects.filter(activo=True, stock__isnull=False, stock__lte=3).order_by('stock'),
@@ -677,15 +675,14 @@ def eliminar(request, modelo, pk):
 def revisiones(request):
     clase_id = request.GET.get('clase')
     tipo = request.GET.get('tipo')
-    entregas = ProgresoMision.objects.filter(estado='pendiente').select_related(
-        'alumno', 'mision', 'mision__clase', 'mision__nivel', 'mision__nivel__mundo'
-    ).order_by('fecha')
-    clase = None
-    if clase_id and clase_id.isdigit():
-        clase = Clase.objects.filter(pk=clase_id).first()
-        entregas = entregas.filter(mision__clase_id=clase_id)
-    if tipo:
-        entregas = entregas.filter(mision__tipo=tipo)
+    # «Por llegada» o «Por misión»: la última que eligió el profe se queda
+    vista = request.GET.get('vista')
+    if vista in bandeja.VISTAS:
+        request.session['revisiones_vista'] = vista
+    else:
+        vista = request.session.get('revisiones_vista', 'llegada')
+    entregas = list(bandeja.entregas_pendientes(clase_id, tipo, vista))
+    clase = Clase.objects.filter(pk=clase_id).first() if clase_id and clase_id.isdigit() else None
 
     clases = Clase.objects.annotate(
         pendientes=Count('misiones__progresomision', filter=Q(misiones__progresomision__estado='pendiente'))
@@ -694,13 +691,39 @@ def revisiones(request):
         'alumno', 'mision').order_by('-fecha_revision')[:8]
     return render(request, 'Profesor/panel_calificar.html', {
         'entregas': entregas,
+        'entregas_json': [bandeja.entrega_json(e) for e in entregas],
         'clases': clases,
         'clase': clase,
         'tipo': tipo,
         'tipos': Mision.TIPO_MISION,
+        'vista': vista,
         'recientes': recientes,
+        'comentarios_aprobar': bandeja.COMENTARIOS_APROBAR,
+        'motivos_devolver': bandeja.MOTIVOS_DEVOLVER,
         'seccion': 'revisiones',
     })
+
+
+@login_required
+def revisiones_nuevas(request):
+    """Entregas que llegaron mientras el profe revisaba (la página pregunta cada cierto tiempo)."""
+    conocidas = {int(x) for x in request.GET.get('conocidas', '').split(',') if x.isdigit()}
+    entregas = bandeja.entregas_pendientes(request.GET.get('clase'), request.GET.get('tipo')).exclude(id__in=conocidas)
+    return JsonResponse({'entregas': [bandeja.entrega_json(e) for e in entregas[:30]]})
+
+
+def _es_fetch(request):
+    return request.headers.get('x-requested-with') == 'XMLHttpRequest'
+
+
+def _respuesta_revision(request, ok, mensaje, nivel='success', **extra):
+    """La página de revisiones califica sin recargar (JSON con los contadores al día); un formulario normal recarga."""
+    if _es_fetch(request):
+        por_clase = bandeja.pendientes_por_clase()
+        return JsonResponse({'ok': ok, 'mensaje': mensaje, 'pendientes': sum(por_clase.values()),
+                             'por_clase': {str(k): v for k, v in por_clase.items()}, **extra})
+    getattr(messages, nivel)(request, mensaje)
+    return redirect(_siguiente(request, reverse('revisiones')))
 
 
 @login_required
@@ -719,28 +742,60 @@ def _leer_calificacion(valor):
     return int(round(max(0, min(10, numero)) * 10))
 
 
+def _entrega_bloqueada(progreso_id, solo_pendiente=False):
+    """La entrega bloqueada hasta terminar la transacción: si llegan dos clics (o dos dispositivos) a la vez, el
+    segundo espera y ya la ve calificada, así nunca se entregan dos veces la XP y las monedas."""
+    entregas = ProgresoMision.objects.select_for_update(of=('self',)).select_related('alumno', 'mision', 'mision__clase')
+    if solo_pendiente:
+        return entregas.filter(id=progreso_id, estado='pendiente').first()
+    return get_object_or_404(entregas, id=progreso_id)
+
+
 @require_POST
 @login_required
 def aprobar_mision(request, progreso_id):
-    progreso = get_object_or_404(ProgresoMision.objects.select_related('alumno', 'mision'), id=progreso_id)
     puntuacion = _leer_calificacion(request.POST.get('calificacion', 10))
     if puntuacion is None:
-        messages.error(request, 'La calificación no es válida.')
-    else:
+        return _respuesta_revision(request, False, 'La calificación no es válida.', 'error')
+    with transaction.atomic():
+        progreso = _entrega_bloqueada(progreso_id)
+        if _es_fetch(request) and progreso.estado != 'pendiente':
+            return _respuesta_revision(request, False, bandeja.ya_revisada(progreso), 'info', ya_revisada=True)
         monedas = juego.calificar(progreso, puntuacion, request.POST.get('comentario', '').strip())
-        messages.success(request, f'Misión de {progreso.alumno.nombre} aprobada con {puntuacion / 10:.1f} '
-                                  f'(+{monedas} monedas).')
-    return redirect(_siguiente(request, reverse('revisiones')))
+    return _respuesta_revision(request, True, f'Misión de {progreso.alumno.nombre} aprobada con {puntuacion / 10:.1f} '
+                                              f'(+{monedas} monedas).', revisada=bandeja.revisada_json(progreso))
 
 
 @require_POST
 @login_required
 def rechazar_mision(request, progreso_id):
-    progreso = get_object_or_404(ProgresoMision.objects.select_related('alumno', 'mision'), id=progreso_id)
-    if progreso.estado == 'pendiente':
+    with transaction.atomic():
+        progreso = _entrega_bloqueada(progreso_id)
+        if progreso.estado != 'pendiente':
+            return _respuesta_revision(request, False, bandeja.ya_revisada(progreso), 'info', ya_revisada=True)
         juego.rechazar(progreso, request.POST.get('comentario', '').strip())
-        messages.warning(request, f'Misión de {progreso.alumno.nombre} devuelta para corrección.')
-    return redirect(_siguiente(request, reverse('revisiones')))
+    return _respuesta_revision(request, True, f'Misión de {progreso.alumno.nombre} devuelta para corrección.',
+                               'warning', revisada=bandeja.revisada_json(progreso))
+
+
+@require_POST
+@login_required
+def aprobar_varias(request):
+    """Aprueba de una vez varias entregas pendientes con la misma calificación (las de una misión, por ejemplo)."""
+    ids = [int(i) for i in request.POST.getlist('ids') if i.isdigit()][:100]
+    puntuacion = _leer_calificacion(request.POST.get('calificacion', 10))
+    if puntuacion is None or not ids:
+        return _respuesta_revision(request, False, 'Elige qué entregas aprobar y con qué calificación.', 'error')
+    comentario = request.POST.get('comentario', '').strip()
+    aprobadas = 0
+    for progreso_id in ids:
+        with transaction.atomic():   # una por una: si una ya la calificó alguien más, las demás siguen
+            progreso = _entrega_bloqueada(progreso_id, solo_pendiente=True)
+            if progreso:
+                juego.calificar(progreso, puntuacion, comentario)
+                aprobadas += 1
+    texto = 'entrega aprobada' if aprobadas == 1 else 'entregas aprobadas'
+    return _respuesta_revision(request, True, f'{aprobadas} {texto} con {puntuacion / 10:.1f}.', aprobadas=aprobadas)
 
 
 @login_required

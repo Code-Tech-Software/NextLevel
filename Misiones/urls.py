@@ -62,6 +62,8 @@ urlpatterns = [
     path('profesor/misiones/<int:mision_id>/calificar/', profe.calificar_mision, name='calificar_mision'),
 
     path('profesor/revisiones/', profe.revisiones, name='revisiones'),
+    path('profesor/revisiones/nuevas/', profe.revisiones_nuevas, name='revisiones_nuevas'),
+    path('profesor/revisiones/aprobar-varias/', profe.aprobar_varias, name='aprobar_varias'),
     path('clase/<int:clase_id>/panel-profesor/', profe.panel_profesor, name='panel_profesor'),
     path('progreso/<int:progreso_id>/aprobar/', profe.aprobar_mision, name='aprobar_mision'),
     path('progreso/<int:progreso_id>/rechazar/', profe.rechazar_mision, name='rechazar_mision'),

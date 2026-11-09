@@ -1,0 +1,8 @@
+{% comment %}Cifra de esta semana contra la anterior. `c` = {'actual', 'anterior', 'pct', 'sube'} (de inicio_profesor._comparar).{% endcomment %}
+{% if c.pct is None %}
+    {% if c.actual %}<span class="tendencia sube"><i class="bi bi-arrow-up-right"></i> Nuevo</span> la semana anterior fue 0{% else %}Sin movimiento en 2 semanas{% endif %}
+{% elif c.pct == 0 %}
+    <span class="tendencia igual"><i class="bi bi-arrow-right"></i> Igual</span> que la semana anterior
+{% else %}
+    <span class="tendencia {% if c.sube %}sube{% else %}baja{% endif %}"><i class="bi {% if c.sube %}bi-arrow-up-right{% else %}bi-arrow-down-right{% endif %}"></i> {{ c.pct }}%</span> vs. semana anterior ({{ c.anterior }})
+{% endif %}

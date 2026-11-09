@@ -7,34 +7,70 @@
 <div class="page-head">
     <div>
         <h1>Revisiones</h1>
-        <p>{% if entregas %}{{ entregas|length }} entrega{{ entregas|length|pluralize }} esperando tu calificación{% if clase %} en {{ clase.nombre }}{% endif %}.{% else %}Todo al día.{% endif %}</p>
+        <p data-resumen data-en="{% if clase %} en {{ clase.nombre }}{% endif %}">{% if entregas %}<b data-total>{{ entregas|length }}</b> entrega{{ entregas|length|pluralize }} esperando tu calificación{% if clase %} en {{ clase.nombre }}{% endif %}.{% else %}Todo al día.{% endif %}</p>
+    </div>
+    <div class="acciones">
+        <button type="button" class="p-btn primario rv-abrir" data-rv-abrir {% if not entregas %}disabled{% endif %}>
+            <i class="bi bi-lightning-charge-fill"></i> Revisión rápida
+        </button>
     </div>
 </div>
 
-<div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+<div class="rv-filtros mb-3">
     <div class="chips-filtro">
         <a href="?{% if tipo %}tipo={{ tipo }}{% endif %}" class="chip-f {% if not clase %}activo{% endif %}">Todas las clases</a>
         {% for c in clases %}
-            <a href="?clase={{ c.id }}{% if tipo %}&tipo={{ tipo }}{% endif %}" class="chip-f {% if clase.id == c.id %}activo{% endif %}">
+            <a href="?clase={{ c.id }}{% if tipo %}&tipo={{ tipo }}{% endif %}" class="chip-f {% if clase.id == c.id %}activo{% endif %}" data-chip-clase="{{ c.id }}">
                 {{ c.icono }} {{ c.nombre }} {% if c.pendientes %}<span class="c">{{ c.pendientes }}</span>{% endif %}
             </a>
         {% endfor %}
     </div>
-    <form method="get" class="ms-auto">
-        {% if clase %}<input type="hidden" name="clase" value="{{ clase.id }}">{% endif %}
-        <select name="tipo" class="p-input" style="height:34px;font-size:.82rem;width:auto" onchange="this.form.submit()" aria-label="Filtrar por tipo">
-            <option value="">Todos los tipos</option>
-            {% for v, e in tipos %}<option value="{{ v }}" {% if tipo == v %}selected{% endif %}>{{ e }}</option>{% endfor %}
-        </select>
-    </form>
+    <div class="rv-herramientas">
+        <div class="segmentado" role="group" aria-label="Ordenar las entregas">
+            <a href="?vista=llegada{% if clase %}&clase={{ clase.id }}{% endif %}{% if tipo %}&tipo={{ tipo }}{% endif %}" class="{% if vista == 'llegada' %}activo{% endif %}" {% if vista == 'llegada' %}aria-current="true"{% endif %}><i class="bi bi-clock-history"></i> Por llegada</a>
+            <a href="?vista=mision{% if clase %}&clase={{ clase.id }}{% endif %}{% if tipo %}&tipo={{ tipo }}{% endif %}" class="{% if vista == 'mision' %}activo{% endif %}" {% if vista == 'mision' %}aria-current="true"{% endif %}><i class="bi bi-collection"></i> Por misión</a>
+        </div>
+        <form method="get">
+            {% if clase %}<input type="hidden" name="clase" value="{{ clase.id }}">{% endif %}
+            <select name="tipo" class="p-input" style="height:34px;font-size:.82rem;width:auto" onchange="this.form.submit()" aria-label="Filtrar por tipo">
+                <option value="">Todos los tipos</option>
+                {% for v, e in tipos %}<option value="{{ v }}" {% if tipo == v %}selected{% endif %}>{{ e }}</option>{% endfor %}
+            </select>
+        </form>
+        {% if entregas %}
+            <div class="rv-buscar">
+                <i class="bi bi-search" aria-hidden="true"></i>
+                <input type="search" class="p-input" placeholder="Buscar alumno o misión" aria-label="Buscar alumno o misión" data-rv-buscar>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="rv-aviso-nuevas" data-rv-aviso hidden role="status">
+    <i class="bi bi-bell-fill"></i> <span data-rv-aviso-texto></span>
+    <button type="button" class="p-btn xs" data-rv-actualizar>Mostrarlas</button>
 </div>
 
 <div class="row g-3">
     <div class="col-xl-8">
-        <section class="p-card">
+        <section class="p-card" data-rv-lista>
             {% for e in entregas %}
+                {% ifchanged e.mision_id %}{% if vista == 'mision' %}
+                    {% with info=e.mision.tipo|tipo_info %}
+                    <div class="rv-grupo" data-rv-grupo="{{ e.mision_id }}">
+                        <span class="e" style="background: {{ info.color }}1a" aria-hidden="true">{{ info.emoji }}</span>
+                        <div class="min-w-0 flex-grow-1">
+                            <div class="n text-truncate">{{ e.mision.nombre }}</div>
+                            <div class="s">{{ e.mision.clase.nombre }} · <span data-rv-grupo-cuenta>0</span></div>
+                        </div>
+                        <button type="button" class="p-btn sm" data-rv-aprobar-grupo="{{ e.mision_id }}" data-nombre="{{ e.mision.nombre }}">
+                            <i class="bi bi-check2-all"></i> <span>Aprobar todas</span>
+                        </button>
+                    </div>
+                    {% endwith %}
+                {% endif %}{% endifchanged %}
                 {% with info=e.mision.tipo|tipo_info %}
-                <div class="entrega">
+                <div class="entrega" data-entrega="{{ e.id }}" data-mision="{{ e.mision_id }}">
                     <div class="min-w-0">
                         <div class="d-flex align-items-center gap-3 flex-wrap">
                             <a href="{% url 'alumno_detalle' e.alumno.id %}" class="persona">
@@ -43,64 +79,65 @@
                             </a>
                             {% if e.intentos > 1 %}<span class="p-badge ambar">Intento {{ e.intentos }}</span>{% endif %}
                         </div>
-                        <div class="mt-2 d-flex align-items-center gap-2 flex-wrap">
-                            <span class="p-badge" style="background: {{ info.color }}1a; color: {{ info.color }}; border-color: transparent">{{ info.emoji }} {{ e.mision.get_tipo_display }}</span>
-                            <a data-modal="xl" href="{% url 'editar_mision' e.mision.id %}" class="fw-semibold text-decoration-none" style="color:var(--text)">{{ e.mision.nombre }}</a>
-                            <span class="text-muted-p" style="font-size:.78rem">{% if e.mision.nivel.mundo %}{{ e.mision.nivel.mundo.nombre }} › {% endif %}{{ e.mision.nivel.nombre }}</span>
-                        </div>
+                        {% if vista != 'mision' %}
+                            <div class="mt-2 d-flex align-items-center gap-2 flex-wrap">
+                                <span class="p-badge" style="background: {{ info.color }}1a; color: {{ info.color }}; border-color: transparent">{{ info.emoji }} {{ e.mision.get_tipo_display }}</span>
+                                <a data-modal="xl" href="{% url 'editar_mision' e.mision.id %}" class="fw-semibold text-decoration-none" style="color:var(--text)">{{ e.mision.nombre }}</a>
+                                <span class="text-muted-p" style="font-size:.78rem">{% if e.mision.nivel.mundo %}{{ e.mision.nivel.mundo.nombre }} › {% endif %}{{ e.mision.nivel.nombre }}</span>
+                            </div>
+                        {% endif %}
+                        {% if e.intentos > 1 and e.comentario_profesor %}
+                            <div class="rv-le-pediste"><i class="bi bi-arrow-repeat"></i> Le pediste: «{{ e.comentario_profesor }}»</div>
+                        {% endif %}
                         <div class="d-flex gap-3 mt-2 align-items-start">
                             {% if e.evidencia %}
                                 <img src="{{ e.evidencia|imagen_web:'mini' }}" data-ampliar="{{ e.evidencia|imagen_web:'grande' }}" loading="lazy" alt="Evidencia de {{ e.alumno.nombre }}" class="evidencia-mini" title="Clic para ampliar">
                             {% endif %}
                             {% if e.respuesta_texto %}
-                                <div class="respuesta flex-grow-1 mt-0">{{ e.respuesta_texto }}</div>
+                                <div class="respuesta flex-grow-1 mt-0" data-enlazar>{{ e.respuesta_texto }}</div>
                             {% elif not e.evidencia %}
                                 <div class="text-muted-p" style="font-size:.82rem"><i class="bi bi-info-circle"></i> El alumno marcó la misión como terminada sin adjuntar evidencia.</div>
                             {% endif %}
                         </div>
                     </div>
 
-                    <div style="min-width:260px">
-                        <form method="post" action="{% url 'aprobar_mision' e.id %}">
-                            {% csrf_token %}
-                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                            <div class="text-muted-p mb-1" style="font-size:.74rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em">Aprobar con</div>
-                            <div class="calif-rapida mb-2">
-                                <button type="button" class="p-btn sm exito" data-calif="10">10</button>
-                                <button type="button" class="p-btn sm" data-calif="9">9</button>
-                                <button type="button" class="p-btn sm" data-calif="8">8</button>
-                                <button type="button" class="p-btn sm" data-calif="7">7</button>
-                                <button type="button" class="p-btn sm" data-calif="6">6</button>
-                            </div>
-                            <div class="d-flex gap-2">
-                                <input type="text" name="comentario" class="p-input" style="height:32px;font-size:.8rem" placeholder="Comentario (opcional)">
-                                <input type="number" name="calificacion" class="p-input tnum" style="height:32px;width:70px;font-size:.8rem" min="0" max="10" step="0.5" value="10" aria-label="Calificación personalizada">
-                                <button type="submit" class="p-btn sm primario icono" title="Aprobar con esta calificación"><i class="bi bi-check2"></i></button>
-                            </div>
-                        </form>
-                        <form method="post" action="{% url 'rechazar_mision' e.id %}" class="mt-2 text-end" data-pedir-comentario="Explícale a {{ e.alumno.nombre }} qué debe corregir:" data-titulo="Devolver «{{ e.mision.nombre }}»">
-                            {% csrf_token %}
-                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                            <input type="hidden" name="comentario">
-                            <button type="submit" class="p-btn xs peligro"><i class="bi bi-arrow-counterclockwise"></i> Devolver para corregir</button>
-                        </form>
+                    <div class="entrega-calificar">
+                        <div class="d-flex align-items-center justify-content-between mb-1">
+                            <span class="etiqueta-mini">Aprobar con</span>
+                            <button type="button" class="p-btn xs fantasma" data-rv-abrir="{{ e.id }}" title="Revisar una por una desde aquí"><i class="bi bi-lightning-charge"></i> Revisar aquí</button>
+                        </div>
+                        <div class="calif-rapida mb-2">
+                            <button type="button" class="p-btn sm exito" data-calif="10">10</button>
+                            <button type="button" class="p-btn sm" data-calif="9">9</button>
+                            <button type="button" class="p-btn sm" data-calif="8">8</button>
+                            <button type="button" class="p-btn sm" data-calif="7">7</button>
+                            <button type="button" class="p-btn sm" data-calif="6">6</button>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <input type="text" name="comentario" class="p-input" style="height:32px;font-size:.8rem" placeholder="Comentario (opcional)" list="frases-aprobar" aria-label="Comentario para {{ e.alumno.nombre }}">
+                            <input type="number" name="calificacion" class="p-input tnum" style="height:32px;width:70px;font-size:.8rem" min="0" max="10" step="0.5" value="10" aria-label="Calificación personalizada">
+                            <button type="button" class="p-btn sm primario icono" data-calif-otra title="Aprobar con esta calificación" aria-label="Aprobar con esta calificación"><i class="bi bi-check2"></i></button>
+                        </div>
+                        <div class="mt-2 text-end">
+                            <button type="button" class="p-btn xs peligro" data-devolver><i class="bi bi-arrow-counterclockwise"></i> Devolver para corregir</button>
+                        </div>
                     </div>
+                    <div class="entrega-decidida" aria-live="polite"></div>
                 </div>
                 {% endwith %}
-            {% empty %}
-                <div class="vacio-p" style="padding:4rem 1rem">
-                    <i class="bi bi-inbox"></i>
-                    <h3>¡Bandeja vacía!</h3>
-                    <p class="mb-0">No hay entregas pendientes{% if clase %} en esta clase{% endif %}. Buen trabajo, profe.</p>
-                </div>
             {% endfor %}
+            <div class="vacio-p" style="padding:4rem 1rem" data-rv-vacio {% if entregas %}hidden{% endif %}>
+                <i class="bi bi-inbox"></i>
+                <h3>¡Bandeja vacía!</h3>
+                <p class="mb-0">No hay entregas pendientes{% if clase %} en esta clase{% endif %}. Buen trabajo, profe.</p>
+            </div>
         </section>
     </div>
 
     <div class="col-xl-4">
         <section class="p-card">
             <div class="p-card-head"><h2>Revisadas recientemente</h2></div>
-            <div class="p-card-body sin-pad">
+            <div class="p-card-body sin-pad" data-rv-recientes>
                 {% for r in recientes %}
                     <div class="feed-item">
                         <img src="{{ r.alumno|avatar_url }}" alt="" style="width:30px;height:30px;border-radius:50%">
@@ -115,11 +152,99 @@
                         </span>
                     </div>
                 {% empty %}
-                    <div class="vacio-p"><i class="bi bi-clock-history"></i>Aún no has revisado entregas.</div>
+                    <div class="vacio-p" data-rv-recientes-vacio><i class="bi bi-clock-history"></i>Aún no has revisado entregas.</div>
                 {% endfor %}
             </div>
         </section>
-        <p class="text-muted-p mt-3" style="font-size:.8rem"><i class="bi bi-lightbulb"></i> Las misiones presenciales se califican desde la estructura de la clase con <b>Calificar a todos</b>.</p>
+        <section class="p-card mt-3 rv-consejos">
+            <div class="p-card-body">
+                <div class="fw-semibold mb-2"><i class="bi bi-lightning-charge-fill text-warning"></i> Para revisar más rápido</div>
+                <ul>
+                    <li><b>Revisión rápida</b> te muestra una entrega a la vez, en grande. En la computadora: teclas <kbd>1</kbd>–<kbd>9</kbd> califican (<kbd>0</kbd> = 10), <kbd>D</kbd> devuelve, <kbd>→</kbd> salta y <kbd>Z</kbd> deshace.</li>
+                    <li><b>Por misión</b> junta las entregas de la misma misión: las calificas con el mismo criterio o las apruebas todas de un jalón.</li>
+                    <li>Si te equivocas, tienes unos segundos para <b>deshacer</b>.</li>
+                    <li>Las entregas nuevas aparecen solas mientras revisas.</li>
+                </ul>
+                <p class="text-muted-p mb-0" style="font-size:.8rem"><i class="bi bi-lightbulb"></i> Las misiones presenciales se califican desde la estructura de la clase con <b>Calificar a todos</b>.</p>
+            </div>
+        </section>
     </div>
 </div>
+
+<datalist id="frases-aprobar">{% for f in comentarios_aprobar %}<option value="{{ f }}">{% endfor %}</datalist>
+
+{# ===== Revisión rápida: una entrega a la vez, a pantalla completa ===== #}
+<div class="rv" id="revision-rapida" hidden role="dialog" aria-modal="true" aria-label="Revisión rápida">
+    <header class="rv-barra">
+        <button type="button" class="icon-btn" data-rv-cerrar aria-label="Cerrar la revisión rápida" title="Cerrar (Esc)"><i class="bi bi-x-lg"></i></button>
+        <div class="rv-avance">
+            <div class="rv-avance-texto"><b data-rv-pos>1</b> de <span data-rv-cuantas>1</span> por revisar <span class="rv-hechas" data-rv-hechas></span></div>
+            <div class="progreso"><span data-rv-barra style="width:0%"></span></div>
+        </div>
+        <div class="rv-nav">
+            <button type="button" class="p-btn sm" data-rv-anterior title="Anterior (←)" aria-label="Entrega anterior"><i class="bi bi-chevron-left"></i></button>
+            <button type="button" class="p-btn sm" data-rv-saltar title="Saltar por ahora (→)"><span class="d-none d-sm-inline">Saltar</span> <i class="bi bi-chevron-right"></i></button>
+        </div>
+    </header>
+
+    <div class="rv-cuerpo" data-rv-cuerpo>
+        <div class="rv-evidencia" data-rv-evidencia></div>
+        <aside class="rv-panel">
+            <a class="rv-alumno" data-rv-alumno target="_blank" rel="noopener" title="Ver la ficha del alumno">
+                <img alt="" data-rv-avatar>
+                <span class="min-w-0"><span class="n" data-rv-nombre></span><span class="s" data-rv-sub></span></span>
+            </a>
+            <div class="rv-mision">
+                <span class="p-badge" data-rv-tipo></span>
+                <div class="n" data-rv-mision></div>
+                <div class="s" data-rv-ruta></div>
+            </div>
+            <div class="rv-le-pediste" data-rv-pediste hidden></div>
+
+            <div data-rv-modo-aprobar>
+                <label class="etiqueta-mini" for="rv-comentario">Comentario para el alumno (opcional)</label>
+                <input type="text" id="rv-comentario" class="p-input" data-rv-comentario placeholder="Escribe o elige una frase" autocomplete="off">
+                <div class="rv-frases">{% for f in comentarios_aprobar %}<button type="button" class="rv-frase" data-rv-frase>{{ f }}</button>{% endfor %}</div>
+
+                <div class="etiqueta-mini mt-3">Aprobar con</div>
+                <div class="rv-notas">
+                    <button type="button" class="rv-nota diez" data-rv-nota="10"><b>10</b><small>tecla 0</small></button>
+                    {% for n in "98765" %}<button type="button" class="rv-nota" data-rv-nota="{{ n }}"><b>{{ n }}</b><small>tecla {{ n }}</small></button>{% endfor %}
+                </div>
+                <button type="button" class="p-btn peligro rv-devolver" data-rv-devolver><i class="bi bi-arrow-counterclockwise"></i> Devolver para corregir <kbd>D</kbd></button>
+            </div>
+
+            <div data-rv-modo-devolver hidden>
+                <label class="etiqueta-mini" for="rv-motivo">¿Qué debe corregir?</label>
+                <div class="rv-frases">{% for f in motivos_devolver %}<button type="button" class="rv-frase" data-rv-motivo>{{ f }}</button>{% endfor %}</div>
+                <textarea id="rv-motivo" class="p-input" rows="3" data-rv-motivo-texto placeholder="Ej. Revisa la conexión del LED, está al revés 🙂"></textarea>
+                <div class="d-flex gap-2 mt-2">
+                    <button type="button" class="p-btn" data-rv-cancelar-devolver>Cancelar</button>
+                    <button type="button" class="p-btn peligro-lleno flex-grow-1" data-rv-confirmar-devolver><i class="bi bi-arrow-counterclockwise"></i> Devolver al alumno</button>
+                </div>
+            </div>
+
+            <div class="rv-atajos d-none d-lg-block"><kbd>1</kbd>–<kbd>9</kbd> calificar · <kbd>0</kbd> = 10 · <kbd>D</kbd> devolver · <kbd>←</kbd> <kbd>→</kbd> moverte · <kbd>Z</kbd> deshacer · <kbd>Esc</kbd> salir</div>
+        </aside>
+    </div>
+
+    <div class="rv-final" data-rv-final hidden>
+        <div class="e" aria-hidden="true">🎉</div>
+        <h2>¡Bandeja vacía!</h2>
+        <p data-rv-final-texto></p>
+        <button type="button" class="p-btn primario" data-rv-cerrar>Volver a revisiones</button>
+    </div>
+</div>
+
+{# Aviso para deshacer la última decisión (en la lista y en la revisión rápida) #}
+<div class="rv-deshacer" data-rv-deshacer hidden role="status">
+    <span data-rv-deshacer-texto></span>
+    <button type="button" class="p-btn xs" data-rv-deshacer-btn>Deshacer <kbd class="d-none d-lg-inline">Z</kbd></button>
+</div>
+
+{{ entregas_json|json_script:"rv-entregas" }}
+{{ motivos_devolver|json_script:"rv-motivos" }}
+<div hidden data-rv-config data-nuevas="{% url 'revisiones_nuevas' %}" data-varias="{% url 'aprobar_varias' %}" data-clase="{{ clase.id|default:'' }}" data-tipo="{{ tipo|default:'' }}"></div>
 {% endblock %}
+
+{% block extra_js %}{% load static %}<script src="{% static 'js/revisiones.js' %}"></script>{% endblock %}
