@@ -4,10 +4,11 @@ from collections import OrderedDict
 
 from django import forms
 from django.db.models import Max
+from django.utils import timezone
 
 from . import minijuegos
 from .models import (
-    Alumno, AppClase, AppExterna, ArticuloTienda, Clase, Comportamiento, Equipo, Juego, Logro, MetaGrupo, Mision,
+    Alumno, AppClase, AppExterna, ArticuloTienda, Aviso, Clase, Comportamiento, Equipo, Juego, Logro, MetaGrupo, Mision,
     MisionDiaria, Mundo, Nivel,
 )
 
@@ -114,8 +115,10 @@ class ClaseForm(EstiloMixin, forms.ModelForm):
 class AlumnoForm(EstiloMixin, forms.ModelForm):
     class Meta:
         model = Alumno
-        fields = ['nombre', 'apellido', 'clases', 'avatar', 'pin', 'activo']
+        fields = ['nombre', 'apellido', 'clases', 'avatar', 'pin', 'cumple_dia', 'cumple_mes', 'activo']
         widgets = {
+            'cumple_dia': forms.Select(choices=[('', 'Día')] + [(d, d) for d in range(1, 32)]),
+            'cumple_mes': forms.Select(choices=[('', 'Mes')] + [(i, m.capitalize()) for i, m in enumerate(Alumno.MESES, 1)]),
             'nombre': forms.TextInput(attrs={'placeholder': 'Ej. Ana', 'autocomplete': 'off'}),
             'apellido': forms.TextInput(attrs={'placeholder': 'Ej. López Pérez', 'autocomplete': 'off'}),
             'clases': forms.CheckboxSelectMultiple(),
@@ -139,6 +142,62 @@ class AlumnoForm(EstiloMixin, forms.ModelForm):
         if not (len(pin) == 4 and pin.isdigit()):
             raise forms.ValidationError('El PIN debe tener exactamente 4 números.')
         return pin
+
+    def clean(self):
+        datos = super().clean()
+        error = validar_cumple(datos.get('cumple_dia'), datos.get('cumple_mes'))
+        if error:
+            self.add_error('cumple_dia', error)
+        return datos
+
+
+def validar_cumple(dia, mes):
+    """Mensaje de error si la fecha de cumpleaños no tiene sentido ('' si está bien o vacía)."""
+    if not dia and not mes:
+        return ''
+    if not (dia and mes):
+        return 'Elige el día y el mes (o deja los dos vacíos).'
+    if not 1 <= mes <= 12 or not 1 <= dia <= [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][mes - 1]:
+        return f'{Alumno.MESES[mes - 1].capitalize() if 1 <= mes <= 12 else "Ese mes"} no tiene día {dia}.'
+    return ''
+
+
+class AvisoForm(EstiloMixin, forms.ModelForm):
+    class Meta:
+        model = Aviso
+        fields = ['texto', 'icono', 'estilo', 'clases', 'hasta', 'activo']
+        labels = {
+            'texto': 'Aviso',
+            'icono': 'Ícono',
+            'estilo': 'Tipo de aviso',
+            'clases': '¿Qué grupos lo ven?',
+            'hasta': 'Último día que lo ven',
+            'activo': 'Visible para los alumnos',
+        }
+        widgets = {
+            'texto': forms.Textarea(attrs={'rows': 2, 'maxlength': 200, 'placeholder': 'Ej. Mañana traigan su Arduino y el cable USB 🔌'}),
+            'estilo': forms.RadioSelect(),
+            'clases': forms.CheckboxSelectMultiple(),
+            'hasta': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['clases'].queryset = Clase.objects.filter(activa=True).order_by('grado', 'grupo', 'nombre')
+        self.fields['clases'].error_messages['required'] = 'Elige al menos un grupo.'
+        self.fields['texto'].error_messages['required'] = 'Escribe el aviso.'
+
+    def clean_texto(self):
+        texto = ' '.join((self.cleaned_data.get('texto') or '').split())
+        if not texto:
+            raise forms.ValidationError('Escribe el aviso.')
+        return texto
+
+    def clean_hasta(self):
+        hasta = self.cleaned_data.get('hasta')
+        if hasta and hasta < timezone.localdate() and not (self.instance.pk and self.instance.hasta == hasta):
+            raise forms.ValidationError('Elige hoy o un día que no haya pasado.')
+        return hasta
 
 
 def separar_nombre(linea):

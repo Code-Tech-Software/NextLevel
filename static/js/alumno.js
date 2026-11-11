@@ -503,6 +503,31 @@
         });
     }
 
+    // ---------- Avisos del profe y cumpleaños ----------
+    function iniciarAvisosProfe() {
+        const LLAVE = 'nl-avisos-leidos';
+        let leidos = [];
+        try { leidos = JSON.parse(localStorage.getItem(LLAVE) || '[]'); } catch (e) { leidos = []; }
+        $$('[data-aviso]').forEach(aviso => {
+            if (leidos.includes(aviso.dataset.aviso)) { aviso.remove(); return; }
+            $('[data-cerrar-aviso]', aviso)?.addEventListener('click', () => {
+                leidos = [...leidos.filter(id => id !== aviso.dataset.aviso), aviso.dataset.aviso].slice(-50);
+                try { localStorage.setItem(LLAVE, JSON.stringify(leidos)); } catch (e) { /* sin almacenamiento */ }
+                aviso.classList.add('saliendo');
+                setTimeout(() => aviso.remove(), 250);
+            });
+        });
+        // El día de su cumpleaños: confeti la primera vez que abre su tablero (en esta visita)
+        if ($('[data-cumple]')) {
+            let ya = false;
+            try { ya = sessionStorage.getItem('nl-cumple') === new Date().toDateString(); } catch (e) { /* nada */ }
+            if (!ya) {
+                setTimeout(() => { confeti(); Sonido.play('nivel'); }, 500);
+                try { sessionStorage.setItem('nl-cumple', new Date().toDateString()); } catch (e) { /* nada */ }
+            }
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
         // Los modales viven en <body> para que ningún contenedor con z-index los tape
         $$('.modal').forEach(modal => document.body.appendChild(modal));
@@ -516,6 +541,7 @@
         iniciarPin();
         iniciarClicks();
         iniciarAvisoBatalla();
+        iniciarAvisosProfe();
         mostrarCelebracionesPendientes();
         $$('.barra > span[data-ancho]').forEach(barra => {
             requestAnimationFrame(() => { barra.style.width = barra.dataset.ancho + '%'; });

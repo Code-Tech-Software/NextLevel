@@ -50,6 +50,8 @@
         <div class="nav-grupo">Alumnos</div>
         <a href="{% url 'alumnos_lista' %}" class="nav-item-p {% if seccion == 'alumnos' %}activo{% endif %}"><i class="bi bi-people"></i> Alumnos</a>
         <a href="{% url 'equipos_lista' %}" class="nav-item-p {% if seccion == 'equipos' %}activo{% endif %}"><i class="bi bi-shield"></i> Equipos</a>
+        <a href="{% url 'avisos_lista' %}" class="nav-item-p {% if seccion == 'avisos' %}activo{% endif %}"><i class="bi bi-megaphone"></i> Avisos</a>
+        <a href="{% url 'cumpleanos_inicio' %}" class="nav-item-p {% if seccion == 'cumpleanos' %}activo{% endif %}"><i class="bi bi-cake2"></i> Cumpleaños</a>
         <a href="{% url 'metas_lista' %}" class="nav-item-p {% if seccion == 'metas' %}activo{% endif %}"><i class="bi bi-bullseye"></i> Metas del grupo</a>
         <a href="{% url 'apps_lista' %}" class="nav-item-p {% if seccion == 'apps' %}activo{% endif %}"><i class="bi bi-key"></i> Apps y accesos</a>
         <a href="{% url 'gestionar_monedas' %}" class="nav-item-p {% if seccion == 'economia' %}activo{% endif %}"><i class="bi bi-coin"></i> Economía</a>
@@ -96,6 +98,7 @@
                 <ul class="dropdown-menu dropdown-menu-end">
                     <li><a data-modal="xl" class="dropdown-item" href="{% url 'alta_mision' %}"><i class="bi bi-flag"></i> Misión</a></li>
                     <li><a data-modal="xl" class="dropdown-item" href="{% url 'batalla_nueva' %}"><i class="bi bi-lightning-charge"></i> Batalla en vivo</a></li>
+                    <li><a data-modal class="dropdown-item" href="{% url 'alta_aviso' %}"><i class="bi bi-megaphone"></i> Aviso para la clase</a></li>
                     <li><a data-modal class="dropdown-item" href="{% url 'alta_alumno' %}"><i class="bi bi-person-plus"></i> Alumno</a></li>
                     <li><a data-modal class="dropdown-item" href="{% url 'alta_masiva' %}"><i class="bi bi-people"></i> Varios alumnos</a></li>
                     <li><a data-modal class="dropdown-item" href="{% url 'alta_clase' %}"><i class="bi bi-easel2"></i> Clase</a></li>

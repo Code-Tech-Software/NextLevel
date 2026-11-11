@@ -268,6 +268,35 @@
             {% endif %}
         </section>
 
+        {% if cumpleanos %}
+            <section class="p-card cumple-card">
+                <div class="p-card-head">
+                    <h2>🎂 Cumpleaños</h2>
+                    <div class="derecha"><a href="{% url 'cumpleanos_inicio' %}" class="p-btn xs fantasma">Ver todos</a></div>
+                </div>
+                <div class="p-card-body sin-pad">
+                    {% for c in cumpleanos %}
+                        <div class="feed-item {% if c.faltan == 0 %}hoy{% endif %}">
+                            <img src="{{ c.alumno|avatar_url }}" alt="" style="width:34px;height:34px;border-radius:50%;object-fit:cover">
+                            <div class="min-w-0 flex-grow-1">
+                                <div class="t text-truncate"><b>{{ c.alumno.nombre }} {{ c.alumno.apellido }}</b></div>
+                                <div class="f">{% for cl in c.alumno.clases.all %}{{ cl.grado }}{{ cl.grupo }}{% if not forloop.last %}, {% endif %}{% endfor %} · {% if c.faltan == 0 %}{% if c.fecha == hoy %}¡hoy!{% else %}fue el {{ c.fecha|date:"l"|lower }}{% endif %}{% elif c.faltan == 1 %}mañana{% else %}el {{ c.fecha|date:"l j"|lower }}{% endif %}</div>
+                            </div>
+                            {% if c.faltan == 0 %}
+                                <div class="d-flex gap-1 flex-shrink-0">
+                                    <form method="post" action="{% url 'alumno_ajuste' c.alumno.id %}">
+                                        {% csrf_token %}<input type="hidden" name="monedas" value="20"><input type="hidden" name="motivo" value="¡Feliz cumpleaños! 🎂"><input type="hidden" name="next" value="{{ request.path }}">
+                                        <button class="p-btn xs" title="Regalarle 20 monedas de cumpleaños"><i class="bi bi-coin"></i> +20</button>
+                                    </form>
+                                    <a data-modal href="{% url 'regalar_articulo' c.alumno.id %}" class="p-btn xs icono" title="Regalarle un premio" aria-label="Regalarle un premio a {{ c.alumno.nombre }}"><i class="bi bi-gift"></i></a>
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            </section>
+        {% endif %}
+
         {% if entregas_tienda %}
             <section class="p-card">
                 <div class="p-card-head">

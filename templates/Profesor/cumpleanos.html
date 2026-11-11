@@ -1,0 +1,80 @@
+{% extends 'Profesor/baseProfesor.html' %}
+{% load nextlevel %}
+{% block title %}Cumpleaños{% endblock %}
+{% block titulo_pagina %}Cumpleaños{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1>Cumpleaños 🎂</h1>
+        <p>Solo el día y el mes. Ese día el alumno ve confeti y un «¡Feliz cumpleaños!» en su tablero, y tú lo ves en tu inicio. Si cae en fin de semana, también se celebra el lunes.</p>
+    </div>
+</div>
+
+<div class="chips-filtro mb-3">
+    {% for c in clases %}
+        <a href="{% url 'cumpleanos_clase' c.id %}" class="chip-f {% if c.id == clase.id %}activo{% endif %}">{{ c.icono }} {{ c.nombre }} <small class="opacity-75">{{ c.grado }}{{ c.grupo }}</small></a>
+    {% endfor %}
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-8">
+        <form method="post" class="p-card">
+            {% csrf_token %}
+            <div class="p-card-head">
+                <div>
+                    <h2>{{ clase.icono }} {{ clase.nombre }}</h2>
+                    <div class="sub">{{ capturados }} de {{ alumnos|length }} con cumpleaños</div>
+                </div>
+                <div class="derecha"><button type="submit" class="p-btn sm primario"><i class="bi bi-check2"></i> Guardar</button></div>
+            </div>
+            <div class="p-card-body sin-pad">
+                {% for a in alumnos %}
+                    <div class="feed-item cumple-fila {% if a.error_cumple %}con-error{% endif %}">
+                        <img src="{{ a|avatar_url }}" alt="" style="width:32px;height:32px;border-radius:50%;object-fit:cover">
+                        <div class="min-w-0 flex-grow-1">
+                            <div class="t text-truncate"><b>{{ a.nombre }} {{ a.apellido }}</b></div>
+                            {% if a.error_cumple %}<div class="f" style="color:var(--danger)">{{ a.error_cumple }}</div>{% endif %}
+                        </div>
+                        <select name="dia_{{ a.id }}" class="p-input cumple-dia" aria-label="Día del cumpleaños de {{ a.nombre }}">
+                            <option value="">Día</option>
+                            {% for d in dias %}<option value="{{ d }}" {% if a.cumple_dia == d %}selected{% endif %}>{{ d }}</option>{% endfor %}
+                        </select>
+                        <select name="mes_{{ a.id }}" class="p-input cumple-mes" aria-label="Mes del cumpleaños de {{ a.nombre }}">
+                            <option value="">Mes</option>
+                            {% for n, m in meses %}<option value="{{ n }}" {% if a.cumple_mes == n %}selected{% endif %}>{{ m|capfirst }}</option>{% endfor %}
+                        </select>
+                    </div>
+                {% empty %}
+                    <div class="vacio-p"><i class="bi bi-people"></i>Este grupo aún no tiene alumnos.</div>
+                {% endfor %}
+            </div>
+            {% if alumnos %}
+                <div class="p-card-head" style="border-top:1px solid var(--border);border-bottom:0;justify-content:flex-end">
+                    <button type="submit" class="p-btn primario"><i class="bi bi-check2"></i> Guardar cumpleaños</button>
+                </div>
+            {% endif %}
+        </form>
+    </div>
+
+    <div class="col-lg-4">
+        <section class="p-card">
+            <div class="p-card-head"><h2>Próximos 30 días</h2></div>
+            <div class="p-card-body sin-pad">
+                {% for c in proximos %}
+                    <div class="feed-item">
+                        <span class="ico">🎂</span>
+                        <div class="min-w-0 flex-grow-1">
+                            <div class="t text-truncate"><b>{{ c.alumno.nombre }} {{ c.alumno.apellido }}</b></div>
+                            <div class="f">{{ c.alumno.cumple_texto }}</div>
+                        </div>
+                        <span class="v">{% if c.faltan == 0 %}<span class="p-badge violeta">¡Hoy!</span>{% elif c.faltan == 1 %}Mañana{% else %}en {{ c.faltan }} días{% endif %}</span>
+                    </div>
+                {% empty %}
+                    <div class="vacio-p"><i class="bi bi-balloon"></i>Nadie cumple en los próximos 30 días.</div>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}

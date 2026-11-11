@@ -1775,3 +1775,61 @@ body.rv-abierta { overflow: hidden; }
     .entrega, .rv-nota { transition: none; }
     .rv-deshacer.corriendo::after { animation: none; }
 }
+
+/* ---------- Tienda: ofertas y regalos ---------- */
+.precio-oferta { white-space: nowrap; }
+.precio-oferta s { color: var(--muted); font-size: .78rem; margin-right: .15rem; }
+.oferta-previa { display: flex; align-items: center; gap: .85rem; padding: .8rem 1rem; border-radius: var(--radius-sm); background: var(--danger-soft); font-size: .88rem; }
+.oferta-previa s { color: var(--muted); }
+.oferta-previa b { font-size: 1.05rem; }
+.etiqueta-oferta { flex-shrink: 0; background: var(--danger); color: #fff; font-weight: 700; border-radius: 9px; padding: .35rem .6rem; font-size: .95rem; font-variant-numeric: tabular-nums; }
+.regalos { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: .5rem; max-height: 330px; overflow-y: auto; padding: 2px; }
+.regalo-op { display: flex; align-items: center; gap: .65rem; padding: .55rem .65rem; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); cursor: pointer; transition: border-color .12s, background .12s; }
+.regalo-op:hover { border-color: var(--border-strong); }
+.regalo-op input { position: absolute; opacity: 0; pointer-events: none; }
+.regalo-op.activo { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent); }
+.regalo-op:focus-within { outline: 2px solid var(--info); outline-offset: 1px; }
+.regalo-op.agotado { opacity: .5; cursor: not-allowed; }
+.regalo-op .vista { width: 42px; height: 42px; border-radius: 10px; flex-shrink: 0; display: grid; place-items: center; font-size: 1.4rem; background: var(--surface-2); overflow: hidden; }
+.regalo-op .vista img { width: 100%; height: 100%; object-fit: contain; padding: 3px; }
+.regalo-op .n { font-weight: 600; font-size: .85rem; }
+.regalo-op .s { font-size: .72rem; color: var(--muted); }
+
+/* ---------- Avisos para la clase ---------- */
+.aviso-tarjeta { padding: 1rem 1.1rem; display: flex; flex-direction: column; gap: .8rem; height: 100%; border-left: 4px solid var(--info); }
+.aviso-tarjeta.importante { border-left-color: var(--warning); }
+.aviso-tarjeta.fiesta { border-left-color: var(--violet); }
+.aviso-tarjeta.apagado { opacity: .6; }
+.aviso-tarjeta .icono { font-size: 1.7rem; line-height: 1; flex-shrink: 0; }
+.aviso-tarjeta .texto { font-weight: 550; line-height: 1.35; overflow-wrap: anywhere; }
+.aviso-tarjeta .grupos { display: flex; flex-wrap: wrap; gap: .25rem; margin-top: .45rem; }
+.aviso-tarjeta .pie { display: flex; align-items: center; gap: .5rem; margin-top: auto; font-size: .78rem; }
+.aviso-tarjeta .acciones-fila { display: flex; align-items: center; gap: .3rem; }
+.iconos-aviso { display: flex; flex-wrap: wrap; gap: .35rem; }
+.icono-op { width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); font-size: 1.25rem; display: grid; place-items: center; }
+.icono-op:hover { border-color: var(--border-strong); }
+.icono-op.activo { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent); }
+.estilos-aviso { display: flex; flex-direction: column; gap: .35rem; }
+.estilo-op { display: flex; align-items: center; gap: .5rem; padding: .45rem .7rem; border-radius: 10px; border: 1px solid var(--border); cursor: pointer; font-size: .85rem; font-weight: 550; }
+.estilo-op input { accent-color: currentColor; }
+.estilo-op.info { color: var(--info); }
+.estilo-op.importante { color: var(--warning); }
+.estilo-op.fiesta { color: var(--violet); }
+.estilo-op.activo.info { background: var(--info-soft); border-color: transparent; }
+.estilo-op.activo.importante { background: var(--warning-soft); border-color: transparent; }
+.estilo-op.activo.fiesta { background: var(--violet-soft); border-color: transparent; }
+.grupos-aviso { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: .4rem; }
+.grupo-op { display: flex; align-items: center; gap: .5rem; padding: .5rem .7rem; border: 1px solid var(--border); border-radius: 10px; cursor: pointer; font-size: .84rem; }
+.grupo-op.activo { border-color: var(--accent); background: var(--accent-soft); }
+.aviso-previa { display: flex; align-items: center; gap: .8rem; padding: .8rem 1rem; border-radius: 16px; background: #eff6ff; border: 2px solid #bfdbfe; color: #0f172a; }
+.aviso-previa.importante { background: #fff7ed; border-color: #fdba74; }
+.aviso-previa.fiesta { background: #faf5ff; border-color: #d8b4fe; }
+.aviso-previa .e { font-size: 1.7rem; line-height: 1; }
+.aviso-previa .t { font-weight: 700; overflow-wrap: anywhere; }
+
+/* ---------- Cumpleaños ---------- */
+.cumple-fila .cumple-dia { width: 82px; height: 34px; font-size: .82rem; flex-shrink: 0; }
+.cumple-fila .cumple-mes { width: 140px; height: 34px; font-size: .82rem; flex-shrink: 0; }
+.cumple-fila.con-error { background: var(--danger-soft); }
+.cumple-card .feed-item.hoy { background: color-mix(in srgb, var(--violet) 8%, transparent); }
+@media (max-width: 575.98px) { .cumple-fila { flex-wrap: wrap; } .cumple-fila .min-w-0 { flex-basis: calc(100% - 50px); } .cumple-fila .cumple-dia { margin-left: 44px; } }

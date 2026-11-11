@@ -12,10 +12,11 @@ from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
+from . import cumpleanos as cumple
 from . import gamificacion as juego
 from .minijuegos import datos_juego
 from .models import (
-    AccesoAlumno, Alumno, AppClase, ArticuloTienda, Clase, CompraAlumno, Mision, Nivel, OpcionRespuesta, ProgresoMision,
+    AccesoAlumno, Alumno, AppClase, ArticuloTienda, Aviso, Clase, CompraAlumno, Mision, Nivel, OpcionRespuesta, ProgresoMision,
     RespuestaAlumno,
 )
 
@@ -168,6 +169,7 @@ def cuenta_cerrada(request, clase_id):
 
     return render(request, 'Alumnos/cuenta_cerrada.html', {
         'alumno': alumno,
+        'avisos': _avisos(clase),
         'clase': clase,
         'rango': alumno.rango,
         'aprobadas': len(aprobadas),
@@ -204,9 +206,25 @@ def _segundos_para_medianoche():
     return int((manana - ahora).total_seconds())
 
 
+def _meta_ahorro(alumno):
+    """El premio para el que ahorra el alumno, con cuánto lleva (None si no tiene o ya no está en la tienda)."""
+    articulo = ArticuloTienda.objects.filter(pk=alumno.ahorro_id, activo=True).first() if alumno.ahorro_id else None
+    if not articulo:
+        return None
+    precio = articulo.precio
+    return {'articulo': articulo, 'precio': precio, 'faltan': max(0, precio - alumno.monedas),
+            'pct': min(100, int(alumno.monedas * 100 / precio)) if precio else 100}
+
+
+def _avisos(clase):
+    """Los avisos vigentes del profe para este grupo (los más nuevos primero)."""
+    return list(Aviso.objects.vigentes().filter(clases=clase)[:3])
+
+
 @alumno_requerido
 def dashboard_alumno(request, alumno, clase):
     juego.registrar_evento(alumno, 'login', clase=clase)
+    cumple.felicitar(alumno, timezone.localdate())
     ruta = juego.construir_ruta(alumno, clase)
     ranking = juego.ranking_clase(clase, 'semana')
     mi_posicion = next((a.posicion for a in ranking if a.id == alumno.id), None)
@@ -227,6 +245,10 @@ def dashboard_alumno(request, alumno, clase):
         'total_jugadores': len(ranking),
         'logros_recientes': alumno.logros.select_related('logro')[:4],
         'avance': juego.avance_del_grupo(clase) if alumno.es_prueba else None,
+        'ahorro': _meta_ahorro(alumno),
+        'avisos': _avisos(clase),
+        'es_mi_cumple': cumple.celebra_hoy(alumno, timezone.localdate()),
+        'cumplen_hoy': cumple.companeros_que_cumplen(clase, timezone.localdate(), sin=alumno),
         'seccion': 'mapa',
     })
 
@@ -527,10 +549,11 @@ def tienda_alumno(request, alumno, clase):
             articulo.limite_por_alumno and articulo.compradas >= articulo.limite_por_alumno
         )
         articulo.nivel_bloqueado = alumno.nivel < articulo.nivel_requerido
-        articulo.faltan = max(0, articulo.costo_monedas - alumno.monedas)
+        articulo.faltan = max(0, articulo.precio - alumno.monedas)
         articulo.puede_comprar = not (
             articulo.agotado or articulo.limite_alcanzado or articulo.nivel_bloqueado or articulo.faltan
         )
+        articulo.es_meta = articulo.id == alumno.ahorro_id
 
     return render(request, 'Alumnos/tienda.html', {
         'alumno': alumno,
@@ -553,6 +576,25 @@ def comprar_articulo(request, alumno, clase, articulo_id):
     ok, mensaje = juego.comprar(alumno, articulo)
     (messages.success if ok else messages.error)(request, mensaje)
     return redirect('tienda_alumno', clase_id=clase.id)
+
+
+@require_POST
+@alumno_requerido
+def ahorrar_para(request, alumno, clase, articulo_id):
+    """«Estoy ahorrando para…»: el alumno marca el premio que quiere juntar (0 = quitar su meta)."""
+    destino = _volver(request, reverse('tienda_alumno', args=[clase.id]))
+    if articulo_id == 0:
+        juego.elegir_ahorro(alumno, None)
+        messages.info(request, 'Quitaste tu meta de ahorro. ¡Elige otra cuando quieras!')
+        return HttpResponseRedirect(destino)
+    articulo = get_object_or_404(ArticuloTienda, id=articulo_id, activo=True)
+    juego.elegir_ahorro(alumno, articulo)
+    if alumno.monedas >= articulo.precio:
+        messages.success(request, f'🐷 ¡Ya te alcanza para «{articulo.nombre}»! Puedes comprarlo cuando quieras.')
+    else:
+        messages.success(request, f'🐷 ¡Meta lista! Te faltan {articulo.precio - alumno.monedas} monedas para '
+                                  f'«{articulo.nombre}». La verás en tu tablero.')
+    return HttpResponseRedirect(destino)
 
 
 # ========================

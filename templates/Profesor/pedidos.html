@@ -7,7 +7,7 @@
 <div class="page-head">
     <div>
         <h1>Pedidos de la tienda</h1>
-        <p>Entrega los premios que compraron tus alumnos o cancela una compra para devolver sus monedas.</p>
+        <p>Entrega los premios que compraron tus alumnos o cancela una compra para devolver sus monedas. Los avatares se pueden reembolsar desde «Entregados».</p>
     </div>
 </div>
 
@@ -31,12 +31,18 @@
                         </a>
                     </td>
                     <td><span class="fw-semibold">{{ c.articulo.nombre }}</span><div class="text-muted-p" style="font-size:.76rem">{{ c.articulo.get_tipo_display }}</div></td>
-                    <td class="num">{{ c.costo_pagado }}</td>
+                    <td class="num">{% if c.regalo %}<span class="p-badge violeta">🎁 Regalo</span>{% else %}{{ c.costo_pagado }}{% endif %}</td>
                     <td class="text-muted-p" style="font-size:.82rem">{{ c.fecha_compra|date:"d M Y, H:i" }}{% if c.fecha_entrega %}<div>Entregado {{ c.fecha_entrega|date:"d M" }}</div>{% endif %}</td>
                     <td>
                         {% if c.estado == 'pendiente' %}
                             <div class="acciones-fila">
-                                <form method="post" action="{% url 'cancelar_compra' c.id %}" data-confirmar="Se devolverán {{ c.costo_pagado }} monedas a {{ c.alumno.nombre }} y la pieza regresa al stock." data-titulo="¿Cancelar la compra?" data-boton="Cancelar y reembolsar" data-peligro>
+                                {% if c.entregar_todos %}
+                                    <form method="post" action="{% url 'entregar_todo_alumno' c.alumno.id %}">
+                                        {% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                        <button class="p-btn sm" title="Marcar como entregados los {{ c.entregar_todos }} premios de {{ c.alumno.nombre }}"><i class="bi bi-check2-all"></i> Entregar sus {{ c.entregar_todos }}</button>
+                                    </form>
+                                {% endif %}
+                                <form method="post" action="{% url 'cancelar_compra' c.id %}" data-confirmar="{% if c.regalo %}Es un regalo: se le quita y la pieza regresa al stock.{% else %}Se devolverán {{ c.costo_pagado }} monedas a {{ c.alumno.nombre }} y la pieza regresa al stock.{% endif %}" data-titulo="¿Cancelar {% if c.regalo %}el regalo{% else %}la compra{% endif %}?" data-boton="{% if c.regalo %}Cancelar regalo{% else %}Cancelar y reembolsar{% endif %}" data-peligro>
                                     {% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
                                     <button class="p-btn sm fantasma" title="Cancelar y reembolsar"><i class="bi bi-arrow-counterclockwise"></i> <span class="d-none d-md-inline">Reembolsar</span></button>
                                 </form>
@@ -45,7 +51,16 @@
                                     <button class="p-btn sm exito"><i class="bi bi-check2"></i> Entregado</button>
                                 </form>
                             </div>
-                        {% elif c.estado == 'entregado' %}<span class="p-badge verde float-end">Entregado</span>
+                        {% elif c.estado == 'entregado' %}
+                            <div class="acciones-fila align-items-center">
+                                {% if c.articulo.tipo == 'avatar' %}
+                                    <form method="post" action="{% url 'cancelar_compra' c.id %}" data-confirmar="Se devolverán {{ c.costo_pagado }} monedas a {{ c.alumno.nombre }}. Si lo trae puesto, se le pone otro de sus avatares (o el robot clásico)." data-titulo="¿Reembolsar el avatar «{{ c.articulo.nombre }}»?" data-boton="Reembolsar" data-peligro>
+                                        {% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                        <button class="p-btn sm fantasma" title="Reembolsar el avatar"><i class="bi bi-arrow-counterclockwise"></i> <span class="d-none d-md-inline">Reembolsar</span></button>
+                                    </form>
+                                {% endif %}
+                                <span class="p-badge verde">Entregado</span>
+                            </div>
                         {% else %}<span class="p-badge float-end">Reembolsado</span>{% endif %}
                     </td>
                 </tr>

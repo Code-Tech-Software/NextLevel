@@ -1640,3 +1640,55 @@ a.maquina:hover { transform: translateY(-6px); color: var(--texto); box-shadow: 
     50% { box-shadow: 0 6px 0 #3b0764, 0 0 0 8px rgba(168, 85, 247, .25), 0 14px 30px rgba(59, 7, 100, .35); }
 }
 @media (prefers-reduced-motion: reduce) { .aviso-batalla, .aviso-batalla .e { animation: none; } }
+
+/* ---------- Ofertas y meta de ahorro ---------- */
+.producto .precio.oferta { background: #ef4444; color: #fff; box-shadow: 0 3px 0 #b91c1c; }
+.producto .precio.oferta .ico { color: #fde047; }
+.producto .precio s { font-size: .8rem; opacity: .8; font-weight: 600; }
+.chip.chico { font-size: .68rem; padding: .15rem .5rem; }
+.meta-ahorro { border-color: #fde68a; background: linear-gradient(135deg, #fffbeb, #fff); }
+.meta-ahorro .premio-ahorro { width: 64px; height: 64px; border-radius: 18px; flex-shrink: 0; display: grid; place-items: center; font-size: 2.2rem; background: #fef3c7; box-shadow: inset 0 -4px 0 rgba(0, 0, 0, .06); overflow: hidden; }
+.meta-ahorro .premio-ahorro img { width: 100%; height: 100%; object-fit: contain; padding: 6px; }
+.meta-ahorro .nombre { font-family: var(--fuente-titulo); font-weight: 700; font-size: 1.15rem; color: var(--navy); line-height: 1.15; }
+.meta-ahorro .cuenta { font-weight: 800; color: var(--texto-suave); font-size: .9rem; margin-top: .2rem; display: flex; align-items: center; gap: .3rem; flex-wrap: wrap; }
+.meta-ahorro .cuenta b { color: var(--texto); }
+.meta-ahorro .falta { font-weight: 700; font-size: .85rem; color: var(--texto-suave); margin-top: .6rem; }
+.meta-ahorro .falta b { color: #b45309; }
+.meta-ahorro.lista { border-color: #fbbf24; animation: meta-lista 1.8s ease-in-out infinite; }
+@keyframes meta-lista { 50% { box-shadow: 0 6px 0 #f59e0b, 0 0 0 6px rgba(251, 191, 36, .25); } }
+@media (prefers-reduced-motion: reduce) { .meta-ahorro.lista { animation: none; } }
+.producto .es-meta { background: var(--verde-claro); color: #047857; font-weight: 800; font-size: .88rem; border-radius: 14px; padding: .6rem .8rem; text-align: center; }
+.producto .quitar-meta { border: 0; background: none; color: var(--texto-suave); font-weight: 700; font-size: .8rem; text-decoration: underline; margin-top: .35rem; padding: .2rem .5rem; }
+.producto .quitar-meta:hover { color: var(--rojo); }
+
+/* ---------- Avisos del profe y cumpleaños ---------- */
+.aviso-profe {
+    display: flex; align-items: center; gap: .9rem; margin-bottom: 1rem; padding: .85rem 1rem .85rem 1.1rem;
+    border-radius: 20px; background: #eff6ff; border: 2px solid #bfdbfe; box-shadow: 0 5px 0 #bfdbfe;
+    transition: opacity .25s, transform .25s;
+}
+.aviso-profe .e { font-size: 2rem; line-height: 1; flex-shrink: 0; }
+.aviso-profe .kicker { font-size: .7rem; font-weight: 900; text-transform: uppercase; letter-spacing: .6px; color: #1d4ed8; }
+.aviso-profe .t { font-family: var(--fuente-titulo); font-weight: 700; font-size: 1.12rem; line-height: 1.3; color: var(--navy); overflow-wrap: anywhere; }
+.aviso-profe .cerrar { flex-shrink: 0; width: 34px; height: 34px; border-radius: 12px; border: 0; background: rgba(255, 255, 255, .7); color: var(--texto-suave); display: grid; place-items: center; }
+.aviso-profe .cerrar:hover { background: #fff; color: var(--texto); }
+.aviso-profe.importante { background: #fff7ed; border-color: #fdba74; box-shadow: 0 5px 0 #fdba74; }
+.aviso-profe.importante .kicker { color: #c2410c; }
+.aviso-profe.fiesta { background: #faf5ff; border-color: #d8b4fe; box-shadow: 0 5px 0 #d8b4fe; }
+.aviso-profe.fiesta .kicker { color: #7e22ce; }
+.aviso-profe.saliendo { opacity: 0; transform: translateY(-6px); }
+.cuenta-cerrada .aviso-profe { margin-top: 1rem; }
+
+.cumple-banner {
+    position: relative; overflow: hidden; display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;
+    padding: 1.1rem 1.3rem; border-radius: 24px; color: #fff;
+    background: linear-gradient(120deg, #ec4899, #a855f7 55%, #38bdf8); box-shadow: 0 6px 0 #7e22ce;
+}
+.cumple-banner::after { content: '🎈'; position: absolute; right: 1rem; top: -.2rem; font-size: 3.4rem; opacity: .35; transform: rotate(12deg); }
+.cumple-banner .pastel { font-size: 3.2rem; line-height: 1; flex-shrink: 0; animation: cumple-salto 1.6s ease-in-out infinite; }
+.cumple-banner .kicker { font-size: .72rem; font-weight: 900; text-transform: uppercase; letter-spacing: .8px; opacity: .9; }
+.cumple-banner .t { font-family: var(--fuente-titulo); font-weight: 700; font-size: clamp(1.3rem, 3.4vw, 1.8rem); line-height: 1.1; }
+.cumple-banner .d { font-weight: 700; opacity: .92; font-size: .92rem; margin-top: .2rem; }
+@keyframes cumple-salto { 50% { transform: translateY(-6px) rotate(-6deg); } }
+.cumple-companeros { margin-bottom: 1rem; padding: .7rem 1rem; border-radius: 16px; background: #fdf2f8; border: 2px dashed #f9a8d4; color: #9d174d; font-weight: 800; font-size: .92rem; }
+@media (prefers-reduced-motion: reduce) { .cumple-banner .pastel { animation: none; } .aviso-profe { transition: none; } }

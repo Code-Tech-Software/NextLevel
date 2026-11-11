@@ -49,11 +49,13 @@
                             <span class="emoji-prod">{% if articulo.tipo == 'fisico' %}🎁{% elif articulo.tipo == 'permiso' %}🎟️{% elif articulo.tipo == 'avatar' %}🤖{% else %}💎{% endif %}</span>
                         {% endif %}
                         <div class="etiquetas">
+                            {% if articulo.en_oferta %}<span class="chip rojo">🏷️ −{{ articulo.descuento }} %{% if articulo.dias_oferta == 0 %} · ¡último día!{% elif articulo.dias_oferta %} · {{ articulo.dias_oferta }} día{{ articulo.dias_oferta|pluralize }}{% endif %}</span>{% endif %}
+                            {% if articulo.es_meta %}<span class="chip verde">🐷 Tu meta</span>{% endif %}
                             {% if articulo.destacado %}<span class="chip oro">🌟 Destacado</span>{% endif %}
                             {% if articulo.stock_bajo %}<span class="chip rojo">🔥 ¡Últimas {{ articulo.stock }}!</span>{% endif %}
                             {% if articulo.nivel_bloqueado %}<span class="chip morado">🔒 Nivel {{ articulo.nivel_requerido }}</span>{% endif %}
                         </div>
-                        <span class="precio"><i class="bi bi-coin ico"></i> {{ articulo.costo_monedas }}</span>
+                        <span class="precio {% if articulo.en_oferta %}oferta{% endif %}">{% if articulo.en_oferta %}<s>{{ articulo.costo_monedas }}</s> {% endif %}<i class="bi bi-coin ico"></i> {{ articulo.precio }}</span>
                         {% if articulo.agotado %}<div class="sello-agotado"><span>AGOTADO</span></div>{% endif %}
                     </div>
                     {% with info=articulo|info_articulo %}
@@ -74,8 +76,8 @@
 
                         {% if articulo.puede_comprar %}
                             <form action="{% url 'comprar_articulo' clase.id articulo.id %}" method="POST" class="form-compra mt-auto"
-                                  data-nombre="{{ articulo.nombre }}" data-costo="{{ articulo.costo_monedas }}"
-                                  data-restante="{{ alumno.monedas|restar:articulo.costo_monedas }}"
+                                  data-nombre="{{ articulo.nombre }}" data-costo="{{ articulo.precio }}"
+                                  data-restante="{{ alumno.monedas|restar:articulo.precio }}"
                                   data-tipo="{{ info.emoji }} {{ info.texto }}" data-entrega="{{ info.entrega_emoji }} {{ info.entrega }}"
                                   data-imagen="{{ articulo.imagen|imagen_web:'mini' }}">
                                 {% csrf_token %}
@@ -90,8 +92,19 @@
                         {% else %}
                             <div class="mt-auto">
                                 <div class="stock">Te faltan <b>{{ articulo.faltan }}</b> monedas</div>
-                                <div class="barra oro delgada mb-2"><span style="width:0" data-ancho="{{ alumno.monedas|porcentaje:articulo.costo_monedas }}"></span></div>
-                                <button class="g-btn ancho" disabled><i class="bi bi-piggy-bank-fill"></i> ¡Sigue ahorrando!</button>
+                                <div class="barra oro delgada mb-2"><span style="width:0" data-ancho="{{ alumno.monedas|porcentaje:articulo.precio }}"></span></div>
+                                {% if articulo.es_meta %}
+                                    <div class="es-meta"><i class="bi bi-piggy-bank-fill"></i> ¡Es tu meta de ahorro! La ves en tu tablero.</div>
+                                    <form action="{% url 'ahorrar_para' clase.id 0 %}" method="POST" class="text-center">
+                                        {% csrf_token %}
+                                        <button type="submit" class="quitar-meta">Quitar meta</button>
+                                    </form>
+                                {% else %}
+                                    <form action="{% url 'ahorrar_para' clase.id articulo.id %}" method="POST">
+                                        {% csrf_token %}
+                                        <button type="submit" class="g-btn ancho blanco"><i class="bi bi-piggy-bank-fill"></i> Ahorrar para esto</button>
+                                    </form>
+                                {% endif %}
                             </div>
                         {% endif %}
                     </div>
@@ -120,7 +133,7 @@
                 </span>
                 <div class="min-w-0 flex-grow-1">
                     <div class="n text-truncate">{{ compra.articulo.nombre }}</div>
-                    <div class="f">{{ info.emoji }} {{ info.texto }} · <i class="bi bi-calendar-event"></i> {{ compra.fecha_compra|date:"d M Y" }} · <i class="bi bi-coin"></i> {{ compra.costo_pagado }}</div>
+                    <div class="f">{{ info.emoji }} {{ info.texto }} · <i class="bi bi-calendar-event"></i> {{ compra.fecha_compra|date:"d M Y" }} · {% if compra.regalo %}🎁 Regalo de tu profe{% else %}<i class="bi bi-coin"></i> {{ compra.costo_pagado }}{% endif %}</div>
                 </div>
                 {% if compra.estado == 'pendiente' %}
                     <span class="chip oro"><i class="bi bi-hourglass-split"></i> Por recibir</span>

@@ -177,12 +177,33 @@ class Alumno(models.Model):
     fecha_registro = models.DateTimeField(default=timezone.now)
     # El profe recorre la plataforma con este alumno: no pertenece a ninguna clase y nunca guarda progreso
     es_prueba = models.BooleanField(default=False, editable=False)
+    # Meta de ahorro: el premio de la tienda para el que está juntando monedas (se le avisa una vez cuando le alcanza)
+    ahorro = models.ForeignKey('ArticuloTienda', on_delete=models.SET_NULL, null=True, blank=True,
+                               related_name='ahorradores')
+    ahorro_avisado = models.BooleanField(default=False, editable=False)
+    # Cumpleaños: solo el día y el mes (no hace falta guardar el año de nacimiento)
+    cumple_dia = models.PositiveSmallIntegerField(null=True, blank=True)
+    cumple_mes = models.PositiveSmallIntegerField(null=True, blank=True)
+    cumple_felicitado = models.PositiveSmallIntegerField(null=True, blank=True, editable=False,
+                                                         help_text='Último año en que se le felicitó')
 
     objects = AlumnoManager()
     todos = models.Manager()
 
     def __str__(self):
         return f"{self.nombre} {self.apellido}"
+
+    MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre',
+             'noviembre', 'diciembre']
+
+    @property
+    def tiene_cumple(self):
+        return bool(self.cumple_dia and self.cumple_mes)
+
+    @property
+    def cumple_texto(self):
+        """'12 de marzo' (vacío si no se ha capturado)."""
+        return f'{self.cumple_dia} de {self.MESES[self.cumple_mes - 1]}' if self.tiene_cumple else ''
 
     @classmethod
     def de_prueba(cls):
@@ -444,6 +465,8 @@ class ArticuloTienda(models.Model):
     activo = models.BooleanField(default=True, help_text='Los artículos inactivos no se muestran en la tienda')
     destacado = models.BooleanField(default=False, help_text='Aparece en la vitrina principal de la tienda')
     fecha_creacion = models.DateTimeField(default=timezone.now)
+    descuento = models.PositiveSmallIntegerField(default=0, help_text='Porcentaje de descuento de la oferta (0 = sin oferta)')
+    oferta_hasta = models.DateField(null=True, blank=True, help_text='Último día de la oferta (vacío = hasta que la quites)')
 
     def __str__(self):
         return f"{self.nombre} - {self.costo_monedas} monedas"
@@ -460,6 +483,25 @@ class ArticuloTienda(models.Model):
     def stock_bajo(self):
         return self.stock is not None and 0 < self.stock <= 3
 
+    # --- Ofertas ---
+    @property
+    def en_oferta(self):
+        return bool(self.descuento) and (self.oferta_hasta is None or timezone.localdate() <= self.oferta_hasta)
+
+    @property
+    def precio(self):
+        """Lo que cuesta hoy: con el descuento si está en oferta (nunca menos de 1 moneda)."""
+        if not self.en_oferta:
+            return self.costo_monedas
+        return max(1, round(self.costo_monedas * (100 - self.descuento) / 100))
+
+    @property
+    def dias_oferta(self):
+        """Días que le quedan a la oferta (0 = hoy es el último); None si no tiene fecha o no está en oferta."""
+        if not self.en_oferta or self.oferta_hasta is None:
+            return None
+        return (self.oferta_hasta - timezone.localdate()).days
+
 
 class CompraAlumno(models.Model):
     ESTADOS = [
@@ -473,6 +515,7 @@ class CompraAlumno(models.Model):
     estado = models.CharField(max_length=20, choices=ESTADOS, default='pendiente')
     costo_pagado = models.IntegerField(default=0)
     fecha_entrega = models.DateTimeField(null=True, blank=True)
+    regalo = models.BooleanField(default=False, help_text='Se lo regaló el profe: no pagó monedas')
 
     def __str__(self):
         return f"{self.alumno.nombre} compró {self.articulo.nombre}"
@@ -1027,3 +1070,47 @@ class RespuestaBatalla(models.Model):
 
     def __str__(self):
         return f'{self.jugador.alumno} · {self.pregunta.orden + 1} · {"✔" if self.correcta else "✘"}'
+
+
+
+# ========================
+# AVISOS DEL PROFE PARA LA CLASE
+# ========================
+class AvisoQuerySet(models.QuerySet):
+    def vigentes(self, hoy=None):
+        hoy = hoy or timezone.localdate()
+        return self.filter(activo=True).filter(models.Q(hasta__isnull=True) | models.Q(hasta__gte=hoy))
+
+
+class Aviso(models.Model):
+    """Un mensaje corto del profe que aparece arriba del tablero de los alumnos de uno o varios grupos."""
+    ESTILOS = [
+        ('info', 'Información'),
+        ('importante', 'Importante'),
+        ('fiesta', 'Buena noticia'),
+    ]
+    clases = models.ManyToManyField(Clase, related_name='avisos')
+    texto = models.CharField(max_length=200)
+    icono = models.CharField(max_length=10, default='📢')
+    estilo = models.CharField(max_length=12, choices=ESTILOS, default='info')
+    hasta = models.DateField(null=True, blank=True, help_text='Último día que lo ven (vacío = hasta que lo quites)')
+    activo = models.BooleanField(default=True)
+    creado = models.DateTimeField(auto_now_add=True)
+
+    objects = AvisoQuerySet.as_manager()
+
+    class Meta:
+        ordering = ['-creado', '-id']
+
+    def __str__(self):
+        return f'{self.icono} {self.texto}'
+
+    @property
+    def vigente(self):
+        return self.activo and (self.hasta is None or timezone.localdate() <= self.hasta)
+
+    @property
+    def dias_restantes(self):
+        if self.hasta is None:
+            return None
+        return (self.hasta - timezone.localdate()).days

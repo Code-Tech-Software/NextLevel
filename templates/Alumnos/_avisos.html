@@ -1,0 +1,11 @@
+{% comment %}Avisos del profe arriba del tablero. Cada alumno puede cerrar los que ya leyó (se recuerda en su navegador).{% endcomment %}
+{% for aviso in avisos %}
+    <div class="aviso-profe {{ aviso.estilo }}" data-aviso="{{ aviso.id }}" role="status">
+        <span class="e" aria-hidden="true">{{ aviso.icono }}</span>
+        <div class="min-w-0 flex-grow-1">
+            <div class="kicker">📢 Aviso de tu profe</div>
+            <div class="t">{{ aviso.texto }}</div>
+        </div>
+        <button type="button" class="cerrar" data-cerrar-aviso aria-label="Ya lo leí, ocultar aviso" title="Ya lo leí"><i class="bi bi-x-lg"></i></button>
+    </div>
+{% endfor %}

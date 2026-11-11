@@ -1,7 +1,7 @@
 """Vistas del panel del profesor."""
 import json
 import random
-from datetime import timedelta
+from datetime import date, timedelta
 
 import openpyxl
 from django.contrib import messages
@@ -19,6 +19,7 @@ from django.views.decorators.http import require_POST
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
+from . import cumpleanos as cumple
 from . import gamificacion as juego
 from . import inicio_profesor as inicio
 from . import minijuegos
@@ -28,7 +29,7 @@ from .forms import (
     MundoForm, NivelForm, OtorgarLogroForm, separar_nombre,
 )
 from .models import (
-    AccesoAlumno, Alumno, AppClase, AppExterna, ArticuloTienda, Batalla, Clase, CompraAlumno, Comportamiento, Equipo, Juego, Logro, LogroAlumno, MetaGrupo, Mision,
+    AccesoAlumno, Alumno, AppClase, AppExterna, ArticuloTienda, Aviso, Batalla, Clase, CompraAlumno, Comportamiento, Equipo, Juego, Logro, LogroAlumno, MetaGrupo, Mision,
     MisionDiaria, Movimiento, Mundo, Nivel, OpcionRespuesta, Pregunta, ProgresoMision,
 )
 from .templatetags.nextlevel import COLORES_CLASE, avatar_url
@@ -199,6 +200,8 @@ def dashboard_profesor(request):
         'atencion_extra': max(0, len(atencion) - ATENCION_VISIBLES),
         'dias_ausente': inicio.DIAS_AUSENTE,
         'vencen': inicio.entregas_que_vencen(hoy),
+        'cumpleanos': inicio.cumpleanos(hoy),
+        'hoy': hoy,
         'metas': inicio.metas_en_curso(hoy),
         'entregas_tienda': CompraAlumno.objects.filter(estado='pendiente').select_related(
             'alumno', 'articulo').order_by('fecha_compra')[:6],
@@ -651,6 +654,7 @@ MODELOS_ELIMINABLES = {
     'juego': (Juego, 'juegos_lista'),
     'app': (AppExterna, 'apps_lista'),
     'batalla': (Batalla, 'batallas_lista'),
+    'aviso': (Aviso, 'avisos_lista'),
 }
 
 
@@ -1061,6 +1065,8 @@ def alumno_detalle(request, pk):
         avance_clases.append({'clase': clase, 'ruta': ruta})
     return render(request, 'Profesor/alumno_detalle.html', {
         'alumno': alumno,
+        'ahorro': ArticuloTienda.objects.filter(pk=alumno.ahorro_id, activo=True).first() if alumno.ahorro_id else None,
+        'por_entregar': alumno.compras.filter(estado='pendiente').count(),
         'stats': juego.estadisticas_alumno(alumno),
         'avance_clases': avance_clases,
         'progresos': ProgresoMision.objects.filter(alumno=alumno).select_related(
@@ -1094,7 +1100,7 @@ def alumno_ajuste(request, pk):
             juego.notificar(alumno, 'monedas', f'¡El profe te dio +{xp} XP!', motivo, '⚡')
     if monedas or xp:
         messages.success(request, f'Se actualizó a {alumno.nombre}.')
-    return redirect('alumno_detalle', pk=pk)
+    return redirect(_siguiente(request, reverse('alumno_detalle', args=[pk])))
 
 
 @require_POST
@@ -1160,8 +1166,9 @@ def quitar_logro(request, pk):
 @login_required
 def tienda_admin(request):
     articulos = ArticuloTienda.objects.annotate(
-        vendidos=Count('compras', filter=~Q(compras__estado='cancelado')),
-        por_entregar=Count('compras', filter=Q(compras__estado='pendiente')),
+        vendidos=Count('compras', filter=~Q(compras__estado='cancelado'), distinct=True),
+        por_entregar=Count('compras', filter=Q(compras__estado='pendiente'), distinct=True),
+        lo_quieren=Count('ahorradores', filter=Q(ahorradores__activo=True), distinct=True),
     ).order_by('-activo', '-destacado', 'nombre')
     return render(request, 'Profesor/tienda_admin.html', {
         'articulos': articulos,
@@ -1216,7 +1223,7 @@ def ajustar_stock(request, pk):
 def alternar_activo(request, modelo, pk):
     modelos = {'articulo': ArticuloTienda, 'diaria': MisionDiaria, 'logro': Logro, 'mision': Mision,
                'clase': Clase, 'alumno': Alumno, 'meta': MetaGrupo, 'comportamiento': Comportamiento, 'juego': Juego,
-               'app': AppExterna}
+               'app': AppExterna, 'aviso': Aviso}
     if modelo not in modelos:
         return HttpResponse(status=404)
     objeto = get_object_or_404(modelos[modelo], pk=pk)
@@ -1238,6 +1245,14 @@ def pedidos(request):
     compras = compras.order_by('fecha_compra' if estado == 'pendiente' else '-fecha_compra')
     conteos = dict(CompraAlumno.objects.values_list('estado').annotate(t=Count('id')))
     pagina = Paginator(compras, 40).get_page(request.GET.get('page'))
+    if estado == 'pendiente':
+        # «Entregar sus N»: en la primera fila de cada alumno que tiene varios premios por recibir
+        por_alumno = dict(CompraAlumno.objects.filter(estado='pendiente').values_list('alumno_id').annotate(t=Count('id')))
+        vistos = set()
+        for compra in pagina:
+            if compra.alumno_id not in vistos and por_alumno.get(compra.alumno_id, 0) > 1:
+                compra.entregar_todos = por_alumno[compra.alumno_id]
+            vistos.add(compra.alumno_id)
     return render(request, 'Profesor/pedidos.html', {
         'pagina': pagina,
         'estado': estado,
@@ -1260,8 +1275,99 @@ def entregar_articulo_tienda(request, compra_id):
 def cancelar_compra(request, compra_id):
     compra = get_object_or_404(CompraAlumno.objects.select_related('alumno', 'articulo'), id=compra_id)
     if juego.cancelar_compra(compra):
-        messages.success(request, f'Compra cancelada: se devolvieron {compra.costo_pagado} monedas a {compra.alumno.nombre}.')
+        if compra.regalo:
+            messages.success(request, f'Se retiró el regalo «{compra.articulo.nombre}» a {compra.alumno.nombre}.')
+        else:
+            que = 'Avatar reembolsado' if compra.articulo.tipo == 'avatar' else 'Compra cancelada'
+            messages.success(request, f'{que}: se devolvieron {compra.costo_pagado} monedas a {compra.alumno.nombre}.')
     return redirect(_siguiente(request, reverse('pedidos')))
+
+
+@require_POST
+@login_required
+def entregar_todo_alumno(request, pk):
+    """Entrega de un jalón todos los premios que el alumno tiene por recibir."""
+    alumno = get_object_or_404(Alumno, pk=pk)
+    entregados = juego.entregar_pendientes(alumno)
+    if entregados:
+        messages.success(request, f'Entregaste {len(entregados)} premio{"s" if len(entregados) != 1 else ""} a '
+                                  f'{alumno.nombre}: {", ".join(entregados)}.')
+    else:
+        messages.info(request, f'{alumno.nombre} no tenía premios por entregar.')
+    return redirect(_siguiente(request, reverse('pedidos')))
+
+
+DESCUENTOS = [10, 20, 25, 30, 50]
+
+
+@login_required
+def oferta_articulo(request, pk):
+    """Poner, cambiar o quitar la oferta de un artículo (descuento por unos días)."""
+    articulo = get_object_or_404(ArticuloTienda, pk=pk)
+    hoy = timezone.localdate()
+    error = ''
+    if request.method == 'POST':
+        if request.POST.get('quitar'):
+            articulo.descuento, articulo.oferta_hasta = 0, None
+            articulo.save(update_fields=['descuento', 'oferta_hasta'])
+            return _guardado(request, f'«{articulo.nombre}» ya no está en oferta.', reverse('tienda_admin'))
+        try:
+            descuento = int(request.POST.get('descuento') or 0)
+        except ValueError:
+            descuento = 0
+        hasta = request.POST.get('hasta') or ''
+        try:
+            fecha = date.fromisoformat(hasta) if hasta else None
+        except ValueError:
+            fecha = False
+        if not 1 <= descuento <= 90:
+            error = 'Elige un descuento de 1 a 90 %.'
+        elif fecha is False or (fecha and fecha < hoy):
+            error = 'El último día de la oferta debe ser hoy o después.'
+        else:
+            articulo.descuento, articulo.oferta_hasta = descuento, fecha
+            articulo.save(update_fields=['descuento', 'oferta_hasta'])
+            avisados = juego.avisar_oferta(articulo)
+            mensaje = f'🏷️ «{articulo.nombre}» en oferta: −{descuento} % (cuesta {articulo.precio} monedas).'
+            if avisados:
+                mensaje += f' Se les avisó a {avisados} alumno{"s" if avisados != 1 else ""} que ahorran para él.'
+            return _guardado(request, mensaje, reverse('tienda_admin'))
+    return _formulario(request, 'Profesor/oferta_form.html', {
+        'articulo': articulo,
+        'descuentos': DESCUENTOS,
+        'descuento': articulo.descuento if articulo.en_oferta else 20,
+        'hasta': articulo.oferta_hasta.isoformat() if articulo.en_oferta and articulo.oferta_hasta else '',
+        'duraciones': [('Solo hoy', hoy), ('3 días', hoy + timedelta(days=2)), ('1 semana', hoy + timedelta(days=6))],
+        'hoy': hoy,
+        'lo_quieren': articulo.ahorradores.filter(activo=True).count(),
+        'error': error,
+        'seccion': 'tienda',
+    })
+
+
+@login_required
+def regalar_articulo(request, pk):
+    """Regalarle a un alumno un artículo de la tienda (no gasta sus monedas)."""
+    alumno = get_object_or_404(Alumno, pk=pk)
+    articulos = list(ArticuloTienda.objects.filter(activo=True).order_by('tipo', 'costo_monedas', 'nombre'))
+    error = ''
+    if request.method == 'POST':
+        articulo = next((a for a in articulos if str(a.id) == request.POST.get('articulo')), None)
+        if not articulo:
+            error = 'Elige qué le vas a regalar.'
+        else:
+            ok, mensaje = juego.regalar(alumno, articulo, request.POST.get('mensaje', ''),
+                                        entregar_despues=bool(request.POST.get('despues')))
+            if ok:
+                return _guardado(request, f'🎁 {mensaje}', reverse('alumno_detalle', args=[alumno.id]))
+            error = mensaje
+    return _formulario(request, 'Profesor/regalar_form.html', {
+        'alumno': alumno,
+        'articulos': articulos,
+        'elegido': request.POST.get('articulo', ''),
+        'error': error,
+        'seccion': 'alumnos',
+    })
 
 
 # ========================
@@ -1438,6 +1544,7 @@ def proyector(request, clase_id):
                        'pct': int(hechas * 100 / posibles) if posibles else 0})
     return render(request, 'Profesor/proyector.html', {
         'clase': clase,
+        'cumplen_hoy': cumple.companeros_que_cumplen(clase, timezone.localdate()),
         'podio': semana[:3],
         'semana': semana[3:10],
         'total': total[:10],

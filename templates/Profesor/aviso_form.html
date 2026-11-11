@@ -1,0 +1,96 @@
+{% extends base_plantilla|default:"Profesor/baseProfesor.html" %}
+{% block title %}{% if aviso %}Editar aviso{% else %}Nuevo aviso{% endif %}{% endblock %}
+{% block migas %}<a href="{% url 'avisos_lista' %}">Avisos</a><i class="bi bi-chevron-right"></i><span class="actual">{% if aviso %}Editar aviso{% else %}Nuevo aviso{% endif %}</span>{% endblock %}
+
+{% block content %}
+<form method="post" action="{{ request.get_full_path }}" class="form-panel" data-form="aviso" novalidate>
+    {% csrf_token %}
+    <div class="modal-header">
+        <span class="icono-form"><i class="bi bi-megaphone"></i></span>
+        <div class="min-w-0 flex-grow-1">
+            <h2 class="titulo-form">{% if aviso %}Editar aviso{% else %}Nuevo aviso para la clase{% endif %}</h2>
+            <p class="sub-form">Lo ven arriba de su tablero al entrar, también si la plataforma está cerrada.</p>
+        </div>
+        {% if modal %}<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>{% endif %}
+    </div>
+
+    <div class="modal-body">
+        {% if form.non_field_errors %}<div class="aviso-error">{{ form.non_field_errors|join:" " }}</div>{% endif %}
+
+        <div class="campo {% if form.texto.errors %}con-error{% endif %}">
+            <label for="{{ form.texto.id_for_label }}">{{ form.texto.label }} <span class="text-danger">*</span></label>
+            {{ form.texto }}
+            <div class="ayuda d-flex justify-content-between"><span>Corto y claro: lo leen niños.</span><span class="tnum" data-contador>0/200</span></div>
+            {% for e in form.texto.errors %}<div class="error"><i class="bi bi-exclamation-circle"></i> {{ e }}</div>{% endfor %}
+        </div>
+
+        <div class="row gx-3">
+            <div class="col-md-7">
+                <div class="campo">
+                    <span class="etiqueta-campo">{{ form.icono.label }}</span>
+                    <div class="iconos-aviso" role="group" aria-label="Ícono">
+                        {% for i in iconos %}<button type="button" class="icono-op" data-icono="{{ i }}">{{ i }}</button>{% endfor %}
+                    </div>
+                    <input type="hidden" name="icono" value="{{ form.icono.value|default:'📢' }}">
+                </div>
+            </div>
+            <div class="col-md-5">
+                <div class="campo">
+                    <span class="etiqueta-campo">{{ form.estilo.label }}</span>
+                    <div class="estilos-aviso">
+                        {% for op in form.estilo %}
+                            <label class="estilo-op {{ op.data.value }}">{{ op.tag }}<span>{{ op.choice_label }}</span></label>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="campo {% if form.clases.errors %}con-error{% endif %}">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="etiqueta-campo mb-0">{{ form.clases.label }} <span class="text-danger">*</span></span>
+                <button type="button" class="p-btn xs fantasma" data-todos-grupos>Todos</button>
+            </div>
+            <div class="grupos-aviso">
+                {% for op in form.clases %}<label class="grupo-op">{{ op.tag }}<span>{{ op.choice_label }}</span></label>{% endfor %}
+            </div>
+            {% for e in form.clases.errors %}<div class="error"><i class="bi bi-exclamation-circle"></i> {{ e }}</div>{% endfor %}
+        </div>
+
+        <div class="campo {% if form.hasta.errors %}con-error{% endif %}">
+            <span class="etiqueta-campo">{{ form.hasta.label }}</span>
+            <div class="presets" style="grid-template-columns:repeat(4,1fr)" role="group" aria-label="Hasta cuándo">
+                {% for nombre, fecha in duraciones %}
+                    <button type="button" class="preset" data-hasta="{{ fecha|date:'Y-m-d' }}"><span class="n">{{ nombre }}</span><span class="v">{{ fecha|date:'D j' }}</span></button>
+                {% endfor %}
+                <button type="button" class="preset" data-hasta=""><span class="n">Sin fecha</span><span class="v">hasta que lo quites</span></button>
+            </div>
+            <div class="d-flex align-items-center gap-2 mt-2">
+                <label for="{{ form.hasta.id_for_label }}" class="text-muted-p mb-0" style="font-size:.82rem">Otro día:</label>
+                <input type="date" name="hasta" id="{{ form.hasta.id_for_label }}" class="p-input" style="width:auto" min="{{ hoy|date:'Y-m-d' }}" value="{{ hasta_valor }}">
+            </div>
+            {% for e in form.hasta.errors %}<div class="error"><i class="bi bi-exclamation-circle"></i> {{ e }}</div>{% endfor %}
+        </div>
+
+        <div class="etiqueta-campo">Así lo verán tus alumnos</div>
+        <div class="aviso-previa" data-previa>
+            <span class="e" data-previa-icono>📢</span>
+            <span class="t" data-previa-texto>Escribe tu aviso…</span>
+        </div>
+
+        {% if aviso %}
+            <div class="campo-check mt-3 mb-0">
+                {{ form.activo }}
+                <div><label for="{{ form.activo.id_for_label }}">{{ form.activo.label }}</label></div>
+            </div>
+        {% else %}
+            <input type="hidden" name="activo" value="on">
+        {% endif %}
+    </div>
+
+    <div class="modal-footer">
+        {% if modal %}<button type="button" class="p-btn fantasma" data-bs-dismiss="modal">Cancelar</button>{% else %}<a href="{% url 'avisos_lista' %}" class="p-btn fantasma">Cancelar</a>{% endif %}
+        <button type="submit" class="p-btn primario"><i class="bi bi-megaphone"></i> {% if aviso %}Guardar{% else %}Publicar aviso{% endif %}</button>
+    </div>
+</form>
+{% endblock %}

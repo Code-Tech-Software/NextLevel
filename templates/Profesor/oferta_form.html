@@ -1,0 +1,70 @@
+{% extends base_plantilla|default:"Profesor/baseProfesor.html" %}
+{% load nextlevel %}
+{% block title %}Oferta · {{ articulo.nombre }}{% endblock %}
+{% block migas %}<a href="{% url 'tienda_admin' %}">Tienda</a><i class="bi bi-chevron-right"></i><span class="actual">Oferta de «{{ articulo.nombre }}»</span>{% endblock %}
+
+{% block content %}
+<form method="post" action="{{ request.get_full_path }}" class="form-panel" data-form="oferta" data-precio="{{ articulo.costo_monedas }}" novalidate>
+    {% csrf_token %}
+    <input type="hidden" name="quitar" value="">
+    <div class="modal-header">
+        <span class="icono-form"><i class="bi bi-tag"></i></span>
+        <div class="min-w-0 flex-grow-1">
+            <h2 class="titulo-form">{% if articulo.en_oferta %}Editar la oferta{% else %}Poner en oferta{% endif %}</h2>
+            <p class="sub-form">«{{ articulo.nombre }}» · precio normal {{ articulo.costo_monedas }} monedas</p>
+        </div>
+        {% if modal %}<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>{% endif %}
+    </div>
+
+    <div class="modal-body">
+        {% if error %}<div class="aviso-error"><i class="bi bi-exclamation-circle"></i> {{ error }}</div>{% endif %}
+
+        <div class="campo">
+            <span class="etiqueta-campo">Descuento</span>
+            <div class="presets" style="grid-template-columns:repeat(5,1fr)" role="group" aria-label="Descuento">
+                {% for d in descuentos %}
+                    <button type="button" class="preset" data-descuento="{{ d }}"><span class="n">−{{ d }} %</span></button>
+                {% endfor %}
+            </div>
+            <div class="d-flex align-items-center gap-2 mt-2">
+                <label for="oferta-descuento" class="text-muted-p mb-0" style="font-size:.82rem">Otro descuento:</label>
+                <input type="number" id="oferta-descuento" name="descuento" class="p-input tnum" style="width:90px" min="1" max="90" value="{{ descuento }}">
+                <span class="text-muted-p">%</span>
+            </div>
+        </div>
+
+        <div class="campo">
+            <span class="etiqueta-campo">¿Hasta cuándo?</span>
+            <div class="presets" style="grid-template-columns:repeat(4,1fr)" role="group" aria-label="Duración">
+                {% for nombre, fecha in duraciones %}
+                    <button type="button" class="preset" data-hasta="{{ fecha|date:'Y-m-d' }}"><span class="n">{{ nombre }}</span><span class="v">hasta el {{ fecha|date:'D j' }}</span></button>
+                {% endfor %}
+                <button type="button" class="preset" data-hasta=""><span class="n">Sin fecha</span><span class="v">hasta que la quites</span></button>
+            </div>
+            <div class="d-flex align-items-center gap-2 mt-2">
+                <label for="oferta-hasta" class="text-muted-p mb-0" style="font-size:.82rem">Último día:</label>
+                <input type="date" id="oferta-hasta" name="hasta" class="p-input" style="width:auto" min="{{ hoy|date:'Y-m-d' }}" value="{{ hasta }}">
+            </div>
+        </div>
+
+        <div class="oferta-previa" aria-live="polite">
+            <span class="etiqueta-oferta" data-oferta-pct>−{{ descuento }} %</span>
+            <div>
+                <div>Precio normal <s>{{ articulo.costo_monedas }}</s> → <b data-oferta-precio>{{ articulo.costo_monedas }}</b> monedas</div>
+                <div class="text-muted-p" style="font-size:.78rem" data-oferta-fin>Los alumnos lo verán con el precio tachado.</div>
+            </div>
+        </div>
+        {% if lo_quieren %}
+            <p class="text-muted-p mt-3 mb-0" style="font-size:.82rem">🐷 {{ lo_quieren }} alumno{{ lo_quieren|pluralize }} ahorra{{ lo_quieren|pluralize:"n" }} para este premio: les llegará un aviso de la oferta.</p>
+        {% endif %}
+    </div>
+
+    <div class="modal-footer">
+        {% if articulo.en_oferta %}
+            <button type="button" class="p-btn peligro me-auto" data-quitar-oferta><i class="bi bi-x-circle"></i> Quitar oferta</button>
+        {% endif %}
+        {% if modal %}<button type="button" class="p-btn fantasma" data-bs-dismiss="modal">Cancelar</button>{% else %}<a href="{% url 'tienda_admin' %}" class="p-btn fantasma">Cancelar</a>{% endif %}
+        <button type="submit" class="p-btn primario"><i class="bi bi-tag"></i> Guardar oferta</button>
+    </div>
+</form>
+{% endblock %}

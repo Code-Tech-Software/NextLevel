@@ -2262,3 +2262,303 @@ class RevisionRapidaTests(BaseJuego):
         self.assertContains(r, 'Revisión rápida')
         self.assertEqual(self.client.get('/profesor/revisiones/').context['vista'], 'mision')
         self.assertEqual(self.client.get('/profesor/revisiones/?vista=llegada').context['vista'], 'llegada')
+
+
+class ReembolsoAvatarTests(BaseJuego):
+    """El profe puede reembolsar un avatar aunque ya se haya entregado (los avatares se entregan solos)."""
+
+    def setUp(self):
+        super().setUp()
+        self.alumno.monedas = 200
+        self.alumno.save()
+        # Solo el nombre del archivo: no se sube ninguna imagen durante las pruebas
+        self.robot = ArticuloTienda.objects.create(nombre='Robot', descripcion='x', costo_monedas=50, tipo='avatar',
+                                                   requiere_validacion=False, stock=5, imagen='avatares/robot.png')
+        self.gato = ArticuloTienda.objects.create(nombre='Gato', descripcion='x', costo_monedas=30, tipo='avatar',
+                                                  requiere_validacion=False, imagen='avatares/gato.png')
+
+    def comprar(self, articulo):
+        ok, _ = juego.comprar(self.alumno, articulo)
+        self.assertTrue(ok)
+        return CompraAlumno.objects.filter(alumno=self.alumno, articulo=articulo).latest('id')
+
+    def test_reembolsar_el_avatar_que_trae_puesto(self):
+        compra = self.comprar(self.robot)
+        self.assertEqual(compra.estado, 'entregado')
+        self.alumno.refresh_from_db()
+        self.assertEqual(self.alumno.avatar.name, 'avatares/robot.png')
+
+        self.assertTrue(juego.cancelar_compra(compra))
+        compra.refresh_from_db()
+        self.robot.refresh_from_db()
+        self.alumno.refresh_from_db()
+        self.assertEqual(compra.estado, 'cancelado')
+        self.assertEqual(self.alumno.monedas, 200)
+        self.assertEqual(self.robot.stock, 5)
+        self.assertFalse(self.alumno.avatar)                          # vuelve al robot clásico
+        self.assertTrue(self.alumno.notificaciones.filter(titulo__icontains='reembolsó').exists())
+        # Dos veces no: no se devuelven monedas de más
+        self.assertFalse(juego.cancelar_compra(compra))
+        self.alumno.refresh_from_db()
+        self.assertEqual(self.alumno.monedas, 200)
+
+    def test_si_tiene_otro_avatar_se_lo_pone(self):
+        self.comprar(self.gato)
+        robot = self.comprar(self.robot)
+        self.assertTrue(juego.reembolsar_avatar(robot))
+        self.alumno.refresh_from_db()
+        self.assertEqual(self.alumno.avatar.name, 'avatares/gato.png')
+
+    def test_reembolsar_uno_que_no_trae_puesto_no_le_cambia_el_suyo(self):
+        gato = self.comprar(self.gato)
+        self.comprar(self.robot)   # ahora trae puesto el robot
+        self.assertTrue(juego.reembolsar_avatar(gato))
+        self.alumno.refresh_from_db()
+        self.assertEqual(self.alumno.avatar.name, 'avatares/robot.png')
+
+    def test_los_premios_fisicos_entregados_no_se_reembolsan(self):
+        llavero = ArticuloTienda.objects.create(nombre='Llavero', descripcion='x', costo_monedas=20, requiere_validacion=False)
+        compra = self.comprar(llavero)
+        self.assertFalse(juego.cancelar_compra(compra))
+        self.assertFalse(juego.reembolsar_avatar(compra))
+
+    def test_desde_el_panel(self):
+        compra = self.comprar(self.robot)
+        self.client.force_login(User.objects.create_superuser('profe_tienda', 't@x.com', 'x'))
+        self.assertContains(self.client.get(f'/profesor/alumnos/{self.alumno.id}/'), 'Lo trae puesto')
+        self.assertContains(self.client.get('/profesor/pedidos/?estado=entregado'), '¿Reembolsar el avatar «Robot»?')
+        r = self.client.post(f'/profesor/tienda/cancelar/{compra.id}/', {'next': f'/profesor/alumnos/{self.alumno.id}/'})
+        self.assertRedirects(r, f'/profesor/alumnos/{self.alumno.id}/', fetch_redirect_response=False)
+        compra.refresh_from_db()
+        self.assertEqual(compra.estado, 'cancelado')
+        self.assertContains(self.client.get(f'/profesor/alumnos/{self.alumno.id}/'), 'Reembolsado')
+
+
+class TiendaExtrasTests(BaseJuego):
+    """Ofertas, meta de ahorro, regalos del profe y entregar todo de un alumno."""
+
+    def setUp(self):
+        super().setUp()
+        from django.utils import timezone
+        self.hoy = timezone.localdate()
+        self.alumno.monedas = 10
+        self.alumno.save()
+        self.kit = ArticuloTienda.objects.create(nombre='Kit de LEDs', descripcion='x', costo_monedas=50, stock=3)
+
+    def profe(self):
+        self.client.force_login(User.objects.create_superuser('profe_tienda2', 't2@x.com', 'x'))
+
+    def avisos(self, texto):
+        return self.alumno.notificaciones.filter(titulo__icontains=texto).count()
+
+    # ----- Ofertas -----
+    def test_oferta_baja_el_precio_hasta_su_ultimo_dia(self):
+        from datetime import timedelta
+        self.kit.descuento, self.kit.oferta_hasta = 20, self.hoy
+        self.kit.save()
+        self.assertEqual((self.kit.en_oferta, self.kit.precio, self.kit.dias_oferta), (True, 40, 0))
+        self.alumno.monedas = 45
+        self.alumno.save()
+        ok, _ = juego.comprar(self.alumno, self.kit)
+        self.assertTrue(ok)
+        self.assertEqual(CompraAlumno.objects.get(articulo=self.kit).costo_pagado, 40)
+        self.alumno.refresh_from_db()
+        self.assertEqual(self.alumno.monedas, 5)
+        # Ya venció: vuelve a su precio normal
+        self.kit.oferta_hasta = self.hoy - timedelta(days=1)
+        self.kit.save()
+        self.assertEqual((self.kit.en_oferta, self.kit.precio), (False, 50))
+
+    def test_poner_y_quitar_oferta_desde_el_panel(self):
+        self.profe()
+        juego.elegir_ahorro(self.alumno, self.kit)
+        r = self.client.post(f'/profesor/tienda/{self.kit.id}/oferta/', {'descuento': '50', 'hasta': self.hoy.isoformat()})
+        self.assertEqual(r.status_code, 302)
+        self.kit.refresh_from_db()
+        self.assertEqual((self.kit.descuento, self.kit.precio), (50, 25))
+        self.assertEqual(self.avisos('está en oferta'), 1)   # a quien ahorra para él le llega el aviso
+        self.assertContains(self.client.get('/profesor/tienda/'), '−50 %')
+        # Datos inválidos: no se guarda
+        r = self.client.post(f'/profesor/tienda/{self.kit.id}/oferta/', {'descuento': '95'})
+        self.assertContains(r, 'de 1 a 90')
+        self.client.post(f'/profesor/tienda/{self.kit.id}/oferta/', {'quitar': '1'})
+        self.kit.refresh_from_db()
+        self.assertEqual((self.kit.en_oferta, self.kit.precio), (False, 50))
+
+    # ----- Meta de ahorro -----
+    def test_meta_de_ahorro_avisa_una_sola_vez_y_se_cumple_al_comprar(self):
+        juego.elegir_ahorro(self.alumno, self.kit)
+        juego.otorgar(self.alumno, monedas=30)          # 40 de 50: todavía no
+        self.assertEqual(self.avisos('Ya te alcanza'), 0)
+        juego.otorgar(self.alumno, monedas=20)          # 60: ya le alcanza
+        juego.otorgar(self.alumno, monedas=5)           # no se repite el aviso
+        self.assertEqual(self.avisos('Ya te alcanza'), 1)
+        ok, mensaje = juego.comprar(self.alumno, self.kit)
+        self.assertTrue(ok)
+        self.assertIn('meta de ahorro', mensaje)
+        self.alumno.refresh_from_db()
+        self.assertIsNone(self.alumno.ahorro)
+
+    def test_el_alumno_elige_su_meta_y_la_ve_en_su_tablero(self):
+        self.entrar()
+        tienda = self.client.get(f'/clase/{self.clase.id}/tienda/')
+        self.assertContains(tienda, 'Ahorrar para esto')
+        self.client.post(f'/clase/{self.clase.id}/tienda/ahorrar/{self.kit.id}/')
+        self.alumno.refresh_from_db()
+        self.assertEqual(self.alumno.ahorro, self.kit)
+        tablero = self.client.get(f'/clase/{self.clase.id}/dashboard/')
+        self.assertContains(tablero, 'Estoy ahorrando para')
+        self.assertContains(tablero, 'Kit de LEDs')
+        self.client.post(f'/clase/{self.clase.id}/tienda/ahorrar/0/')
+        self.alumno.refresh_from_db()
+        self.assertIsNone(self.alumno.ahorro)
+
+    # ----- Regalos -----
+    def test_regalar_un_avatar_sin_gastar_monedas(self):
+        avatar = ArticuloTienda.objects.create(nombre='Dragón', descripcion='x', costo_monedas=80, tipo='avatar',
+                                               requiere_validacion=False, imagen='avatares/dragon.png')
+        self.profe()
+        r = self.client.post(f'/profesor/alumnos/{self.alumno.id}/regalar/', {'articulo': avatar.id, 'mensaje': '¡Ganaste la batalla!'})
+        self.assertEqual(r.status_code, 302)
+        compra = CompraAlumno.objects.get(articulo=avatar)
+        self.assertEqual((compra.regalo, compra.costo_pagado, compra.estado), (True, 0, 'entregado'))
+        self.alumno.refresh_from_db()
+        self.assertEqual((self.alumno.monedas, self.alumno.avatar.name), (10, 'avatares/dragon.png'))
+        self.assertEqual(self.alumno.notificaciones.filter(mensaje='¡Ganaste la batalla!').count(), 1)
+
+    def test_regalar_un_premio_fisico_para_entregarlo_despues(self):
+        self.profe()
+        self.client.post(f'/profesor/alumnos/{self.alumno.id}/regalar/', {'articulo': self.kit.id, 'despues': '1'})
+        compra = CompraAlumno.objects.get(articulo=self.kit)
+        self.assertEqual((compra.regalo, compra.estado), (True, 'pendiente'))
+        self.kit.refresh_from_db()
+        self.assertEqual(self.kit.stock, 2)
+        # Agotado: no se puede regalar
+        self.kit.stock = 0
+        self.kit.save()
+        r = self.client.post(f'/profesor/alumnos/{self.alumno.id}/regalar/', {'articulo': self.kit.id})
+        self.assertContains(r, 'está agotado')
+
+    # ----- Entregar todo -----
+    def test_entregar_todos_los_premios_de_un_alumno(self):
+        for _ in range(3):
+            CompraAlumno.objects.create(alumno=self.alumno, articulo=self.kit, costo_pagado=50)
+        self.profe()
+        self.assertContains(self.client.get('/profesor/pedidos/'), 'Entregar sus 3')
+        self.client.post(f'/profesor/alumnos/{self.alumno.id}/entregar-todo/', {'next': '/profesor/pedidos/'})
+        self.assertFalse(CompraAlumno.objects.filter(estado='pendiente').exists())
+        self.assertEqual(self.avisos('Recibiste tus 3 premios'), 1)   # un solo aviso, no tres
+
+
+class AvisosYCumpleanosTests(BaseJuego):
+    """Avisos del profe para la clase y cumpleaños de los alumnos."""
+
+    def setUp(self):
+        super().setUp()
+        from django.utils import timezone
+        self.hoy = timezone.localdate()
+
+    def profe(self):
+        self.client.force_login(User.objects.create_superuser('profe_avisos', 'a@x.com', 'x'))
+
+    # ----- Avisos -----
+    def test_cada_grupo_ve_solo_sus_avisos_vigentes(self):
+        from datetime import timedelta
+        from .models import Aviso
+        otra = Clase.objects.create(nombre='Otra', grado='5', grupo='B', anio=2026)
+        mio = Aviso.objects.create(texto='Mañana traigan su Arduino', hasta=self.hoy)
+        mio.clases.add(self.clase)
+        ajeno = Aviso.objects.create(texto='Aviso de otro grupo')
+        ajeno.clases.add(otra)
+        vencido = Aviso.objects.create(texto='Ya pasó la excursión', hasta=self.hoy - timedelta(days=1))
+        vencido.clases.add(self.clase)
+        oculto = Aviso.objects.create(texto='Borrador del profe', activo=False)
+        oculto.clases.add(self.clase)
+        self.entrar()
+        tablero = self.client.get(f'/clase/{self.clase.id}/dashboard/')
+        self.assertContains(tablero, 'Mañana traigan su Arduino')
+        for texto in ('Aviso de otro grupo', 'Ya pasó la excursión', 'Borrador del profe'):
+            self.assertNotContains(tablero, texto)
+        # También con la plataforma cerrada
+        Clase.objects.filter(pk=self.clase.pk).update(acceso='cerrado')
+        self.assertContains(self.client.get(f'/clase/{self.clase.id}/mi-cuenta/'), 'Mañana traigan su Arduino')
+
+    def test_el_profe_publica_un_aviso_para_varios_grupos(self):
+        from datetime import timedelta
+        from .models import Aviso
+        otra = Clase.objects.create(nombre='Otra', grado='5', grupo='B', anio=2026)
+        self.profe()
+        r = self.client.post('/profesor/avisos/nuevo/', {'texto': '  El viernes hay   batalla  ', 'icono': '⚔️', 'estilo': 'fiesta',
+                                                         'clases': [self.clase.id, otra.id], 'hasta': '', 'activo': 'on'})
+        self.assertEqual(r.status_code, 302)
+        aviso = Aviso.objects.get()
+        self.assertEqual((aviso.texto, aviso.icono, aviso.estilo, aviso.hasta), ('El viernes hay batalla', '⚔️', 'fiesta', None))
+        self.assertEqual(aviso.clases.count(), 2)
+        self.assertContains(self.client.get('/profesor/avisos/'), 'El viernes hay batalla')
+        # Sin texto, sin grupos o con una fecha que ya pasó: no se publica
+        r = self.client.post('/profesor/avisos/nuevo/', {'texto': ' ', 'estilo': 'info', 'icono': '📢',
+                                                         'hasta': (self.hoy - timedelta(days=2)).isoformat()})
+        self.assertContains(r, 'Escribe el aviso')
+        self.assertContains(r, 'Elige al menos un grupo')
+        self.assertContains(r, 'Elige hoy o un día que no haya pasado')
+        self.assertEqual(Aviso.objects.count(), 1)
+
+    # ----- Cumpleaños -----
+    def test_fechas_de_cumpleanos(self):
+        from datetime import date
+        from . import cumpleanos as cumple
+        ana = Alumno(nombre='Ana', cumple_dia=29, cumple_mes=2)
+        self.assertEqual(cumple.fecha_en(ana, 2027), date(2027, 2, 28))   # no bisiesto
+        self.assertEqual(cumple.fecha_en(ana, 2028), date(2028, 2, 29))
+        beto = Alumno(nombre='Beto', cumple_dia=7, cumple_mes=11)            # 7 nov 2026 es sábado
+        self.assertTrue(cumple.celebra_hoy(beto, date(2026, 11, 7)))
+        self.assertFalse(cumple.celebra_hoy(beto, date(2026, 11, 8)))       # domingo: no hay clase, pero ya fue
+        self.assertTrue(cumple.celebra_hoy(beto, date(2026, 11, 9)))        # el lunes se le celebra
+        self.assertFalse(cumple.celebra_hoy(beto, date(2026, 11, 10)))
+        self.assertEqual(cumple.proximo(beto, date(2026, 11, 10)), (362, date(2027, 11, 7)))
+        self.assertIsNone(cumple.proximo(Alumno(nombre='Sin fecha'), date(2026, 11, 10)))
+
+    def test_el_alumno_ve_su_festejo_y_recibe_un_solo_aviso_al_anio(self):
+        Alumno.objects.filter(pk=self.alumno.pk).update(cumple_dia=self.hoy.day, cumple_mes=self.hoy.month)
+        self.entrar()
+        tablero = self.client.get(f'/clase/{self.clase.id}/dashboard/')
+        self.assertContains(tablero, '¡Feliz cumpleaños, Ana!')
+        self.client.get(f'/clase/{self.clase.id}/dashboard/')
+        self.assertEqual(self.alumno.notificaciones.filter(titulo__icontains='Feliz cumpleaños').count(), 1)
+
+    def test_companeros_profe_y_proyector_se_enteran(self):
+        beto = Alumno.objects.create(nombre='Beto', apellido='Ruiz', pin='1111', cumple_dia=self.hoy.day,
+                                     cumple_mes=self.hoy.month)
+        beto.clases.add(self.clase)
+        self.entrar()
+        self.assertContains(self.client.get(f'/clase/{self.clase.id}/dashboard/'), 'cumple años <b>Beto</b>')
+        self.profe()
+        inicio = self.client.get('/profesor/dashboard/')
+        self.assertContains(inicio, '🎂 Cumpleaños')
+        self.assertContains(inicio, 'Regalarle 20 monedas de cumpleaños')
+        self.assertContains(self.client.get(f'/profesor/clases/{self.clase.id}/proyector/'), '¡Feliz cumpleaños, Beto!')
+
+    def test_capturar_los_cumpleanos_de_un_grupo(self):
+        beto = Alumno.objects.create(nombre='Beto', apellido='Ruiz', pin='1111')
+        beto.clases.add(self.clase)
+        self.profe()
+        url = f'/profesor/cumpleanos/{self.clase.id}/'
+        self.assertContains(self.client.get(url), 'Cumpleaños')
+        # Una fecha imposible: no se guarda nada y se marca el error
+        r = self.client.post(url, {f'dia_{self.alumno.id}': '12', f'mes_{self.alumno.id}': '3',
+                                   f'dia_{beto.id}': '31', f'mes_{beto.id}': '2'})
+        self.assertContains(r, 'Febrero no tiene día 31')
+        self.alumno.refresh_from_db()
+        self.assertIsNone(self.alumno.cumple_dia)
+        r = self.client.post(url, {f'dia_{self.alumno.id}': '12', f'mes_{self.alumno.id}': '3',
+                                   f'dia_{beto.id}': '', f'mes_{beto.id}': ''})
+        self.assertRedirects(r, url, fetch_redirect_response=False)
+        self.alumno.refresh_from_db()
+        self.assertEqual((self.alumno.cumple_dia, self.alumno.cumple_mes, self.alumno.cumple_texto), (12, 3, '12 de marzo'))
+
+    def test_validar_cumple(self):
+        from .forms import validar_cumple
+        self.assertEqual(validar_cumple(None, None), '')
+        self.assertEqual(validar_cumple(29, 2), '')
+        self.assertIn('día y el mes', validar_cumple(5, None))
+        self.assertIn('Abril no tiene día 31', validar_cumple(31, 4))

@@ -1,0 +1,26 @@
+{% comment %}Tarjeta de un aviso en la lista del profe. `a` = Aviso.{% endcomment %}
+<div class="p-card aviso-tarjeta {{ a.estilo }} {% if not a.vigente %}apagado{% endif %}">
+    <div class="d-flex gap-3 align-items-start">
+        <span class="icono" aria-hidden="true">{{ a.icono }}</span>
+        <div class="min-w-0 flex-grow-1">
+            <div class="texto">{{ a.texto }}</div>
+            <div class="grupos">{% for c in a.clases.all %}<span class="p-badge">{{ c.icono }} {{ c.nombre }}</span>{% endfor %}</div>
+        </div>
+    </div>
+    <div class="pie">
+        <span class="text-muted-p">
+            {% if not a.activo %}<i class="bi bi-eye-slash"></i> Oculto
+            {% elif a.hasta is None %}<i class="bi bi-infinity"></i> Hasta que lo quites
+            {% elif a.dias_restantes < 0 %}<i class="bi bi-calendar-x"></i> Venció el {{ a.hasta|date:"j M" }}
+            {% elif a.dias_restantes == 0 %}<i class="bi bi-calendar-check"></i> Último día: hoy
+            {% else %}<i class="bi bi-calendar-event"></i> Hasta el {{ a.hasta|date:"l j" }}{% endif %}
+        </span>
+        <div class="acciones-fila ms-auto">
+            <input type="checkbox" class="nl-switch" {% if a.activo %}checked{% endif %} data-alternar-url="{% url 'alternar_activo' 'aviso' a.id %}" aria-label="Visible para los alumnos" title="Visible para los alumnos">
+            <a data-modal href="{% url 'editar_aviso' a.id %}" class="p-btn xs icono fantasma" title="Editar" aria-label="Editar aviso"><i class="bi bi-pencil"></i></a>
+            <form method="post" action="{% url 'eliminar' 'aviso' a.id %}" data-confirmar="Tus alumnos dejarán de verlo." data-titulo="¿Borrar este aviso?" data-boton="Borrar" data-peligro>
+                {% csrf_token %}<button class="p-btn xs icono fantasma" title="Borrar" aria-label="Borrar aviso"><i class="bi bi-trash"></i></button>
+            </form>
+        </div>
+    </div>
+</div>

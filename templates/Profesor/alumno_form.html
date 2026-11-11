@@ -94,10 +94,22 @@
                     </div>
                 </section>
 
+                <!-- Paso 5 -->
+                <section class="p-card paso mt-3{% if alumno %} mb-3{% endif %}">
+                    <div class="paso-cabeza"><span class="paso-num">5</span><div><h3>Cumpleaños <span class="text-muted-p fw-normal" style="font-size:.85rem">(opcional)</span></h3><p>Solo día y mes. Ese día verá confeti y un «¡Feliz cumpleaños!» en su tablero.</p></div></div>
+                    <div class="p-card-body pt-0">
+                        <div class="d-flex gap-2 align-items-center flex-wrap">
+                            <div style="width:110px">{{ form.cumple_dia }}</div>
+                            <div style="width:170px">{{ form.cumple_mes }}</div>
+                        </div>
+                        {% for e in form.cumple_dia.errors %}<div class="error mt-1" style="color:var(--danger);font-size:.8rem"><i class="bi bi-exclamation-circle"></i> {{ e }}</div>{% endfor %}
+                    </div>
+                </section>
+
                 {% if alumno %}
-                    <!-- Paso 5 -->
+                    <!-- Paso 6 -->
                     <section class="p-card paso">
-                        <div class="paso-cabeza"><span class="paso-num">5</span><div><h3>Estado</h3><p>Para alumnos que se dieron de baja o cambiaron de grupo.</p></div></div>
+                        <div class="paso-cabeza"><span class="paso-num">6</span><div><h3>Estado</h3><p>Para alumnos que se dieron de baja o cambiaron de grupo.</p></div></div>
                         <div class="p-card-body pt-0">
                             <div class="campo-check mb-0">
                                 {{ form.activo }}

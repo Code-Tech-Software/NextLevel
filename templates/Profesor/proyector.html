@@ -9,6 +9,7 @@
     .proy { padding: 2rem clamp(1rem, 3vw, 3rem); }
     .proy-cabeza { display: flex; align-items: center; gap: 1.25rem; margin-bottom: 1.5rem; }
     .proy-cabeza .e { font-size: 4rem; line-height: 1; }
+    .proy-cumple { margin: -.5rem 0 1.5rem; padding: .8rem 1.4rem; border-radius: 18px; text-align: center; font-weight: 800; font-size: clamp(1.3rem, 2.6vw, 2rem); background: linear-gradient(90deg, #f472b6, #a855f7, #38bdf8); color: #fff; box-shadow: 0 6px 0 rgba(0, 0, 0, .15); }
     .proy-cabeza h1 { font-size: clamp(2rem, 4vw, 3.2rem); margin: 0; line-height: 1; }
     .proy-cabeza .s { font-weight: 800; opacity: .75; font-size: 1.2rem; }
     .proy-cabeza .reloj { margin-left: auto; font-family: var(--fuente-titulo); font-size: 2.6rem; opacity: .9; }
@@ -41,6 +42,9 @@
         </div>
         <div class="reloj" id="reloj">--:--</div>
     </div>
+    {% if cumplen_hoy %}
+        <div class="proy-cumple">🎂 ¡Feliz cumpleaños, {% for a in cumplen_hoy %}{{ a.nombre }}{% if not forloop.last %}{% if forloop.revcounter == 2 %} y {% else %}, {% endif %}{% endif %}{% endfor %}! 🎉</div>
+    {% endif %}
 
     <div class="row g-4">
         <div class="col-xl-7">

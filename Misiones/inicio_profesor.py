@@ -11,6 +11,7 @@ from django.db.models import Count, F, Min, Q, Sum, Value
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 
+from . import cumpleanos as cumple
 from . import gamificacion as juego
 from .models import Alumno, Batalla, Clase, MetaGrupo, Mision, Movimiento, ProgresoMision
 
@@ -237,3 +238,10 @@ def metas_en_curso(hoy):
         meta.faltan = max(0, meta.objetivo - meta.valor)
         meta.dias = (meta.fecha_limite - hoy).days if meta.fecha_limite else None
     return metas
+
+
+def cumpleanos(hoy, dias=7):
+    """Alumnos de las clases activas que cumplen hoy (o cumplieron el fin de semana) o en los próximos días."""
+    alumnos = (Alumno.objects.filter(activo=True, cumple_dia__isnull=False, cumple_mes__isnull=False,
+                                     clases__activa=True).distinct().prefetch_related('clases'))
+    return cumple.cercanos(alumnos, hoy, dias)

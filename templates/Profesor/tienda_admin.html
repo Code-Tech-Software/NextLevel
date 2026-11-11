@@ -7,7 +7,7 @@
 <div class="page-head">
     <div>
         <h1>Artículos de la tienda</h1>
-        <p>Controla precios, stock de premios físicos, límites por alumno y nivel requerido.</p>
+        <p>Controla precios, ofertas, stock de premios físicos, límites por alumno y nivel requerido.</p>
     </div>
     <div class="acciones">
         <a href="{% url 'pedidos' %}" class="p-btn"><i class="bi bi-box-seam"></i> Ver pedidos</a>
@@ -40,7 +40,14 @@
                         </div>
                     </td>
                     <td><span class="p-badge">{{ a.get_tipo_display }}</span></td>
-                    <td class="num"><i class="bi bi-coin text-warning"></i> {{ a.costo_monedas }}</td>
+                    <td class="num">
+                        {% if a.en_oferta %}
+                            <div class="precio-oferta"><s>{{ a.costo_monedas }}</s> <i class="bi bi-coin text-warning"></i> {{ a.precio }}</div>
+                            <a data-modal href="{% url 'oferta_articulo' a.id %}" class="p-badge rojo text-decoration-none" title="Editar la oferta">−{{ a.descuento }} %{% if a.dias_oferta is not None %} · {% if a.dias_oferta == 0 %}último día{% else %}{{ a.dias_oferta }} día{{ a.dias_oferta|pluralize }}{% endif %}{% endif %}</a>
+                        {% else %}
+                            <i class="bi bi-coin text-warning"></i> {{ a.costo_monedas }}
+                        {% endif %}
+                    </td>
                     <td class="text-center">
                         <div class="d-inline-flex align-items-center gap-1">
                             <button type="button" class="p-btn xs icono" data-stock-url="{% url 'ajustar_stock' a.id %}" data-accion="restar" data-objetivo="stock-{{ a.id }}" aria-label="Restar 1"><i class="bi bi-dash"></i></button>
@@ -49,7 +56,9 @@
                         </div>
                         <div class="alerta-stock {% if a.stock is None or a.stock > 3 %}d-none{% endif %}"><span class="p-badge {% if a.stock == 0 %}rojo{% else %}ambar{% endif %} mt-1">{% if a.stock == 0 %}Agotado{% else %}Poco stock{% endif %}</span></div>
                     </td>
-                    <td class="num">{{ a.vendidos }}{% if a.por_entregar %} <a href="{% url 'pedidos' %}" class="p-badge ambar text-decoration-none ms-1">{{ a.por_entregar }} por entregar</a>{% endif %}</td>
+                    <td class="num">{{ a.vendidos }}{% if a.por_entregar %} <a href="{% url 'pedidos' %}" class="p-badge ambar text-decoration-none ms-1">{{ a.por_entregar }} por entregar</a>{% endif %}
+                        {% if a.lo_quieren %}<div class="text-muted-p" style="font-size:.74rem" title="Alumnos que lo eligieron como su meta de ahorro">🐷 {{ a.lo_quieren }} ahorra{{ a.lo_quieren|pluralize:"n" }} para él</div>{% endif %}
+                    </td>
                     <td style="font-size:.78rem" class="text-muted-p">
                         {% if a.nivel_requerido > 1 %}<div>Nivel {{ a.nivel_requerido }}+</div>{% endif %}
                         {% if a.limite_por_alumno %}<div>Máx. {{ a.limite_por_alumno }} por alumno</div>{% endif %}
@@ -62,6 +71,9 @@
                             <div class="dropdown">
                                 <button class="p-btn xs icono fantasma" data-bs-toggle="dropdown" aria-label="Más opciones"><i class="bi bi-three-dots"></i></button>
                                 <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a data-modal class="dropdown-item" href="{% url 'oferta_articulo' a.id %}"><i class="bi bi-tag"></i> {% if a.en_oferta %}Editar la oferta{% else %}Poner en oferta{% endif %}</a></li>
+                                    {% if a.en_oferta %}<li><form method="post" action="{% url 'oferta_articulo' a.id %}">{% csrf_token %}<input type="hidden" name="quitar" value="1"><button class="dropdown-item"><i class="bi bi-x-circle"></i> Quitar oferta</button></form></li>{% endif %}
+                                    <li><hr class="dropdown-divider"></li>
                                     <li><form method="post" action="{% url 'ajustar_stock' a.id %}">{% csrf_token %}<input type="hidden" name="accion" value="ilimitado"><button class="dropdown-item"><i class="bi bi-infinity"></i> Stock ilimitado</button></form></li>
                                     <li><form method="post" action="{% url 'ajustar_stock' a.id %}">{% csrf_token %}<input type="hidden" name="accion" value="fijar"><input type="hidden" name="cantidad" value="0"><button class="dropdown-item"><i class="bi bi-slash-circle"></i> Marcar agotado</button></form></li>
                                     <li><hr class="dropdown-divider"></li>

@@ -1,0 +1,68 @@
+{% extends base_plantilla|default:"Profesor/baseProfesor.html" %}
+{% load nextlevel %}
+{% block title %}Regalar a {{ alumno.nombre }}{% endblock %}
+{% block migas %}<a href="{% url 'alumnos_lista' %}">Alumnos</a><i class="bi bi-chevron-right"></i><a href="{% url 'alumno_detalle' alumno.id %}">{{ alumno.nombre }} {{ alumno.apellido }}</a><i class="bi bi-chevron-right"></i><span class="actual">Regalar</span>{% endblock %}
+
+{% block content %}
+<form method="post" action="{{ request.get_full_path }}" class="form-panel" data-form="regalo" novalidate>
+    {% csrf_token %}
+    <div class="modal-header">
+        <span class="icono-form"><i class="bi bi-gift"></i></span>
+        <div class="min-w-0 flex-grow-1">
+            <h2 class="titulo-form">Regalarle un premio a {{ alumno.nombre }}</h2>
+            <p class="sub-form">No gasta sus monedas y le llega un aviso de celebración. Si el premio tiene piezas contadas, usa una.</p>
+        </div>
+        {% if modal %}<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>{% endif %}
+    </div>
+
+    <div class="modal-body">
+        {% if error %}<div class="aviso-error"><i class="bi bi-exclamation-circle"></i> {{ error }}</div>{% endif %}
+
+        {% if articulos %}
+            <div class="campo">
+                <div class="d-flex align-items-center justify-content-between gap-2 mb-2 flex-wrap">
+                    <span class="etiqueta-campo mb-0">¿Qué le regalas?</span>
+                    {% if articulos|length > 6 %}
+                        <input type="search" class="p-input" style="height:34px;max-width:220px;font-size:.82rem" placeholder="Buscar premio…" aria-label="Buscar premio" data-buscar-regalo>
+                    {% endif %}
+                </div>
+                <div class="regalos" role="radiogroup" aria-label="Premio">
+                    {% for a in articulos %}
+                        {% with info=a|info_articulo %}
+                        <label class="regalo-op {% if a.agotado %}agotado{% endif %}" data-nombre="{{ a.nombre|lower }}">
+                            <input type="radio" name="articulo" value="{{ a.id }}" {% if a.agotado %}disabled{% endif %} {% if elegido == a.id|stringformat:'s' %}checked{% endif %}
+                                   data-entrego="{% if a.requiere_validacion and a.tipo != 'avatar' %}1{% endif %}">
+                            <span class="vista">{% if a.imagen %}<img src="{{ a.imagen|imagen_web:'mini' }}" alt="" loading="lazy">{% else %}{{ info.emoji }}{% endif %}</span>
+                            <span class="min-w-0">
+                                <span class="n d-block text-truncate">{{ a.nombre }}</span>
+                                <span class="s d-block">{{ info.emoji }} {{ info.texto }} · {{ a.costo_monedas }} monedas{% if a.agotado %} · Agotado{% elif a.stock is not None %} · quedan {{ a.stock }}{% endif %}</span>
+                            </span>
+                        </label>
+                        {% endwith %}
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="campo">
+                <label for="regalo-mensaje">Mensaje para {{ alumno.nombre }} <span class="text-muted-p fw-normal">(opcional)</span></label>
+                <input type="text" id="regalo-mensaje" name="mensaje" class="p-input" maxlength="200" placeholder="Ej. ¡Por ganar la batalla de hoy! 🏆" value="{{ request.POST.mensaje|default:'' }}">
+            </div>
+
+            <div class="campo-check" data-entregar-despues hidden>
+                <input type="checkbox" id="regalo-despues" name="despues" value="1" class="form-check-input mt-1">
+                <div>
+                    <label for="regalo-despues">Todavía no se lo doy</label>
+                    <div class="ayuda text-muted-p" style="font-size:.78rem">Queda en Pedidos «Por entregar» hasta que se lo des. Si no lo marcas, se cuenta como entregado.</div>
+                </div>
+            </div>
+        {% else %}
+            <div class="vacio-p"><i class="bi bi-shop"></i><h3>No hay premios en la tienda</h3><p class="mb-0">Agrega artículos (o hazlos visibles) para poder regalarlos.</p></div>
+        {% endif %}
+    </div>
+
+    <div class="modal-footer">
+        {% if modal %}<button type="button" class="p-btn fantasma" data-bs-dismiss="modal">Cancelar</button>{% else %}<a href="{% url 'alumno_detalle' alumno.id %}" class="p-btn fantasma">Cancelar</a>{% endif %}
+        <button type="submit" class="p-btn primario" {% if not articulos %}disabled{% endif %}><i class="bi bi-gift"></i> Regalar</button>
+    </div>
+</form>
+{% endblock %}

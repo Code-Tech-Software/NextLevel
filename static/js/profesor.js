@@ -2522,10 +2522,98 @@
         actualizar();
     }
 
+    // ---------- Oferta de un artículo ----------
+    function iniciarFormOferta(raiz = document) {
+        const form = $('form[data-form="oferta"]', raiz);
+        if (!form || form.dataset.listo) return;
+        form.dataset.listo = '1';
+        const precio = Number(form.dataset.precio) || 0;
+        const descuento = $('[name=descuento]', form);
+        const hasta = $('[name=hasta]', form);
+        const actualizar = () => {
+            const d = Math.min(90, Math.max(0, parseInt(descuento.value, 10) || 0));
+            $('[data-oferta-pct]', form).textContent = `−${d} %`;
+            $('[data-oferta-precio]', form).textContent = Math.max(1, Math.round(precio * (100 - d) / 100));
+            $$('[data-descuento]', form).forEach(b => b.classList.toggle('activo', Number(b.dataset.descuento) === d));
+            $$('[data-hasta]', form).forEach(b => b.classList.toggle('activo', b.dataset.hasta === hasta.value));
+            const fin = $('[data-oferta-fin]', form);
+            if (!hasta.value) {
+                fin.textContent = 'Sin fecha: dura hasta que la quites.';
+            } else {
+                const [a, m, dia] = hasta.value.split('-').map(Number);
+                const fecha = new Date(a, m - 1, dia).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' });
+                fin.textContent = `Termina al final del ${fecha}.`;
+            }
+        };
+        $$('[data-descuento]', form).forEach(b => b.addEventListener('click', () => { descuento.value = b.dataset.descuento; actualizar(); }));
+        $$('[data-hasta]', form).forEach(b => b.addEventListener('click', () => { hasta.value = b.dataset.hasta; actualizar(); }));
+        descuento.addEventListener('input', actualizar);
+        hasta.addEventListener('input', actualizar);
+        // La ventana envía el formulario completo: «Quitar oferta» se marca en un campo oculto
+        $('[data-quitar-oferta]', form)?.addEventListener('click', () => {
+            $('[name=quitar]', form).value = '1';
+            form.requestSubmit();
+        });
+        actualizar();
+    }
+
+    // ---------- Regalar un premio ----------
+    function iniciarFormRegalo(raiz = document) {
+        const form = $('form[data-form="regalo"]', raiz);
+        if (!form || form.dataset.listo) return;
+        form.dataset.listo = '1';
+        const despues = $('[data-entregar-despues]', form);
+        const revisar = () => {
+            const elegido = $('[name=articulo]:checked', form);
+            $$('.regalo-op', form).forEach(op => op.classList.toggle('activo', op.contains(elegido)));
+            if (despues) despues.hidden = !(elegido && elegido.dataset.entrego);
+        };
+        $$('[name=articulo]', form).forEach(r => r.addEventListener('change', revisar));
+        $('[data-buscar-regalo]', form)?.addEventListener('input', e => {
+            const q = normalizar(e.target.value.trim());
+            $$('.regalo-op', form).forEach(op => { op.hidden = Boolean(q) && !normalizar(op.dataset.nombre).includes(q); });
+        });
+        revisar();
+    }
+
+    // ---------- Aviso para la clase ----------
+    function iniciarFormAviso(raiz = document) {
+        const form = $('form[data-form="aviso"]', raiz);
+        if (!form || form.dataset.listo) return;
+        form.dataset.listo = '1';
+        const texto = $('[name=texto]', form);
+        const icono = $('[name=icono]', form);
+        const hasta = $('input[type=date][name=hasta]', form);
+        const previa = $('[data-previa]', form);
+        const actualizar = () => {
+            $('[data-contador]', form).textContent = `${texto.value.length}/200`;
+            $('[data-previa-texto]', form).textContent = texto.value.trim() || 'Escribe tu aviso…';
+            $('[data-previa-icono]', form).textContent = icono.value || '📢';
+            $$('[data-icono]', form).forEach(b => b.classList.toggle('activo', b.dataset.icono === icono.value));
+            const estilo = $('[name=estilo]:checked', form)?.value || 'info';
+            previa.className = `aviso-previa ${estilo}`;
+            $$('.estilo-op', form).forEach(op => op.classList.toggle('activo', op.contains($('[name=estilo]:checked', form))));
+            $$('.grupo-op', form).forEach(op => op.classList.toggle('activo', $('input', op).checked));
+            $$('[data-hasta]', form).forEach(b => b.classList.toggle('activo', b.dataset.hasta === hasta.value));
+        };
+        $$('[data-icono]', form).forEach(b => b.addEventListener('click', () => { icono.value = b.dataset.icono; actualizar(); }));
+        $$('[data-hasta]', form).forEach(b => b.addEventListener('click', () => { hasta.value = b.dataset.hasta; actualizar(); }));
+        $('[data-todos-grupos]', form)?.addEventListener('click', () => {
+            const casillas = $$('[name=clases]', form);
+            const marcar = casillas.some(c => !c.checked);
+            casillas.forEach(c => { c.checked = marcar; });
+            actualizar();
+        });
+        form.addEventListener('input', actualizar);
+        form.addEventListener('change', actualizar);
+        actualizar();
+    }
+
     const INICIADORES = [
         iniciarFormMision, iniciarFormLogro, iniciarFormDiaria, iniciarFormArticulo, iniciarFormClase, iniciarFormMundo,
         iniciarFormNivel, iniciarFormAlumno, iniciarFormMasiva, iniciarFormEquipo, iniciarFormMeta, iniciarFormConducta,
-        iniciarFormJuego, iniciarFormQuitarLogro, iniciarFormApp, iniciarFormBatalla,
+        iniciarFormJuego, iniciarFormQuitarLogro, iniciarFormApp, iniciarFormBatalla, iniciarFormOferta, iniciarFormRegalo,
+        iniciarFormAviso,
     ];
     function iniciarFormularios(raiz = document) {
         INICIADORES.forEach(iniciar => {

@@ -94,6 +94,8 @@ def otorgar(alumno, xp=0, monedas=0, tipo='ajuste', descripcion='', clase=None):
 
     alumno.xp_total = fresco.xp_total
     alumno.monedas = fresco.monedas
+    if fresco.ahorro_id and (monedas or nivel_despues > nivel_antes):
+        revisar_ahorro(fresco)
 
     if xp > 0:
         registrar_evento(alumno, 'xp', xp, clase)
@@ -677,44 +679,177 @@ def comprar(alumno, articulo):
             ya = CompraAlumno.objects.filter(alumno=al, articulo=art).exclude(estado='cancelado').count()
             if ya >= art.limite_por_alumno:
                 return False, f'Ya alcanzaste el límite de {art.limite_por_alumno} para este artículo.'
-        if al.monedas < art.costo_monedas:
+        precio = art.precio   # con el descuento, si está en oferta
+        if al.monedas < precio:
             return False, '¡Oh no! No tienes suficientes monedas para este artículo.'
 
         if art.stock is not None:
             art.stock -= 1
             art.save(update_fields=['stock'])
+        cambios = []
         if art.tipo == 'avatar' and art.imagen:
             al.avatar = art.imagen
-            al.save(update_fields=['avatar'])
+            cambios.append('avatar')
+        meta_cumplida = al.ahorro_id == art.id
+        if meta_cumplida:
+            al.ahorro, al.ahorro_avisado = None, False
+            cambios += ['ahorro', 'ahorro_avisado']
+        if cambios:
+            al.save(update_fields=cambios)
 
         CompraAlumno.objects.create(
-            alumno=al, articulo=art, costo_pagado=art.costo_monedas,
+            alumno=al, articulo=art, costo_pagado=precio,
             estado='pendiente' if art.requiere_validacion else 'entregado',
             fecha_entrega=None if art.requiere_validacion else timezone.now(),
         )
-        otorgar(al, monedas=-art.costo_monedas, tipo='compra', descripcion=f'Compra: {art.nombre}')
+        oferta = f' (oferta −{art.descuento} %)' if art.en_oferta else ''
+        otorgar(al, monedas=-precio, tipo='compra', descripcion=f'Compra: {art.nombre}{oferta}')
 
     alumno.monedas = al.monedas
     alumno.avatar = al.avatar
+    alumno.ahorro_id = al.ahorro_id
+    extra = ' ¡Cumpliste tu meta de ahorro! 🐷' if meta_cumplida else ''
     if art.tipo == 'avatar':
-        return True, f'¡Nuevo avatar equipado! Te ves increíble 😎'
+        return True, f'¡Nuevo avatar equipado! Te ves increíble 😎{extra}'
     if art.requiere_validacion:
-        return True, f'¡Compraste "{art.nombre}"! El profe te lo entregará pronto 🎁'
-    return True, f'¡Compraste "{art.nombre}" con éxito! 🎉'
+        return True, f'¡Compraste "{art.nombre}"! El profe te lo entregará pronto 🎁{extra}'
+    return True, f'¡Compraste "{art.nombre}" con éxito! 🎉{extra}'
 
 
-def entregar_compra(compra):
+def entregar_compra(compra, avisar=True):
     if compra.estado != 'pendiente':
         return False
     compra.estado = 'entregado'
     compra.fecha_entrega = timezone.now()
     compra.save(update_fields=['estado', 'fecha_entrega'])
-    notificar(compra.alumno, 'tienda', '¡Tu premio fue entregado!', f'Disfruta tu "{compra.articulo.nombre}".', '🎁')
+    if avisar:
+        notificar(compra.alumno, 'tienda', '¡Tu premio fue entregado!', f'Disfruta tu "{compra.articulo.nombre}".', '🎁')
+    return True
+
+
+def entregar_pendientes(alumno):
+    """Marca como entregados todos los premios que el alumno tiene por recibir, con un solo aviso.
+    Devuelve los nombres de lo que se entregó."""
+    entregados = [c.articulo.nombre for c in alumno.compras.filter(estado='pendiente').select_related('articulo')
+                  .order_by('fecha_compra') if entregar_compra(c, avisar=False)]
+    if len(entregados) == 1:
+        notificar(alumno, 'tienda', '¡Tu premio fue entregado!', f'Disfruta tu "{entregados[0]}".', '🎁')
+    elif entregados:
+        notificar(alumno, 'tienda', f'¡Recibiste tus {len(entregados)} premios!', ', '.join(entregados)[:255], '🎁')
+    return entregados
+
+
+def regalar(alumno, articulo, mensaje='', entregar_despues=False):
+    """El profe le regala al alumno un artículo de la tienda: no gasta monedas, pero sí usa una pieza del stock.
+    Los avatares se le ponen de una vez. Devuelve (ok, mensaje)."""
+    with transaction.atomic():
+        art = ArticuloTienda.objects.select_for_update().get(pk=articulo.pk)
+        al = Alumno.objects.select_for_update().get(pk=alumno.pk)
+        if art.agotado:
+            return False, f'«{art.nombre}» está agotado: súmale piezas en la tienda para poder regalarlo.'
+        if art.tipo == 'avatar' and not art.imagen:
+            return False, f'«{art.nombre}» no tiene imagen: agrégasela antes de regalarlo.'
+        if art.stock is not None:
+            art.stock -= 1
+            art.save(update_fields=['stock'])
+        pendiente = entregar_despues and art.requiere_validacion and art.tipo != 'avatar'
+        CompraAlumno.objects.create(alumno=al, articulo=art, costo_pagado=0, regalo=True,
+                                    estado='pendiente' if pendiente else 'entregado',
+                                    fecha_entrega=None if pendiente else timezone.now())
+        cambios = []
+        if art.tipo == 'avatar':
+            al.avatar = art.imagen
+            cambios.append('avatar')
+        if al.ahorro_id == art.id:   # ya no necesita ahorrar para eso
+            al.ahorro, al.ahorro_avisado = None, False
+            cambios += ['ahorro', 'ahorro_avisado']
+        if cambios:
+            al.save(update_fields=cambios)
+    texto = mensaje.strip() or ('Tu profe te lo entregará pronto.' if pendiente else '¡Disfrútalo!')
+    notificar(al, 'tienda', f'¡Tu profe te regaló «{art.nombre}»!'[:120], texto[:255], '🎁', celebrar=True)
+    alumno.avatar = al.avatar
+    if pendiente:
+        return True, f'Le regalaste «{art.nombre}» a {al.nombre}. Quedó en Pedidos por entregar.'
+    return True, f'Le regalaste «{art.nombre}» a {al.nombre}.'
+
+
+# ========================
+# META DE AHORRO
+# ========================
+def elegir_ahorro(alumno, articulo):
+    """Pone (o quita, con None) el premio para el que el alumno está ahorrando."""
+    alumno.ahorro = articulo
+    alumno.ahorro_avisado = bool(articulo) and alumno.monedas >= articulo.precio
+    alumno.save(update_fields=['ahorro', 'ahorro_avisado'])
+
+
+def revisar_ahorro(alumno):
+    """Avisa (una sola vez) cuando al alumno ya le alcanza para su meta; si después gasta y deja de alcanzarle,
+    se le vuelve a avisar la próxima vez que junte lo suficiente."""
+    articulo = ArticuloTienda.objects.filter(pk=alumno.ahorro_id, activo=True).first()
+    if not articulo:
+        return
+    alcanza = alumno.monedas >= articulo.precio
+    if alcanza == alumno.ahorro_avisado:
+        return
+    Alumno.todos.filter(pk=alumno.pk).update(ahorro_avisado=alcanza)
+    alumno.ahorro_avisado = alcanza
+    if alcanza:
+        notificar(alumno, 'tienda', f'¡Ya te alcanza para «{articulo.nombre}»!'[:120],
+                  '¡Cumpliste tu meta de ahorro! Ve a la tienda a comprarlo. 🐷', '🐷', celebrar=True)
+
+
+def avisar_oferta(articulo):
+    """Cuando el profe pone en oferta un artículo, se les avisa a quienes ahorran para él."""
+    if not articulo.en_oferta:
+        return 0
+    alumnos = list(articulo.ahorradores.filter(activo=True))
+    for alumno in alumnos:
+        alcanza = alumno.monedas >= articulo.precio
+        detalle = '¡Ya te alcanza! Ve a la tienda.' if alcanza else f'Te faltan {articulo.precio - alumno.monedas} monedas.'
+        notificar(alumno, 'tienda', f'¡Tu meta «{articulo.nombre}» está en oferta!'[:120],
+                  f'Ahora cuesta {articulo.precio} monedas en vez de {articulo.costo_monedas}. {detalle}', '🏷️')
+        if alcanza != alumno.ahorro_avisado:
+            Alumno.todos.filter(pk=alumno.pk).update(ahorro_avisado=alcanza)
+    return len(alumnos)
+
+
+def reembolsar_avatar(compra):
+    """Devuelve un avatar comprado (aunque ya se haya entregado): regresa sus monedas y la pieza al stock. Si el
+    alumno lo traía puesto, se pone el último avatar que le quede o, si no tiene otro, el robot clásico.
+    Devuelve False si no es un avatar o si ya se había reembolsado."""
+    with transaction.atomic():
+        compra = CompraAlumno.objects.select_for_update().select_related('articulo').get(pk=compra.pk)
+        if compra.articulo.tipo != 'avatar' or compra.estado == 'cancelado':
+            return False
+        compra.estado = 'cancelado'
+        compra.save(update_fields=['estado'])
+        articulo = ArticuloTienda.objects.select_for_update().get(pk=compra.articulo_id)
+        if articulo.stock is not None:
+            articulo.stock += 1
+            articulo.save(update_fields=['stock'])
+        alumno = Alumno.todos.select_for_update().get(pk=compra.alumno_id)
+        mis_avatares = (CompraAlumno.objects.filter(alumno=alumno, articulo__tipo='avatar').exclude(estado='cancelado')
+                        .exclude(articulo__imagen='').select_related('articulo'))
+        lo_traia = bool(articulo.imagen and alumno.avatar and alumno.avatar.name == articulo.imagen.name)
+        if lo_traia and not mis_avatares.filter(articulo=articulo).exists():   # si lo compró dos veces, lo conserva
+            otro = mis_avatares.order_by('-fecha_compra', '-id').first()
+            alumno.avatar = otro.articulo.imagen if otro else None
+            alumno.save(update_fields=['avatar'])
+        otorgar(alumno, monedas=compra.costo_pagado, tipo='reembolso', descripcion=f'Reembolso del avatar: {articulo.nombre}')
+    if compra.costo_pagado:
+        notificar(alumno, 'tienda', 'El profe te reembolsó un avatar',
+                  f'Te devolvió {compra.costo_pagado} monedas de «{articulo.nombre}».', '↩️')
+    else:
+        notificar(alumno, 'tienda', 'Tu profe retiró un avatar', f'«{articulo.nombre}» ya no está en tu mochila.', '↩️')
     return True
 
 
 def cancelar_compra(compra):
-    """Cancela una compra pendiente: devuelve las monedas y regresa la pieza al stock."""
+    """Cancela una compra pendiente: devuelve las monedas y regresa la pieza al stock.
+    Los avatares se pueden reembolsar aunque ya se hayan entregado (ver reembolsar_avatar)."""
+    if compra.articulo.tipo == 'avatar':
+        return reembolsar_avatar(compra)
     with transaction.atomic():
         compra = CompraAlumno.objects.select_for_update().select_related('articulo', 'alumno').get(pk=compra.pk)
         if compra.estado != 'pendiente':
@@ -919,7 +1054,8 @@ __all__ = [
     'misiones_del_dia', 'registrar_evento', 'reclamar_diaria', 'estadisticas_alumno', 'verificar_logros',
     'otorgar_logro', 'progreso_logros', 'misiones_en_orden', 'avance_del_grupo', 'resumir_avance', 'construir_ruta', 'buscar_en_ruta',
     'abrir_cofre', 'calificar',
-    'rechazar', 'comprar', 'entregar_compra', 'cancelar_compra', 'ajustar_monedas', 'ranking_clase',
+    'rechazar', 'comprar', 'entregar_compra', 'entregar_pendientes', 'cancelar_compra', 'reembolsar_avatar', 'regalar',
+    'elegir_ahorro', 'revisar_ahorro', 'avisar_oferta', 'ajustar_monedas', 'ranking_clase',
     'calcular_nivel', 'info_rangos', 'equipo_de', 'sumar_puntos_equipo', 'dar_puntos_equipo', 'ranking_equipos',
     'asignar_equipo', 'repartir_equipos', 'registrar_conducta', 'deshacer_conducta', 'progreso_meta',
     'completar_meta', 'revisar_metas', 'metas_visibles', 'alumnos_que_cumplen',

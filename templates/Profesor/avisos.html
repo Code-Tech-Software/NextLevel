@@ -1,0 +1,38 @@
+{% extends 'Profesor/baseProfesor.html' %}
+{% block title %}Avisos{% endblock %}
+{% block titulo_pagina %}Avisos para la clase{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1>Avisos para la clase</h1>
+        <p>Mensajes cortos que tus alumnos ven arriba de su tablero, por ejemplo: «Mañana traigan su Arduino 🔌».</p>
+    </div>
+    <div class="acciones"><a data-modal href="{% url 'alta_aviso' %}" class="p-btn primario"><i class="bi bi-megaphone"></i> Nuevo aviso</a></div>
+</div>
+
+<h2 class="h6 fw-semibold mb-2">Se están mostrando <span class="p-badge ms-1">{{ vigentes|length }}</span></h2>
+<div class="row g-3 mb-4">
+    {% for a in vigentes %}
+        <div class="col-md-6 col-xl-4">{% include 'Profesor/_aviso_tarjeta.html' %}</div>
+    {% empty %}
+        <div class="col-12">
+            <div class="p-card vacio-p">
+                <i class="bi bi-megaphone"></i>
+                <h3>No hay avisos activos</h3>
+                <p>Avísales algo a tus grupos: lo verán al entrar a la plataforma.</p>
+                <a data-modal href="{% url 'alta_aviso' %}" class="p-btn primario"><i class="bi bi-plus-lg"></i> Escribir un aviso</a>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+
+{% if pasados %}
+    <h2 class="h6 fw-semibold mb-2 text-muted-p">Vencidos u ocultos</h2>
+    <div class="row g-3">
+        {% for a in pasados %}
+            <div class="col-md-6 col-xl-4">{% include 'Profesor/_aviso_tarjeta.html' %}</div>
+        {% endfor %}
+    </div>
+{% endif %}
+{% endblock %}

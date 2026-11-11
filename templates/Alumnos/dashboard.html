@@ -8,6 +8,20 @@
     <div class="row g-4">
         <!-- ===== Columna principal ===== -->
         <div class="col-xl-8">
+            {% if es_mi_cumple %}
+                <section class="cumple-banner" data-cumple>
+                    <span class="pastel" aria-hidden="true">🎂</span>
+                    <div class="min-w-0">
+                        <div class="kicker">Hoy es un día especial</div>
+                        <div class="t">¡Feliz cumpleaños, {{ alumno.nombre }}! 🎉</div>
+                        <div class="d">Tu profe y todos tus compañeros te desean un día increíble.</div>
+                    </div>
+                </section>
+            {% endif %}
+            {% if cumplen_hoy %}
+                <div class="cumple-companeros">🎈 Hoy {% if cumplen_hoy|length == 1 %}cumple{% else %}cumplen{% endif %} años {% for a in cumplen_hoy %}<b>{{ a.nombre }}</b>{% if not forloop.last %}{% if forloop.revcounter == 2 %} y {% else %}, {% endif %}{% endif %}{% endfor %}. ¡No olvides felicitar{% if cumplen_hoy|length == 1 %}lo{% else %}los{% endif %}!</div>
+            {% endif %}
+            {% include 'Alumnos/_avisos.html' %}
             <section class="heroe">
                 <div class="estrellitas"></div>
                 <div class="heroe-contenido">
@@ -132,6 +146,26 @@
 
         <!-- ===== Columna lateral ===== -->
         <div class="col-xl-4">
+            {% if ahorro %}
+                <section class="g-card meta-ahorro mb-4 {% if not ahorro.faltan %}lista{% endif %}">
+                    <div class="g-card-titulo"><span>🐷</span> Estoy ahorrando para…</div>
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="premio-ahorro">
+                            {% if ahorro.articulo.imagen %}<img src="{{ ahorro.articulo.imagen|imagen_web:'mini' }}" alt="" loading="lazy">{% else %}{{ ahorro.articulo|info_articulo|get_item:'emoji' }}{% endif %}
+                        </span>
+                        <div class="min-w-0 flex-grow-1">
+                            <div class="nombre text-truncate">{{ ahorro.articulo.nombre }}</div>
+                            <div class="cuenta"><i class="bi bi-coin" style="color:var(--moneda)"></i> <b>{{ alumno.monedas }}</b> de {{ ahorro.precio }}{% if ahorro.articulo.en_oferta %} <span class="chip rojo chico">🏷️ −{{ ahorro.articulo.descuento }} %</span>{% endif %}</div>
+                        </div>
+                    </div>
+                    <div class="barra oro mt-3"><span style="width:0" data-ancho="{{ ahorro.pct }}"></span></div>
+                    {% if ahorro.faltan %}
+                        <div class="falta">¡Te faltan <b>{{ ahorro.faltan }}</b> monedas! Completa misiones para juntarlas.</div>
+                    {% else %}
+                        <a href="{% url 'tienda_alumno' clase.id %}" class="g-btn oro ancho mt-3"><i class="bi bi-bag-check-fill"></i> ¡Ya te alcanza! Ir a la tienda</a>
+                    {% endif %}
+                </section>
+            {% endif %}
             {% if mi_equipo %}
                 <section class="equipo-mio mb-4" style="--c1: {{ mi_equipo.color|color_clase:0 }}; --c2: {{ mi_equipo.color|color_clase:1 }}">
                     <div class="d-flex align-items-center gap-3">

@@ -10,10 +10,11 @@
         <img src="{{ alumno|avatar_url }}" alt="" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:1px solid var(--border)">
         <div>
             <h1>{{ alumno.nombre }} {{ alumno.apellido }} {% if not alumno.activo %}<span class="p-badge">Inactivo</span>{% endif %}</h1>
-            <p>{{ rango.emoji }} {{ rango.nombre }} · Nivel {{ alumno.nivel }} · PIN <code>{{ alumno.pin }}</code> · {% for c in alumno.clases.all %}{{ c.nombre }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
+            <p>{{ rango.emoji }} {{ rango.nombre }} · Nivel {{ alumno.nivel }} · PIN <code>{{ alumno.pin }}</code> · {% for c in alumno.clases.all %}{{ c.nombre }}{% if not forloop.last %}, {% endif %}{% endfor %}{% if alumno.tiene_cumple %} · 🎂 {{ alumno.cumple_texto }}{% endif %}</p>
         </div>
     </div>
     <div class="acciones">
+        <a data-modal href="{% url 'regalar_articulo' alumno.id %}" class="p-btn"><i class="bi bi-gift"></i> Regalar premio</a>
         <a href="{% url 'credenciales' %}?ids={{ alumno.id }}" class="p-btn"><i class="bi bi-printer"></i> Credencial</a>
         <a data-modal href="{% url 'editar_alumno' alumno.id %}" class="p-btn"><i class="bi bi-pencil"></i> Editar</a>
         <form method="post" action="{% url 'eliminar' 'alumno' alumno.id %}" data-confirmar="Se borrará todo su progreso, compras e historial. Si solo dejó la clase, mejor desactívalo." data-titulo="¿Eliminar a {{ alumno.nombre }}?" data-boton="Eliminar" data-peligro>
@@ -24,7 +25,7 @@
 
 <div class="row g-3 mb-3">
     <div class="col-6 col-lg-3"><div class="p-card kpi"><span class="etiqueta"><i class="bi bi-lightning-charge ico-azul"></i> XP total</span><span class="valor">{{ alumno.xp_total }}</span><span class="nota">{{ alumno.xp_faltante }} para nivel {{ alumno.nivel|add:1 }}</span></div></div>
-    <div class="col-6 col-lg-3"><div class="p-card kpi"><span class="etiqueta"><i class="bi bi-coin ico-ambar"></i> Monedas</span><span class="valor">{{ alumno.monedas }}</span><span class="nota">{{ stats.monedas }} ganadas en total</span></div></div>
+    <div class="col-6 col-lg-3"><div class="p-card kpi"><span class="etiqueta"><i class="bi bi-coin ico-ambar"></i> Monedas</span><span class="valor">{{ alumno.monedas }}</span><span class="nota">{% if ahorro %}🐷 Ahorra para «{{ ahorro.nombre }}» ({{ alumno.monedas|porcentaje:ahorro.precio }} %){% else %}{{ stats.monedas }} ganadas en total{% endif %}</span></div></div>
     <div class="col-6 col-lg-3"><div class="p-card kpi"><span class="etiqueta"><i class="bi bi-flag ico-verde"></i> Misiones</span><span class="valor">{{ stats.misiones }}</span><span class="nota">⭐ {{ stats.estrellas }} estrellas · {{ stats.perfectos }} dieces</span></div></div>
     <div class="col-6 col-lg-3"><div class="p-card kpi"><span class="etiqueta"><i class="bi bi-fire ico-rojo"></i> Racha</span><span class="valor">{{ alumno.racha_actual }} días</span><span class="nota">Mejor: {{ alumno.racha_maxima }} · {{ stats.logros }} logros</span></div></div>
 </div>
@@ -143,12 +144,33 @@
         </section>
 
         <section class="p-card">
-            <div class="p-card-head"><h2>Compras</h2></div>
+            <div class="p-card-head">
+                <h2>Compras</h2>
+                {% if por_entregar %}
+                    <div class="derecha">
+                        <form method="post" action="{% url 'entregar_todo_alumno' alumno.id %}">
+                            {% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+                            <button class="p-btn xs exito" title="Marcar como entregados todos sus premios por recibir"><i class="bi bi-check2-all"></i> Entregar {% if por_entregar > 1 %}los {{ por_entregar }}{% else %}el pendiente{% endif %}</button>
+                        </form>
+                    </div>
+                {% endif %}
+            </div>
             <div class="p-card-body sin-pad">
                 {% for c in compras %}
                     <div class="feed-item">
-                        <div class="min-w-0"><div class="t">{{ c.articulo.nombre }}</div><div class="f">{{ c.fecha_compra|date:"d M Y" }} · {{ c.costo_pagado }} monedas</div></div>
-                        <span class="v">{% if c.estado == 'pendiente' %}<span class="p-badge ambar">Por entregar</span>{% elif c.estado == 'entregado' %}<span class="p-badge verde">Entregado</span>{% else %}<span class="p-badge">Cancelado</span>{% endif %}</span>
+                        <div class="min-w-0">
+                            <div class="t">{{ c.articulo.nombre }}{% if c.estado != 'cancelado' and alumno.avatar and c.articulo.imagen and alumno.avatar.name == c.articulo.imagen.name %} <span class="p-badge azul">Lo trae puesto</span>{% endif %}</div>
+                            <div class="f">{{ c.fecha_compra|date:"d M Y" }} · {% if c.regalo %}🎁 Regalo{% else %}{{ c.costo_pagado }} monedas{% endif %}</div>
+                        </div>
+                        <span class="v d-flex align-items-center gap-1">
+                            {% if c.articulo.tipo == 'avatar' and c.estado != 'cancelado' %}
+                                <form method="post" action="{% url 'cancelar_compra' c.id %}" data-confirmar="{% if c.regalo %}Es un regalo: se le quita sin devolver monedas.{% else %}Se devolverán {{ c.costo_pagado }} monedas a {{ alumno.nombre }}.{% endif %} Si lo trae puesto, se le pone otro de sus avatares (o el robot clásico)." data-titulo="¿{% if c.regalo %}Retirar{% else %}Reembolsar{% endif %} el avatar «{{ c.articulo.nombre }}»?" data-boton="{% if c.regalo %}Retirar{% else %}Reembolsar{% endif %}" data-peligro>
+                                    {% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                    <button class="p-btn xs fantasma icono" title="Reembolsar el avatar" aria-label="Reembolsar el avatar «{{ c.articulo.nombre }}»"><i class="bi bi-arrow-counterclockwise"></i></button>
+                                </form>
+                            {% endif %}
+                            {% if c.estado == 'pendiente' %}<span class="p-badge ambar">Por entregar</span>{% elif c.estado == 'entregado' %}<span class="p-badge verde">Entregado</span>{% else %}<span class="p-badge">Reembolsado</span>{% endif %}
+                        </span>
                     </div>
                 {% empty %}
                     <div class="vacio-p">Sin compras.</div>

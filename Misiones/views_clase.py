@@ -9,9 +9,12 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
+from datetime import timedelta
+
+from . import cumpleanos as cumple
 from . import gamificacion as juego
-from .forms import ComportamientoForm, EquipoForm, MetaGrupoForm
-from .models import Alumno, Batalla, Clase, Comportamiento, Equipo, MetaGrupo, PuntosEquipo, RegistroConducta
+from .forms import AvisoForm, ComportamientoForm, EquipoForm, MetaGrupoForm, validar_cumple
+from .models import Alumno, Aviso, Batalla, Clase, Comportamiento, Equipo, MetaGrupo, PuntosEquipo, RegistroConducta
 from .views_profesor import _acomodar, _colores, _formulario, _guardado
 
 CASAS_CLASICAS = [
@@ -318,3 +321,94 @@ def reiniciar_meta(request, pk):
     meta.save(update_fields=['fecha_inicio', 'completada_en', 'progreso_manual', 'activa'])
     messages.success(request, f'La meta "{meta.titulo}" empezó de nuevo desde cero.')
     return redirect('metas_lista')
+
+
+# ========================
+# AVISOS PARA LA CLASE
+# ========================
+ICONOS_AVISO = ['📢', '🔌', '📅', '⚠️', '🎒', '📝', '⏰', '💡', '⚔️', '🏆', '🎉', '🎂']
+
+
+@login_required
+def avisos_lista(request):
+    avisos = list(Aviso.objects.prefetch_related('clases'))
+    return render(request, 'Profesor/avisos.html', {
+        'vigentes': [a for a in avisos if a.vigente],
+        'pasados': [a for a in avisos if not a.vigente][:20],
+        'seccion': 'avisos',
+    })
+
+
+@login_required
+def aviso_form(request, pk=None):
+    aviso = get_object_or_404(Aviso, pk=pk) if pk else None
+    hoy = timezone.localdate()
+    inicial = {}
+    if not aviso:
+        inicial = {'icono': '📢', 'estilo': 'info', 'activo': True, 'hasta': hoy + timedelta(days=6)}
+        if request.GET.get('clase', '').isdigit():
+            inicial['clases'] = [request.GET['clase']]
+    form = AvisoForm(request.POST or None, instance=aviso, initial=inicial)
+    if request.method == 'POST' and form.is_valid():
+        aviso = form.save()
+        grupos = aviso.clases.count()
+        return _guardado(request, f'{aviso.icono} Aviso {"guardado" if pk else "publicado"} para '
+                                  f'{grupos} grupo{"s" if grupos != 1 else ""}.', reverse('avisos_lista'))
+    valor = form['hasta'].value()
+    return _formulario(request, 'Profesor/aviso_form.html', {
+        'form': form,
+        'hasta_valor': valor.isoformat() if hasattr(valor, 'isoformat') else (valor or ''),
+        'aviso': aviso,
+        'iconos': ICONOS_AVISO,
+        'duraciones': [('Hoy', hoy), ('Mañana', hoy + timedelta(days=1)), ('1 semana', hoy + timedelta(days=6))],
+        'hoy': hoy,
+        'seccion': 'avisos',
+    })
+
+
+# ========================
+# CUMPLEAÑOS
+# ========================
+@login_required
+def cumpleanos_clase(request, clase_id=None):
+    """Capturar de una vez los cumpleaños de un grupo (solo día y mes) y ver los que vienen."""
+    if clase_id is None:
+        clase = _primera_clase()
+        return redirect('cumpleanos_clase', clase_id=clase.id) if clase else redirect('clases_lista')
+    clase = get_object_or_404(Clase, id=clase_id)
+    alumnos = list(clase.alumnos.filter(activo=True).order_by('nombre', 'apellido'))
+    errores = {}
+    if request.method == 'POST':
+        def numero(nombre):
+            valor = request.POST.get(nombre, '')
+            return int(valor) if valor.isdigit() else None
+
+        cambios = []
+        for alumno in alumnos:
+            dia, mes = numero(f'dia_{alumno.id}'), numero(f'mes_{alumno.id}')
+            error = validar_cumple(dia, mes)
+            if error:
+                errores[alumno.id] = error
+            elif (alumno.cumple_dia, alumno.cumple_mes) != (dia, mes):
+                cambios.append(alumno)
+            alumno.cumple_dia, alumno.cumple_mes = dia, mes   # si hay errores, se vuelve a mostrar lo escrito
+        if not errores:
+            for alumno in cambios:
+                alumno.save(update_fields=['cumple_dia', 'cumple_mes'])
+            detalle = f' ({len(cambios)} cambio{"s" if len(cambios) != 1 else ""})' if cambios else ''
+            messages.success(request, f'🎂 Cumpleaños de {clase.nombre} guardados{detalle}.')
+            return redirect('cumpleanos_clase', clase_id=clase.id)
+        messages.error(request, 'Revisa las fechas marcadas en rojo.')
+    hoy = timezone.localdate()
+    for alumno in alumnos:
+        alumno.error_cumple = errores.get(alumno.id, '')
+    return render(request, 'Profesor/cumpleanos.html', {
+        'clase': clase,
+        'clases': Clase.objects.filter(activa=True).order_by('grado', 'grupo', 'nombre'),
+        'alumnos': alumnos,
+        'dias': range(1, 32),
+        'meses': list(enumerate(Alumno.MESES, 1)),
+        'proximos': cumple.cercanos([a for a in alumnos if not errores], hoy, dias=30),
+        'capturados': sum(1 for a in alumnos if a.tiene_cumple),
+        'seccion': 'cumpleanos',
+    })
