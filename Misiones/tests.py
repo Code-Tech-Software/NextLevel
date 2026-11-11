@@ -2602,7 +2602,8 @@ class PortalFamiliaTests(BaseJuego):
 
         r = self.client.get(f'/familia/{token}/')
         self.assertContains(r, 'El avance de Ana')
-        self.assertContains(r, 'Estas no son sus calificaciones finales')   # que no se confundan con la final
+        self.assertContains(r, 'No son sus calificaciones finales')   # que no se confundan con la final
+        self.assertNotContains(r, 'promedio')                         # ni un promedio que parezca la calificación final
         for texto in ('¡Muy buen circuito!', '9.0', 'Repasa la pregunta 2', 'Mañana traigan su Arduino', 'Ayudó a un compañero'):
             self.assertContains(r, texto)
         self.assertNotContains(r, '4821')          # nunca su PIN

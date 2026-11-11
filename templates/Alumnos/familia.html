@@ -28,9 +28,9 @@
             <div class="barra verde delgada"><span style="width:0" data-ancho="{{ r.pct }}"></span></div>
         </div>
         <div class="fam-cifra">
-            <span class="e" aria-hidden="true">📝</span>
-            <b>{% if r.promedio is not None %}{{ r.promedio|floatformat:1 }}{% else %}—{% endif %}</b>
-            <span>promedio de sus trabajos en Next-Level*</span>
+            <span class="e" aria-hidden="true">⭐</span>
+            <b>{{ r.estrellas }}</b>
+            <span>estrellas ganadas en sus misiones</span>
         </div>
         <div class="fam-cifra">
             <span class="e" aria-hidden="true">{{ rango.emoji }}</span>
@@ -43,11 +43,6 @@
             <span>de racha{% if alumno.ultima_actividad %} · entró {% if alumno.ultima_actividad == hoy %}hoy{% else %}el {{ alumno.ultima_actividad|date:"j M" }}{% endif %}{% endif %}</span>
         </div>
     </section>
-
-    <div class="fam-aclaracion" role="note">
-        <span class="e" aria-hidden="true">ℹ️</span>
-        <p class="mb-0"><b>*Estas no son sus calificaciones finales.</b> Aquí solo aparecen las calificaciones de los trabajos y misiones que {{ alumno.nombre }} hace en Next-Level. Su calificación final la da su profe y también toma en cuenta su actitud, su participación y otros aspectos de la clase.</p>
-    </div>
 
     {% if r.avisos %}
         <section class="fam-bloque">
@@ -105,8 +100,11 @@
             {% endfor %}
 
             <section class="fam-bloque">
-                <h2>⭐ Calificaciones de sus trabajos</h2>
-                <p class="fam-nota-gris">Solo de las misiones en la plataforma, no son la calificación final.</p>
+                <h2>📝 Calificaciones de sus trabajos</h2>
+                <div class="fam-aclaracion" role="note">
+                    <span class="e" aria-hidden="true">ℹ️</span>
+                    <p class="mb-0"><b>No son sus calificaciones finales.</b> Es lo que sacó en cada trabajo de Next-Level. Su calificación final la da su profe y también toma en cuenta su actitud, su participación y otros aspectos de la clase.</p>
+                </div>
                 {% for p in r.recientes %}
                     <div class="fam-fila">
                         <span class="calif {% if p.puntuacion >= 90 %}alta{% elif p.puntuacion >= 70 %}media{% else %}baja{% endif %}">{{ p.puntuacion|calif10 }}</span>

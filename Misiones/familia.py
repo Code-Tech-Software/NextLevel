@@ -1,12 +1,12 @@
 """Portal para la familia: lo que ven los papás con el enlace privado de su hijo.
 
 Es de solo lectura y solo muestra datos del propio alumno: nunca nombres ni datos de sus compañeros, ni su PIN.
+No muestra un promedio: los papás lo confundirían con la calificación final (que el profe arma con más cosas).
 """
 import secrets
 from datetime import timedelta
 
 from django.conf import settings
-from django.db.models import Avg
 from django.urls import reverse
 from django.utils import timezone
 
@@ -46,7 +46,6 @@ def resumen(alumno, hoy):
 
     progresos = ProgresoMision.objects.filter(alumno=alumno, mision__clase__in=clases, mision__activa=True) \
         .select_related('mision', 'mision__clase')
-    promedio = progresos.filter(estado='aprobado').aggregate(p=Avg('puntuacion'))['p']
     entregadas = set(progresos.filter(estado__in=('pendiente', 'aprobado')).values_list('mision_id', flat=True))
     vencen = [m for m in Mision.objects.filter(
         clase__in=clases, activa=True, fecha_limite__gte=hoy, fecha_limite__lte=hoy + timedelta(days=14),
@@ -62,7 +61,6 @@ def resumen(alumno, hoy):
         'hechas': hechas,
         'pct': int(hechas * 100 / total) if total else 0,
         'estrellas': sum(c['ruta']['estrellas'] for c in por_clase),
-        'promedio': promedio / 10 if promedio is not None else None,
         'recientes': list(progresos.filter(estado='aprobado').order_by('-fecha_revision', '-id')[:6]),
         'por_corregir': list(progresos.filter(estado='rechazado').order_by('-fecha_revision', '-id')[:5]),
         'en_revision': progresos.filter(estado='pendiente').count(),
