@@ -13,6 +13,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from . import cumpleanos as cumple
+from . import familia
 from . import gamificacion as juego
 from .minijuegos import datos_juego
 from .models import (
@@ -674,3 +675,29 @@ def ranking(request, alumno, clase):
         'mi_posicion': next((a for a in lista if a.id == alumno.id), None),
         'seccion': 'ranking',
     })
+
+
+# ========================
+# PORTAL PARA LA FAMILIA
+# ========================
+def portal_familia(request, token):
+    """Lo que ven los papás con el enlace privado de su hijo: su avance, sus calificaciones y los avisos del grupo.
+    Sin cuenta ni contraseña: el enlace es la llave, y el profe puede cambiarlo o apagarlo cuando quiera."""
+    alumno = Alumno.objects.filter(familia_token=token, activo=True).prefetch_related('clases').first() if token else None
+    if not alumno:
+        respuesta = render(request, 'Alumnos/familia_no_disponible.html', status=404)
+    else:
+        if not request.user.is_authenticated:   # cuando el profe lo revisa no cuenta como visita de la familia
+            Alumno.todos.filter(pk=alumno.pk).update(familia_visto=timezone.now())
+        hoy = timezone.localdate()
+        respuesta = render(request, 'Alumnos/familia.html', {
+            'alumno': alumno,
+            'r': familia.resumen(alumno, hoy),
+            'hoy': hoy,
+            'vista_profe': request.user.is_authenticated,
+        })
+    # Que no aparezca en buscadores, que el enlace no se filtre a otros sitios y que no se guarde en cachés
+    respuesta['X-Robots-Tag'] = 'noindex, nofollow'
+    respuesta['Referrer-Policy'] = 'no-referrer'
+    respuesta['Cache-Control'] = 'private, no-store'
+    return respuesta

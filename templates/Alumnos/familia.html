@@ -1,0 +1,166 @@
+{% extends 'Alumnos/base_publica.html' %}
+{% load nextlevel %}
+{% block title %}Avance de {{ alumno.nombre }} · Next-Level{% endblock %}
+{% block extra_css %}<meta name="robots" content="noindex, nofollow"><meta name="referrer" content="no-referrer">{% endblock %}
+{% block body_class %}familia{% endblock %}
+
+{% block cuerpo %}
+{% with rango=alumno.rango %}
+<div class="contenedor fam">
+    {% if vista_profe %}
+        <div class="fam-profe" role="status"><i class="bi bi-eye"></i> Así ve esta página la familia de {{ alumno.nombre }}. Tus visitas no cuentan como suyas.</div>
+    {% endif %}
+
+    <header class="fam-cabeza">
+        <img src="{{ alumno|avatar_url }}" alt="" class="avatar anillo-{{ rango.color }}">
+        <div class="min-w-0 flex-grow-1">
+            <div class="kicker">Portal para la familia · Next-Level</div>
+            <h1>El avance de {{ alumno.nombre }}</h1>
+            <div class="s">{% for c in r.por_clase %}{{ c.clase.icono }} {{ c.clase.nombre }} · {{ c.clase.grado }} {{ c.clase.grupo }}{% if not forloop.last %} &nbsp;·&nbsp; {% endif %}{% endfor %}</div>
+        </div>
+    </header>
+
+    <section class="fam-cifras">
+        <div class="fam-cifra">
+            <span class="e" aria-hidden="true">🏁</span>
+            <b>{{ r.hechas }}<small> de {{ r.total }}</small></b>
+            <span>misiones completadas</span>
+            <div class="barra verde delgada"><span style="width:0" data-ancho="{{ r.pct }}"></span></div>
+        </div>
+        <div class="fam-cifra">
+            <span class="e" aria-hidden="true">📝</span>
+            <b>{% if r.promedio is not None %}{{ r.promedio|floatformat:1 }}{% else %}—{% endif %}</b>
+            <span>promedio de sus trabajos en Next-Level*</span>
+        </div>
+        <div class="fam-cifra">
+            <span class="e" aria-hidden="true">{{ rango.emoji }}</span>
+            <b>Nivel {{ alumno.nivel }}</b>
+            <span>{{ rango.nombre }} · {{ alumno.xp_total }} XP</span>
+        </div>
+        <div class="fam-cifra">
+            <span class="e" aria-hidden="true">🔥</span>
+            <b>{{ alumno.racha_actual }} día{{ alumno.racha_actual|pluralize }}</b>
+            <span>de racha{% if alumno.ultima_actividad %} · entró {% if alumno.ultima_actividad == hoy %}hoy{% else %}el {{ alumno.ultima_actividad|date:"j M" }}{% endif %}{% endif %}</span>
+        </div>
+    </section>
+
+    <div class="fam-aclaracion" role="note">
+        <span class="e" aria-hidden="true">ℹ️</span>
+        <p class="mb-0"><b>*Estas no son sus calificaciones finales.</b> Aquí solo aparecen las calificaciones de los trabajos y misiones que {{ alumno.nombre }} hace en Next-Level. Su calificación final la da su profe y también toma en cuenta su actitud, su participación y otros aspectos de la clase.</p>
+    </div>
+
+    {% if r.avisos %}
+        <section class="fam-bloque">
+            <h2>📢 Avisos de la clase</h2>
+            {% for aviso in r.avisos %}
+                <div class="fam-aviso {{ aviso.estilo }}"><span class="e" aria-hidden="true">{{ aviso.icono }}</span><span>{{ aviso.texto }}</span></div>
+            {% endfor %}
+        </section>
+    {% endif %}
+
+    {% if r.por_corregir or r.vencen %}
+        <section class="fam-bloque ayuda">
+            <h2>🤝 Aquí le pueden ayudar</h2>
+            {% for p in r.por_corregir %}
+                <div class="fam-fila">
+                    <span class="e" aria-hidden="true">🔁</span>
+                    <div class="min-w-0 flex-grow-1">
+                        <div class="t"><b>{{ p.mision.nombre }}</b> necesita correcciones</div>
+                        {% if p.comentario_profesor %}<div class="d">Lo que dijo su profe: «{{ p.comentario_profesor }}»</div>{% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+            {% for m in r.vencen %}
+                <div class="fam-fila">
+                    <span class="e" aria-hidden="true">⏰</span>
+                    <div class="min-w-0 flex-grow-1">
+                        <div class="t"><b>{{ m.nombre }}</b> {% if m.dias == 0 %}se entrega hoy{% elif m.dias == 1 %}se entrega mañana{% else %}se entrega el {{ m.fecha_limite|date:"l j \d\e F"|lower }}{% endif %}</div>
+                        <div class="d">{{ m.clase.nombre }} · aún no la entrega</div>
+                    </div>
+                </div>
+            {% endfor %}
+        </section>
+    {% endif %}
+
+    <div class="row g-4">
+        <div class="col-lg-7">
+            {% for c in r.por_clase %}
+                <section class="fam-bloque">
+                    <h2>{{ c.clase.icono }} {{ c.clase.nombre }}</h2>
+                    <div class="fam-total"><span>{{ c.ruta.aprobadas }} de {{ c.ruta.total }} misiones</span><b>{{ c.ruta.pct }} %</b></div>
+                    <div class="barra verde mb-3"><span style="width:0" data-ancho="{{ c.ruta.pct }}"></span></div>
+                    {% for m in c.ruta.mundos %}
+                        <div class="fam-mundo">
+                            <span class="e" aria-hidden="true">{{ m.tema_info.emoji|default:'🌍' }}</span>
+                            <div class="min-w-0 flex-grow-1">
+                                <div class="d-flex justify-content-between gap-2"><span class="n text-truncate">{{ m.nombre }}</span><span class="v">{{ m.aprobadas }}/{{ m.total }}</span></div>
+                                <div class="barra delgada {% if m.pct == 100 %}oro{% else %}azul{% endif %}"><span style="width:0" data-ancho="{{ m.pct }}"></span></div>
+                            </div>
+                        </div>
+                    {% empty %}
+                        <p class="text-muted mb-0">Su profe todavía no publica misiones en esta clase.</p>
+                    {% endfor %}
+                    {% if r.en_revision and forloop.first %}<p class="fam-nota mb-0 mt-2">⏳ Tiene {{ r.en_revision }} entrega{{ r.en_revision|pluralize }} esperando la revisión de su profe.</p>{% endif %}
+                </section>
+            {% endfor %}
+
+            <section class="fam-bloque">
+                <h2>⭐ Calificaciones de sus trabajos</h2>
+                <p class="fam-nota-gris">Solo de las misiones en la plataforma, no son la calificación final.</p>
+                {% for p in r.recientes %}
+                    <div class="fam-fila">
+                        <span class="calif {% if p.puntuacion >= 90 %}alta{% elif p.puntuacion >= 70 %}media{% else %}baja{% endif %}">{{ p.puntuacion|calif10 }}</span>
+                        <div class="min-w-0 flex-grow-1">
+                            <div class="t"><b>{{ p.mision.nombre }}</b></div>
+                            <div class="d">{{ p.mision.clase.nombre }}{% if p.fecha_revision %} · {{ p.fecha_revision|date:"j M" }}{% endif %}</div>
+                            {% if p.comentario_profesor %}<div class="d comentario">💬 «{{ p.comentario_profesor }}»</div>{% endif %}
+                        </div>
+                    </div>
+                {% empty %}
+                    <p class="text-muted mb-0">Aún no tiene misiones calificadas.</p>
+                {% endfor %}
+            </section>
+        </div>
+
+        <div class="col-lg-5">
+            <section class="fam-bloque">
+                <h2>🙌 En clase <small>(últimos {{ r.dias_conducta }} días)</small></h2>
+                {% if r.conducta_bien or r.conducta_mejorar %}
+                    <div class="fam-conducta">
+                        <div class="bien"><b>{{ r.conducta_bien }}</b><span>👍 reconocimientos</span></div>
+                        <div class="mejorar"><b>{{ r.conducta_mejorar }}</b><span>💪 por mejorar</span></div>
+                    </div>
+                    {% for c in r.conducta_recientes %}
+                        <div class="fam-fila compacta">
+                            <span class="e" aria-hidden="true">{{ c.icono }}</span>
+                            <div class="min-w-0 flex-grow-1 t">{{ c.nombre }}</div>
+                            <span class="d">{{ c.fecha|date:"j M" }}</span>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted mb-0">Su profe no ha registrado nada en estos días.</p>
+                {% endif %}
+            </section>
+
+            <section class="fam-bloque">
+                <h2>🏆 Logros ({{ r.logros|length }})</h2>
+                {% if r.logros %}
+                    <div class="fam-logros">
+                        {% for l in r.logros %}
+                            <div class="fam-logro" title="{{ l.logro.descripcion }}"><span class="e" aria-hidden="true">{{ l.logro.icono }}</span><span class="n">{{ l.logro.nombre }}</span></div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-muted mb-0">Todavía no gana logros. ¡Cada misión cuenta!</p>
+                {% endif %}
+            </section>
+        </div>
+    </div>
+
+    <footer class="fam-pie">
+        <p class="mb-1">¿Dudas sobre el avance o las calificaciones de {{ alumno.nombre }}? Platíquenlo con su profe.</p>
+        <p class="mb-0"><i class="bi bi-shield-lock"></i> Este enlace es privado: solo lo tiene su familia. Por favor no lo compartan.</p>
+    </footer>
+</div>
+{% endwith %}
+{% endblock %}

@@ -1833,3 +1833,22 @@ body.rv-abierta { overflow: hidden; }
 .cumple-fila.con-error { background: var(--danger-soft); }
 .cumple-card .feed-item.hoy { background: color-mix(in srgb, var(--violet) 8%, transparent); }
 @media (max-width: 575.98px) { .cumple-fila { flex-wrap: wrap; } .cumple-fila .min-w-0 { flex-basis: calc(100% - 50px); } .cumple-fila .cumple-dia { margin-left: 44px; } }
+
+/* ---------- Portal para las familias ---------- */
+.familia-card .p-input[readonly] { background: var(--surface-2); }
+.familia-fila .persona img { width: 34px; height: 34px; }
+.hojas-familia { display: grid; gap: 1rem; }
+.hoja-familia { display: flex; align-items: center; gap: 1.5rem; padding: 1.5rem 1.6rem; background: #fff; color: #0f172a; border: 2px dashed #94a3b8; border-radius: 16px; break-inside: avoid; page-break-inside: avoid; }
+.hoja-familia .texto { flex: 1; min-width: 0; }
+.hoja-familia .marca { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #2563eb; }
+.hoja-familia h2 { font-size: 1.3rem; margin: .3rem 0 .6rem; }
+.hoja-familia p { font-size: .92rem; margin-bottom: .5rem; line-height: 1.45; }
+.hoja-familia p.chico { font-size: .78rem; color: #475569; }
+.hoja-familia .url { font-family: ui-monospace, Consolas, monospace; font-size: .68rem; color: #64748b; word-break: break-all; }
+.hoja-familia .qr { width: 150px; height: 150px; flex-shrink: 0; }
+.hoja-familia .qr svg { width: 100%; height: 100%; }
+@media print {
+    .hojas-familia { gap: 0; }
+    .hoja-familia { height: 128mm; margin: 0 0 6mm; border-radius: 0; }
+    .hoja-familia:nth-child(2n) { break-after: page; page-break-after: always; }
+}

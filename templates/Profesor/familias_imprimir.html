@@ -1,0 +1,49 @@
+{% extends 'Profesor/baseProfesor.html' %}
+{% load nextlevel %}
+{% block title %}Hojas para las familias{% endblock %}
+{% block migas %}<a href="{% url 'familias_grupo' clase.id %}">Familias</a><i class="bi bi-chevron-right"></i><span class="actual">Hojas para imprimir</span>{% endblock %}
+{% block extra_css %}<style>@page { margin: 10mm; }</style>{% endblock %}
+
+{% block content %}
+<div class="page-head no-imprimir">
+    <div>
+        <h1>Hojas para las familias de {{ clase.nombre }}</h1>
+        <p>{{ alumnos|length }} hoja{{ alumnos|length|pluralize }}, dos por página. Recórtalas por la línea punteada y mándalas a casa: la familia escanea el QR con la cámara del celular.</p>
+    </div>
+    <div class="acciones">
+        <a href="{% url 'familias_grupo' clase.id %}" class="p-btn fantasma"><i class="bi bi-arrow-left"></i> Volver</a>
+        <button type="button" class="p-btn primario" onclick="window.print()" {% if not alumnos %}disabled{% endif %}><i class="bi bi-printer"></i> Imprimir</button>
+    </div>
+</div>
+
+<div class="hojas-familia" data-hojas-familia>
+    {% for a in alumnos %}
+        <article class="hoja-familia">
+            <div class="texto">
+                <div class="marca">Next-Level · {{ clase.nombre }} {{ clase.grado }} {{ clase.grupo }}</div>
+                <h2>Hola, familia de {{ a.nombre }} {{ a.apellido }} 👋</h2>
+                <p>En la escuela usamos <b>Next-Level</b>, una plataforma donde {{ a.nombre }} aprende completando misiones. Escaneen este código con la cámara de su celular para ver su avance, cómo le fue en sus trabajos y los avisos del grupo.</p>
+                <p class="chico">Las calificaciones que verán son solo de los trabajos en la plataforma: la calificación final la da su profe y toma en cuenta otros aspectos.</p>
+                <p class="chico">No necesitan cuenta ni contraseña. El enlace es privado: solo para su familia, por favor no lo compartan.</p>
+                <div class="url">{{ a.url_familia }}</div>
+            </div>
+            <div class="qr" data-qr-familia="{{ a.url_familia }}" aria-label="Código QR para la familia de {{ a.nombre }}"></div>
+        </article>
+    {% empty %}
+        <div class="p-card vacio-p no-imprimir"><i class="bi bi-link-45deg"></i><h3>Nadie de este grupo tiene enlace todavía</h3><p>Créalos primero en la página de Familias.</p></div>
+    {% endfor %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<script>
+    document.querySelectorAll('[data-qr-familia]').forEach(caja => {
+        if (typeof window.qrcode !== 'function') { caja.remove(); return; }
+        const qr = window.qrcode(0, 'M');
+        qr.addData(caja.dataset.qrFamilia);
+        qr.make();
+        caja.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 0, scalable: true });
+    });
+</script>
+{% endblock %}

@@ -2562,3 +2562,93 @@ class AvisosYCumpleanosTests(BaseJuego):
         self.assertEqual(validar_cumple(29, 2), '')
         self.assertIn('día y el mes', validar_cumple(5, None))
         self.assertIn('Abril no tiene día 31', validar_cumple(31, 4))
+
+
+class PortalFamiliaTests(BaseJuego):
+    """El enlace privado con el que la familia ve el avance del alumno (sin cuenta, solo lectura)."""
+
+    def setUp(self):
+        super().setUp()
+        self.profe = User.objects.create_superuser('profe_fam', 'f@x.com', 'x')
+        self.alumno.pin = '4821'
+        self.alumno.save()
+        self.companero = Alumno.objects.create(nombre='Bartolomeo', apellido='Zúñiga', pin='1111')
+        self.companero.clases.add(self.clase)
+
+    def crear_enlace(self):
+        from .familia import generar_enlace
+        return generar_enlace(self.alumno)
+
+    def test_un_enlace_inventado_no_muestra_nada(self):
+        r = self.client.get('/familia/no-existe-este-enlace/')
+        self.assertContains(r, 'Este enlace ya no funciona', status_code=404)
+        self.assertEqual(r['X-Robots-Tag'], 'noindex, nofollow')
+
+    def test_el_profe_crea_el_enlace_y_la_familia_ve_el_avance(self):
+        from .models import Aviso, RegistroConducta
+        self.client.force_login(self.profe)
+        self.client.post(f'/profesor/alumnos/{self.alumno.id}/familia/', {'accion': 'crear'})
+        self.alumno.refresh_from_db()
+        token = self.alumno.familia_token
+        self.assertTrue(token and len(token) >= 20)
+        self.assertContains(self.client.get(f'/profesor/alumnos/{self.alumno.id}/'), f'/familia/{token}/')
+        # Lo que la familia debe ver
+        juego.calificar(ProgresoMision(alumno=self.alumno, mision=self.m1), 90, '¡Muy buen circuito!')
+        juego.rechazar(ProgresoMision.objects.create(alumno=self.alumno, mision=self.m2), 'Repasa la pregunta 2')
+        aviso = Aviso.objects.create(texto='Mañana traigan su Arduino')
+        aviso.clases.add(self.clase)
+        RegistroConducta.objects.create(alumno=self.alumno, clase=self.clase, nombre='Ayudó a un compañero', icono='🤝', monedas=5)
+        self.client.logout()
+
+        r = self.client.get(f'/familia/{token}/')
+        self.assertContains(r, 'El avance de Ana')
+        self.assertContains(r, 'Estas no son sus calificaciones finales')   # que no se confundan con la final
+        for texto in ('¡Muy buen circuito!', '9.0', 'Repasa la pregunta 2', 'Mañana traigan su Arduino', 'Ayudó a un compañero'):
+            self.assertContains(r, texto)
+        self.assertNotContains(r, '4821')          # nunca su PIN
+        self.assertNotContains(r, 'Bartolomeo')    # ni datos de sus compañeros
+        self.assertEqual(r['Referrer-Policy'], 'no-referrer')
+        self.assertIn('no-store', r['Cache-Control'])
+        self.alumno.refresh_from_db()
+        self.assertIsNotNone(self.alumno.familia_visto)
+
+    def test_cambiar_o_apagar_el_enlace(self):
+        viejo = self.crear_enlace()
+        self.client.force_login(self.profe)
+        self.client.post(f'/profesor/alumnos/{self.alumno.id}/familia/', {'accion': 'cambiar'})
+        self.alumno.refresh_from_db()
+        nuevo = self.alumno.familia_token
+        self.assertNotEqual(viejo, nuevo)
+        self.client.logout()
+        self.assertEqual(self.client.get(f'/familia/{viejo}/').status_code, 404)
+        self.assertEqual(self.client.get(f'/familia/{nuevo}/').status_code, 200)
+        self.client.force_login(self.profe)
+        self.client.post(f'/profesor/alumnos/{self.alumno.id}/familia/', {'accion': 'quitar'})
+        self.client.logout()
+        self.assertEqual(self.client.get(f'/familia/{nuevo}/').status_code, 404)
+
+    def test_si_lo_abre_el_profe_no_cuenta_como_visita(self):
+        token = self.crear_enlace()
+        self.client.force_login(self.profe)
+        r = self.client.get(f'/familia/{token}/')
+        self.assertContains(r, 'Así ve esta página la familia de Ana')
+        self.alumno.refresh_from_db()
+        self.assertIsNone(self.alumno.familia_visto)
+
+    def test_enlaces_de_todo_el_grupo_y_hojas_para_imprimir(self):
+        self.client.force_login(self.profe)
+        url = f'/profesor/familias/{self.clase.id}/'
+        self.assertContains(self.client.get(url), 'Crear los enlaces que faltan (2)')
+        self.client.post(url)
+        self.assertEqual(Alumno.objects.filter(clases=self.clase, familia_token__isnull=False).count(), 2)
+        hojas = self.client.get(url + '?imprimir=1')
+        self.assertContains(hojas, 'data-qr-familia="', count=2)
+        self.assertContains(hojas, 'Hola, familia de Ana')
+
+    def test_el_enlace_en_linea_siempre_es_https(self):
+        from django.test import RequestFactory
+        from .familia import url_enlace
+        token = self.crear_enlace()
+        peticion = RequestFactory().get('/', HTTP_HOST='next-level.up.railway.app')
+        with override_settings(DEBUG=False):
+            self.assertEqual(url_enlace(peticion, self.alumno), f'https://next-level.up.railway.app/familia/{token}/')

@@ -1,0 +1,60 @@
+{% extends 'Profesor/baseProfesor.html' %}
+{% load nextlevel %}
+{% block title %}Familias{% endblock %}
+{% block titulo_pagina %}Portal para las familias{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1>Portal para las familias 👨‍👩‍👧</h1>
+        <p>Cada alumno tiene su propio enlace privado: su familia ve su avance, las calificaciones de sus trabajos, lo que debe corregir y los avisos del grupo, sin cuenta ni contraseña. La página les aclara que esas no son las calificaciones finales.</p>
+    </div>
+    <div class="acciones">
+        {% if con_enlace %}<a href="{% url 'familias_grupo' clase.id %}?imprimir=1" class="p-btn"><i class="bi bi-printer"></i> Imprimir hojas con QR</a>{% endif %}
+        {% if con_enlace < alumnos|length %}
+            <form method="post">{% csrf_token %}<button class="p-btn primario"><i class="bi bi-link-45deg"></i> Crear los enlaces que faltan ({{ alumnos|length|restar:con_enlace }})</button></form>
+        {% endif %}
+    </div>
+</div>
+
+<div class="chips-filtro mb-3">
+    {% for c in clases %}
+        <a href="{% url 'familias_grupo' c.id %}" class="chip-f {% if c.id == clase.id %}activo{% endif %}">{{ c.icono }} {{ c.nombre }} <small class="opacity-75">{{ c.grado }} {{ c.grupo }}</small></a>
+    {% endfor %}
+</div>
+
+<section class="p-card">
+    <div class="p-card-head">
+        <div>
+            <h2>{{ clase.icono }} {{ clase.nombre }}</h2>
+            <div class="sub">{{ con_enlace }} de {{ alumnos|length }} con enlace · {{ abiertos }} familia{{ abiertos|pluralize }} ya lo abri{{ abiertos|pluralize:"ó,eron" }}</div>
+        </div>
+    </div>
+    <div class="p-card-body sin-pad">
+        {% for a in alumnos %}
+            <div class="feed-item familia-fila">
+                <a href="{% url 'alumno_detalle' a.id %}" class="persona min-w-0 flex-grow-1">
+                    <img src="{{ a|avatar_url }}" alt="">
+                    <span class="min-w-0"><span class="n d-block text-truncate">{{ a.nombre }} {{ a.apellido }}</span>
+                        <span class="s">{% if not a.url_familia %}Sin enlace{% elif a.familia_visto %}Lo abrieron {{ a.familia_visto|hace }}{% else %}Aún no lo abren{% endif %}</span></span>
+                </a>
+                {% if a.url_familia %}
+                    <div class="d-flex gap-1 flex-shrink-0">
+                        <button type="button" class="p-btn sm" data-copiar="{{ a.url_familia }}" title="Copiar el enlace de la familia de {{ a.nombre }}"><i class="bi bi-clipboard"></i> <span class="d-none d-md-inline">Copiar</span></button>
+                        <a href="https://wa.me/?text={% filter urlencode %}Hola, familia de {{ a.nombre }} 👋 Aquí pueden ver su avance en Next-Level: {{ a.url_familia }}{% endfilter %}" target="_blank" rel="noopener noreferrer" class="p-btn sm" title="Mandar por WhatsApp"><i class="bi bi-whatsapp" style="color:#25d366"></i> <span class="d-none d-md-inline">WhatsApp</span></a>
+                        <a href="{{ a.url_familia }}" target="_blank" rel="noopener" class="p-btn sm icono fantasma" title="Ver como papá" aria-label="Ver como papá"><i class="bi bi-eye"></i></a>
+                    </div>
+                {% else %}
+                    <form method="post" action="{% url 'enlace_familia' a.id %}" class="flex-shrink-0">
+                        {% csrf_token %}<input type="hidden" name="accion" value="crear"><input type="hidden" name="next" value="{{ request.get_full_path }}">
+                        <button class="p-btn sm"><i class="bi bi-link-45deg"></i> Crear enlace</button>
+                    </form>
+                {% endif %}
+            </div>
+        {% empty %}
+            <div class="vacio-p"><i class="bi bi-people"></i>Este grupo aún no tiene alumnos.</div>
+        {% endfor %}
+    </div>
+</section>
+<p class="text-muted-p mt-3" style="font-size:.8rem"><i class="bi bi-shield-lock"></i> El enlace es como una llave: si alguien que no debe lo tiene, entra a la ficha del alumno y elige «Cambiar enlace» para que el anterior deje de funcionar.</p>
+{% endblock %}

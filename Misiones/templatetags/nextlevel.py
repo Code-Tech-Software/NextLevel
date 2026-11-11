@@ -306,3 +306,13 @@ def batallas_abiertas():
     """Batallas que siguen abiertas (para el aviso del panel del profesor)."""
     from Misiones.models import Batalla
     return [b for b in Batalla.objects.abiertas().select_related('clase')]
+
+
+@register.filter
+def hace(fecha):
+    """'hace 3 días', 'hace 2 horas' o 'hace un momento' (sin el raro «hace 0 minutos»)."""
+    from django.utils.timesince import timesince
+    if not fecha:
+        return ''
+    texto = timesince(fecha, depth=1)
+    return 'hace un momento' if texto.startswith(('0\xa0', '0 ')) else f'hace {texto}'

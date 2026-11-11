@@ -23,6 +23,7 @@ urlpatterns = [
     path('clase/<int:clase_id>/tienda/', views.tienda_alumno, name='tienda_alumno'),
     path('clase/<int:clase_id>/tienda/comprar/<int:articulo_id>/', views.comprar_articulo, name='comprar_articulo'),
     path('clase/<int:clase_id>/tienda/ahorrar/<int:articulo_id>/', views.ahorrar_para, name='ahorrar_para'),
+    path('familia/<str:token>/', views.portal_familia, name='portal_familia'),
     path('clase/<int:clase_id>/progreso/', views.mi_progreso, name='mi_progreso'),
     path('clase/<int:clase_id>/avatar/<int:compra_id>/', views.equipar_avatar, name='equipar_avatar'),
     path('clase/<int:clase_id>/ranking/', views.ranking, name='ranking'),
@@ -95,6 +96,9 @@ urlpatterns = [
     path('profesor/tienda/<int:pk>/oferta/', profe.oferta_articulo, name='oferta_articulo'),
     path('profesor/alumnos/<int:pk>/regalar/', profe.regalar_articulo, name='regalar_articulo'),
     path('profesor/alumnos/<int:pk>/entregar-todo/', profe.entregar_todo_alumno, name='entregar_todo_alumno'),
+    path('profesor/alumnos/<int:pk>/familia/', profe.enlace_familia, name='enlace_familia'),
+    path('profesor/familias/', profe.familias_grupo, name='familias_inicio'),
+    path('profesor/familias/<int:clase_id>/', profe.familias_grupo, name='familias_grupo'),
 
     path('economia-alumnos/', profe.gestionar_monedas, name='gestionar_monedas'),
     path('api/actualizar-monedas/', profe.api_actualizar_monedas, name='api_actualizar_monedas'),

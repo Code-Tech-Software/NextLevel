@@ -1,0 +1,41 @@
+{% load nextlevel %}{% comment %}Portal para la familia en la ficha del alumno: crear, compartir, ver como papá o apagar su enlace privado.{% endcomment %}
+<section class="p-card mb-3 familia-card">
+    <div class="p-card-head"><h2>👨‍👩‍👧 Portal para la familia</h2></div>
+    <div class="p-card-body">
+        {% if url_familia %}
+            <p class="text-muted-p mb-2" style="font-size:.82rem">Con este enlace su familia ve su avance, las calificaciones de sus trabajos (con la aclaración de que no son las finales) y los avisos del grupo. No necesitan cuenta.</p>
+            <div class="mb-2"><span class="p-badge {% if alumno.familia_visto %}verde{% endif %}"><i class="bi {% if alumno.familia_visto %}bi-eye{% else %}bi-hourglass{% endif %}"></i> {% if alumno.familia_visto %}Lo abrieron {{ alumno.familia_visto|hace }}{% else %}Aún no lo abren{% endif %}</span></div>
+            <div class="d-flex gap-2 mb-2">
+                <input type="text" class="p-input" value="{{ url_familia }}" readonly aria-label="Enlace para la familia" onclick="this.select()" style="font-size:.78rem">
+                <button type="button" class="p-btn icono" data-copiar="{{ url_familia }}" title="Copiar enlace" aria-label="Copiar enlace"><i class="bi bi-clipboard"></i></button>
+            </div>
+            <div class="d-flex gap-2 flex-wrap">
+                <a href="https://wa.me/?text={% filter urlencode %}Hola, familia de {{ alumno.nombre }} 👋 Aquí pueden ver su avance en Next-Level: {{ url_familia }}{% endfilter %}" target="_blank" rel="noopener noreferrer" class="p-btn sm"><i class="bi bi-whatsapp" style="color:#25d366"></i> Mandar por WhatsApp</a>
+                <a href="{{ url_familia }}" target="_blank" rel="noopener" class="p-btn sm fantasma"><i class="bi bi-eye"></i> Ver como papá</a>
+                <div class="dropdown ms-auto">
+                    <button class="p-btn sm icono fantasma" data-bs-toggle="dropdown" aria-label="Más opciones del enlace"><i class="bi bi-three-dots"></i></button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li>
+                            <form method="post" action="{% url 'enlace_familia' alumno.id %}" data-confirmar="El enlace que ya compartiste dejará de funcionar y tendrás que mandarles el nuevo." data-titulo="¿Cambiar el enlace?" data-boton="Cambiar enlace">
+                                {% csrf_token %}<input type="hidden" name="accion" value="cambiar"><input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                <button class="dropdown-item"><i class="bi bi-arrow-repeat"></i> Cambiar enlace</button>
+                            </form>
+                        </li>
+                        <li>
+                            <form method="post" action="{% url 'enlace_familia' alumno.id %}" data-confirmar="Su familia ya no podrá ver su avance hasta que crees un enlace nuevo." data-titulo="¿Dejar de compartir?" data-boton="Dejar de compartir" data-peligro>
+                                {% csrf_token %}<input type="hidden" name="accion" value="quitar"><input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                <button class="dropdown-item text-danger"><i class="bi bi-x-circle"></i> Dejar de compartir</button>
+                            </form>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        {% else %}
+            <p class="text-muted-p mb-3" style="font-size:.85rem">Crea un enlace privado para que sus papás vean desde el celular su avance, las calificaciones de sus trabajos, lo que debe corregir y los avisos del grupo. Sin cuenta ni contraseña.</p>
+            <form method="post" action="{% url 'enlace_familia' alumno.id %}">
+                {% csrf_token %}<input type="hidden" name="accion" value="crear"><input type="hidden" name="next" value="{{ request.get_full_path }}">
+                <button class="p-btn primario w-100"><i class="bi bi-link-45deg"></i> Crear enlace para la familia</button>
+            </form>
+        {% endif %}
+    </div>
+</section>

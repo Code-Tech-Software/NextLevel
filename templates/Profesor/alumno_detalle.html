@@ -98,6 +98,7 @@
     </div>
 
     <div class="col-lg-4">
+        {% include 'Profesor/_familia_tarjeta.html' %}
         <section class="p-card mb-3">
             <div class="p-card-head"><h2>Dar o quitar recompensas</h2></div>
             <form method="post" action="{% url 'alumno_ajuste' alumno.id %}" class="p-card-body">

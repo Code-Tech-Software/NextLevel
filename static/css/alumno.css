@@ -1692,3 +1692,67 @@ a.maquina:hover { transform: translateY(-6px); color: var(--texto); box-shadow: 
 @keyframes cumple-salto { 50% { transform: translateY(-6px) rotate(-6deg); } }
 .cumple-companeros { margin-bottom: 1rem; padding: .7rem 1rem; border-radius: 16px; background: #fdf2f8; border: 2px dashed #f9a8d4; color: #9d174d; font-weight: 800; font-size: .92rem; }
 @media (prefers-reduced-motion: reduce) { .cumple-banner .pastel { animation: none; } .aviso-profe { transition: none; } }
+
+/* ---------- Portal para la familia ---------- */
+body.familia { background: #f4f7fb; }
+.fam { max-width: 1040px; padding-top: 1.5rem; padding-bottom: 2.5rem; }
+.fam-profe { margin-bottom: 1rem; padding: .6rem 1rem; border-radius: 14px; background: var(--navy); color: #fff; font-weight: 700; font-size: .88rem; }
+.fam-cabeza { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.25rem; padding: 1.2rem 1.3rem; border-radius: 24px; background: #fff; box-shadow: 0 6px 0 var(--sombra-3d); border: 2px solid var(--borde); }
+.fam-cabeza .avatar { width: 76px; height: 76px; flex-shrink: 0; }
+.fam-cabeza .kicker { font-size: .72rem; font-weight: 900; text-transform: uppercase; letter-spacing: .7px; color: var(--azul); }
+.fam-cabeza h1 { font-family: var(--fuente-titulo); font-size: clamp(1.4rem, 4.2vw, 2rem); margin: .1rem 0 .15rem; color: var(--navy); line-height: 1.1; }
+.fam-cabeza .s { font-weight: 700; color: var(--texto-suave); font-size: .9rem; }
+.fam-cifras { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .75rem; margin-bottom: 1.25rem; }
+.fam-cifra { background: #fff; border: 2px solid var(--borde); border-radius: 20px; padding: .9rem 1rem; display: flex; flex-direction: column; gap: .15rem; }
+.fam-cifra .e { font-size: 1.5rem; line-height: 1; }
+.fam-cifra b { font-family: var(--fuente-titulo); font-size: 1.45rem; color: var(--navy); line-height: 1.15; margin-top: .3rem; }
+.fam-cifra b small { font-size: .9rem; color: var(--texto-suave); font-weight: 600; }
+.fam-cifra > span:not(.e) { font-weight: 700; font-size: .8rem; color: var(--texto-suave); }
+.fam-cifra .barra { margin-top: .45rem; }
+.fam-bloque { background: #fff; border: 2px solid var(--borde); border-radius: 22px; padding: 1.1rem 1.2rem; margin-bottom: 1.25rem; }
+.fam-bloque h2 { font-family: var(--fuente-titulo); font-size: 1.2rem; color: var(--navy); margin-bottom: .8rem; }
+.fam-bloque h2 small { font-family: var(--fuente); font-size: .78rem; color: var(--texto-suave); font-weight: 700; }
+.fam-bloque.ayuda { border-color: #fdba74; background: #fffbf5; }
+.fam-aviso { display: flex; align-items: center; gap: .7rem; padding: .65rem .85rem; border-radius: 14px; background: #eff6ff; font-weight: 700; margin-bottom: .5rem; }
+.fam-aviso:last-child { margin-bottom: 0; }
+.fam-aviso .e { font-size: 1.4rem; }
+.fam-aviso.importante { background: #fff7ed; }
+.fam-aviso.fiesta { background: #faf5ff; }
+.fam-fila { display: flex; align-items: flex-start; gap: .8rem; padding: .65rem 0; border-top: 1px solid var(--borde); }
+.fam-fila:first-of-type { border-top: 0; padding-top: 0; }
+.fam-fila .e { font-size: 1.4rem; line-height: 1.2; flex-shrink: 0; width: 1.8rem; text-align: center; }
+.fam-fila .t { font-weight: 600; color: var(--texto); line-height: 1.35; }
+.fam-fila .d { font-size: .82rem; color: var(--texto-suave); font-weight: 600; margin-top: .1rem; }
+.fam-fila .comentario { color: #6d28d9; }
+.fam-fila.compacta { align-items: center; padding: .45rem 0; }
+.fam-fila .calif { flex-shrink: 0; min-width: 48px; text-align: center; border-radius: 12px; padding: .35rem .4rem; font-family: var(--fuente-titulo); font-weight: 700; font-size: 1.05rem; }
+.fam-fila .calif.alta { background: #dcfce7; color: #15803d; }
+.fam-fila .calif.media { background: #fef9c3; color: #a16207; }
+.fam-fila .calif.baja { background: #fee2e2; color: #b91c1c; }
+.fam-total { display: flex; justify-content: space-between; font-weight: 800; color: var(--texto-suave); font-size: .9rem; margin-bottom: .35rem; }
+.fam-total b { color: var(--navy); font-family: var(--fuente-titulo); font-size: 1.1rem; }
+.fam-mundo { display: flex; align-items: center; gap: .7rem; padding: .4rem 0; }
+.fam-mundo .e { font-size: 1.4rem; width: 1.8rem; text-align: center; flex-shrink: 0; }
+.fam-mundo .n { font-weight: 700; font-size: .9rem; }
+.fam-mundo .v { font-weight: 800; font-size: .82rem; color: var(--texto-suave); flex-shrink: 0; }
+.fam-mundo .barra { margin-top: .25rem; }
+.fam-nota { font-weight: 700; font-size: .85rem; color: #a16207; }
+.fam-conducta { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; margin-bottom: .6rem; }
+.fam-conducta > div { border-radius: 16px; padding: .7rem .8rem; text-align: center; }
+.fam-conducta b { display: block; font-family: var(--fuente-titulo); font-size: 1.6rem; line-height: 1.1; }
+.fam-conducta span { font-weight: 700; font-size: .8rem; }
+.fam-conducta .bien { background: #dcfce7; color: #15803d; }
+.fam-conducta .mejorar { background: #fef3c7; color: #a16207; }
+.fam-logros { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: .5rem; }
+.fam-logro { display: flex; flex-direction: column; align-items: center; gap: .25rem; text-align: center; padding: .6rem .4rem; border-radius: 14px; background: #f8fafc; }
+.fam-logro .e { font-size: 1.8rem; line-height: 1; }
+.fam-logro .n { font-size: .72rem; font-weight: 800; color: var(--texto-suave); line-height: 1.2; }
+.fam-pie { text-align: center; color: var(--texto-suave); font-weight: 700; font-size: .85rem; padding-top: .5rem; }
+.barra.azul > span { --b1: #60a5fa; --b2: #3b82f6; }
+@media (max-width: 767.98px) {
+    .fam-cifras { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .fam-cabeza .avatar { width: 60px; height: 60px; }
+}
+.fam-aclaracion { display: flex; align-items: flex-start; gap: .75rem; margin-bottom: 1.25rem; padding: .85rem 1.1rem; border-radius: 18px; background: #eff6ff; border: 2px solid #bfdbfe; color: #1e3a8a; font-weight: 600; font-size: .9rem; line-height: 1.45; }
+.fam-aclaracion .e { font-size: 1.3rem; line-height: 1.2; flex-shrink: 0; }
+.fam-nota-gris { margin: -.45rem 0 .75rem; font-size: .8rem; font-weight: 700; color: var(--texto-suave); }

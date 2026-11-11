@@ -20,6 +20,7 @@ from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
 from . import cumpleanos as cumple
+from . import familia
 from . import gamificacion as juego
 from . import inicio_profesor as inicio
 from . import minijuegos
@@ -1066,6 +1067,7 @@ def alumno_detalle(request, pk):
     return render(request, 'Profesor/alumno_detalle.html', {
         'alumno': alumno,
         'ahorro': ArticuloTienda.objects.filter(pk=alumno.ahorro_id, activo=True).first() if alumno.ahorro_id else None,
+        'url_familia': familia.url_enlace(request, alumno),
         'por_entregar': alumno.compras.filter(estado='pendiente').count(),
         'stats': juego.estadisticas_alumno(alumno),
         'avance_clases': avance_clases,
@@ -1682,4 +1684,52 @@ def app_accesos(request, pk, clase_id):
         'listos': len(accesos),
         'otras_clases': app.en_clases.select_related('clase').exclude(clase=clase),
         'seccion': 'apps',
+    })
+
+
+# ========================
+# PORTAL PARA LA FAMILIA
+# ========================
+@require_POST
+@login_required
+def enlace_familia(request, pk):
+    """Crear, cambiar o apagar el enlace privado con el que la familia ve el avance del alumno."""
+    alumno = get_object_or_404(Alumno, pk=pk)
+    accion = request.POST.get('accion')
+    if accion == 'quitar':
+        familia.quitar_enlace(alumno)
+        messages.info(request, f'Se apagó el enlace de la familia de {alumno.nombre}: ya no funciona.')
+    elif accion in ('crear', 'cambiar'):
+        nuevo = bool(alumno.familia_token)
+        familia.generar_enlace(alumno)
+        messages.success(request, f'Enlace nuevo para la familia de {alumno.nombre}. El anterior ya no funciona.' if nuevo
+                         else f'Listo: ya puedes compartir el enlace con la familia de {alumno.nombre}.')
+    return redirect(_siguiente(request, reverse('alumno_detalle', args=[alumno.pk])))
+
+
+@login_required
+def familias_grupo(request, clase_id=None):
+    """Los enlaces para las familias de un grupo: copiar, mandar por WhatsApp o imprimir una hoja con QR para cada una."""
+    if clase_id is None:
+        clase = Clase.objects.filter(activa=True).order_by('grado', 'grupo').first() or Clase.objects.first()
+        return redirect('familias_grupo', clase_id=clase.id) if clase else redirect('clases_lista')
+    clase = get_object_or_404(Clase, id=clase_id)
+    if request.method == 'POST':   # «Crear los enlaces que faltan»
+        sin_enlace = list(clase.alumnos.filter(activo=True, familia_token__isnull=True))
+        for alumno in sin_enlace:
+            familia.generar_enlace(alumno)
+        messages.success(request, f'Se crearon {len(sin_enlace)} enlace{"s" if len(sin_enlace) != 1 else ""} para las '
+                                  f'familias de {clase.nombre}.')
+        return redirect('familias_grupo', clase_id=clase.id)
+    alumnos = list(clase.alumnos.filter(activo=True).order_by('nombre', 'apellido'))
+    for alumno in alumnos:
+        alumno.url_familia = familia.url_enlace(request, alumno)
+    imprimir = request.GET.get('imprimir') == '1'
+    return render(request, 'Profesor/familias_imprimir.html' if imprimir else 'Profesor/familias.html', {
+        'clase': clase,
+        'clases': Clase.objects.filter(activa=True).order_by('grado', 'grupo', 'nombre'),
+        'alumnos': [a for a in alumnos if a.url_familia] if imprimir else alumnos,
+        'con_enlace': sum(1 for a in alumnos if a.url_familia),
+        'abiertos': sum(1 for a in alumnos if a.url_familia and a.familia_visto),
+        'seccion': 'familias',
     })

@@ -186,6 +186,10 @@ class Alumno(models.Model):
     cumple_mes = models.PositiveSmallIntegerField(null=True, blank=True)
     cumple_felicitado = models.PositiveSmallIntegerField(null=True, blank=True, editable=False,
                                                          help_text='Último año en que se le felicitó')
+    # Portal para la familia: enlace privado (sin cuenta) para que los papás vean su avance. Cambiarlo invalida el anterior
+    familia_token = models.CharField(max_length=40, unique=True, null=True, blank=True, editable=False)
+    familia_visto = models.DateTimeField(null=True, blank=True, editable=False,
+                                         help_text='Última vez que la familia abrió su enlace')
 
     objects = AlumnoManager()
     todos = models.Manager()
