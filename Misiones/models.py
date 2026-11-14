@@ -1,7 +1,11 @@
 from datetime import datetime, timedelta
 
-from django.db import models
+from django.db import models, transaction
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
 from django.utils import timezone
+
+from .almacen import AlmacenProyectos, borrar_archivo
 
 
 # ========================
@@ -69,6 +73,8 @@ class Clase(models.Model):
     # Secciones que el profe puede cerrar a un grupo sin cerrarle la plataforma (el mapa y las misiones siguen abiertos)
     tienda_abierta = models.BooleanField(default=True, help_text='Cerrada, sus alumnos no pueden comprar')
     arcade_abierto = models.BooleanField(default=True, help_text='Cerrado, sus alumnos no pueden jugar en el Arcade')
+    proyectos_abierto = models.BooleanField(default=True,
+                                            help_text='Cerrado, sus alumnos no suben archivos nuevos (sí descargan los suyos)')
 
     SECCIONES = {
         'tienda': {'campo': 'tienda_abierta', 'nombre': 'Tienda', 'el': 'La', 'emoji': '🛒', 'icono': 'bi-shop',
@@ -79,6 +85,11 @@ class Clase(models.Model):
                    'abierta': 'abierto', 'cerrada': 'cerrado',
                    'si_abre': 'Sus alumnos pueden jugar y ganar monedas extra.',
                    'si_cierra': 'Sus alumnos no pueden jugar ahí; los juegos de las misiones del mapa sí siguen.'},
+        'proyectos': {'campo': 'proyectos_abierto', 'nombre': 'Proyectos', 'el': 'Los', 'emoji': '📁',
+                      'icono': 'bi-folder-fill', 'abierta': 'abiertos', 'cerrada': 'cerrados', 'quedo': 'quedaron',
+                      'si_abre': 'Sus alumnos pueden guardar los archivos de sus prácticas y abrirlos en cualquier compu.',
+                      'si_cierra': 'Sus alumnos no pueden subir archivos nuevos; los que ya guardaron los siguen '
+                                   'pudiendo descargar.'},
     }
 
     def __str__(self):
@@ -89,7 +100,7 @@ class Clase(models.Model):
 
     @property
     def secciones(self):
-        """La Tienda y el Arcade con su estado en este grupo (para los interruptores del panel)."""
+        """La Tienda, el Arcade y los Proyectos con su estado en este grupo (para los interruptores del panel)."""
         lista = []
         for clave, info in self.SECCIONES.items():
             abierta = getattr(self, info['campo'])
@@ -1118,3 +1129,50 @@ class Aviso(models.Model):
         if self.hasta is None:
             return None
         return (self.hasta - timezone.localdate()).days
+
+
+# ========================
+# MIS PROYECTOS (los archivos de las prácticas del alumno)
+# ========================
+class ProyectoAlumno(models.Model):
+    """Un trabajo del alumno en «Mis proyectos» (su archivo de Scratch, Arduino, Word…) con sus últimas versiones.
+    Así no lo pierde al cambiar de computadora: entra con su PIN en cualquiera y lo descarga. Lógica en proyectos.py."""
+    alumno = models.ForeignKey(Alumno, on_delete=models.CASCADE, related_name='proyectos')
+    clase = models.ForeignKey(Clase, on_delete=models.SET_NULL, null=True, blank=True, related_name='proyectos_alumnos',
+                              help_text='La clase desde la que lo guardó')
+    nombre = models.CharField(max_length=80)
+    creado = models.DateTimeField(default=timezone.now)
+    actualizado = models.DateTimeField(default=timezone.now, help_text='Cuándo guardó su última versión')
+
+    class Meta:
+        ordering = ['-actualizado', '-id']
+
+    def __str__(self):
+        return f'{self.nombre} ({self.alumno})'
+
+
+class VersionProyecto(models.Model):
+    """Un archivo guardado de un proyecto. Se conservan sus últimas versiones por si el alumno se equivoca."""
+    proyecto = models.ForeignKey(ProyectoAlumno, on_delete=models.CASCADE, related_name='versiones')
+    archivo = models.FileField(upload_to='proyectos/', storage=AlmacenProyectos(), max_length=255)
+    nombre_archivo = models.CharField(max_length=150, help_text='El nombre original, para descargarlo igual')
+    tamano = models.PositiveIntegerField(help_text='En bytes')
+    fecha = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ['-fecha', '-id']
+
+    def __str__(self):
+        return self.nombre_archivo
+
+    @property
+    def extension(self):
+        return self.nombre_archivo.rsplit('.', 1)[-1].lower() if '.' in self.nombre_archivo else ''
+
+
+@receiver(post_delete, sender=VersionProyecto)
+def _borrar_archivo_de_la_version(sender, instance, **kwargs):
+    """Al borrar una versión (o su proyecto, o al alumno) también se borra su archivo, cuando ya quedó guardado."""
+    nombre = instance.archivo.name
+    if nombre:
+        transaction.on_commit(lambda: borrar_archivo(nombre))

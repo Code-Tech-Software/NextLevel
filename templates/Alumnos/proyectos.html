@@ -1,0 +1,179 @@
+{% extends 'Alumnos/base.html' %}
+{% load nextlevel %}
+{% block title %}Mis proyectos · {{ alumno.nombre }}{% endblock %}
+
+{% block content %}
+<div class="contenedor proyectos-pagina">
+    <section class="proyectos-hero">
+        <div class="kicker">Tu carpeta en la nube</div>
+        <h1>Mis proyectos 📁</h1>
+        <p class="fw-bold mb-0">Guarda aquí los archivos de tus prácticas y ábrelos en cualquier compu: solo entra con tu PIN.</p>
+        <div class="espacio" title="Espacio que usas de tu carpeta">
+            <div class="espacio-textos">
+                <span>💾 <b>{{ espacio.usado_texto }}</b> de {{ espacio.maximo_texto }}</span>
+                <span>{{ espacio.proyectos }} de {{ espacio.max_proyectos }} proyectos</span>
+            </div>
+            <div class="barra delgada {% if espacio.casi_lleno %}oro{% else %}verde{% endif %}"><span style="width:0" data-ancho="{{ espacio.pct }}"></span></div>
+            {% if espacio.casi_lleno %}<div class="espacio-aviso">⚠️ Tu carpeta está casi llena: borra lo que ya no uses.</div>{% endif %}
+        </div>
+    </section>
+
+    {% if not abierto %}
+        <div class="aviso-cerrada aviso-seccion mt-4" role="status">
+            <span class="candado" aria-hidden="true">🔒</span>
+            <div class="min-w-0 flex-grow-1">
+                <div class="t">Tu profe cerró «Mis proyectos» por ahora</div>
+                <div class="d">No puedes subir archivos nuevos, pero los que ya guardaste siguen aquí para descargarlos.</div>
+                {% if alumno.es_prueba %}<div class="nota-profe">👀 Así lo ven tus alumnos. Ábrelo desde el candado de la clase en tu panel.</div>{% endif %}
+            </div>
+        </div>
+    {% endif %}
+
+    <div class="row g-4 mt-1">
+        <div class="col-lg-5">
+            <div class="proyectos-lateral">
+                {% if abierto %}
+                    <section class="g-card subir-proyecto" id="subir">
+                        <h2 class="g-card-titulo">⬆️ Guardar un archivo</h2>
+                        <form method="post" action="{% url 'guardar_proyecto' clase.id %}" enctype="multipart/form-data"
+                              data-subir-proyecto data-max="{{ tamano_max }}" data-max-texto="{{ tamano_max_texto }}" data-acepta="{{ acepta }}">
+                            {% csrf_token %}
+                            <label class="zona-archivo" data-zona>
+                                <input type="file" name="archivo" accept="{{ acepta }}" required data-entrada aria-label="Elige el archivo de tu proyecto">
+                                <span class="zona-vacia">
+                                    <span class="ico" aria-hidden="true">📂</span>
+                                    <b>Arrastra aquí tu archivo</b>
+                                    <span>o haz clic para elegirlo</span>
+                                </span>
+                                <span class="zona-elegido">
+                                    <span class="ico" aria-hidden="true" data-icono>📦</span>
+                                    <span class="min-w-0 flex-grow-1 text-start">
+                                        <b class="d-block text-truncate" data-nombre-archivo></b>
+                                        <small data-peso></small>
+                                    </span>
+                                    <span class="cambiar">Cambiar</span>
+                                </span>
+                            </label>
+
+                            {% if proyectos %}
+                                <label for="destino-proyecto" class="etiqueta-g">¿Dónde lo guardo?</label>
+                                <select name="proyecto" id="destino-proyecto" class="campo-g" data-destino>
+                                    <option value="">✨ Es un proyecto nuevo</option>
+                                    <optgroup label="🔁 Versión nueva de…">
+                                        {% for p in proyectos %}<option value="{{ p.id }}" data-archivo="{{ p.ultima.nombre_archivo|lower }}">{{ p.tipo.emoji }} {{ p.nombre }}</option>{% endfor %}
+                                    </optgroup>
+                                </select>
+                                <div class="pista-g" data-pista hidden></div>
+                            {% endif %}
+
+                            <div data-campo-nombre>
+                                <label for="nombre-proyecto" class="etiqueta-g">Nombre del proyecto <span class="texto-suave">(opcional)</span></label>
+                                <input type="text" name="nombre" id="nombre-proyecto" class="campo-g" maxlength="80" placeholder="Ej. Semáforo con Arduino" data-nombre autocomplete="off">
+                            </div>
+
+                            <div class="subida-progreso" data-progreso hidden>
+                                <div class="barra delgada"><span style="width:0%;transition:width .2s" data-progreso-barra></span></div>
+                                <small data-progreso-texto>Subiendo…</small>
+                            </div>
+                            <div class="subida-error" data-error role="alert" hidden></div>
+
+                            <button class="g-btn ancho mt-3" data-boton-guardar><i class="bi bi-cloud-arrow-up-fill"></i> Guardar archivo</button>
+                        </form>
+
+                        <details class="tipos-aceptados">
+                            <summary>¿Qué archivos puedo guardar?</summary>
+                            <div class="tipos-lista">
+                                {% for clave, emoji, nombre, extensiones in tipos %}
+                                    <span class="chip"><span aria-hidden="true">{{ emoji }}</span> {{ nombre }} <small>{% for e in extensiones %}.{{ e }}{% if not forloop.last %} {% endif %}{% endfor %}</small></span>
+                                {% endfor %}
+                            </div>
+                            <p class="mb-0">Hasta <b>{{ tamano_max_texto }}</b> por archivo. De cada proyecto se guardan sus últimas <b>{{ versiones_max }}</b> versiones.</p>
+                        </details>
+                    </section>
+                {% endif %}
+
+                <section class="g-card como-se-usa {% if abierto %}mt-4{% endif %}">
+                    <h2 class="g-card-titulo">💡 ¿Cómo se usa?</h2>
+                    <ol class="pasos-g">
+                        <li><b>Termina tu práctica</b> y guárdala en la compu desde su programa (<i>Archivo › Guardar</i>).</li>
+                        <li><b>Súbela aquí</b> antes de irte. Si ya la tenías, guárdala como <b>versión nueva</b>.</li>
+                        <li><b>En otra compu</b>, entra con tu PIN, descárgala y ábrela con su programa para seguir.</li>
+                    </ol>
+                </section>
+            </div>
+        </div>
+
+        <div class="col-lg-7">
+            <h2 class="seccion-titulo mt-0">🗂️ Mis archivos <small class="texto-suave fw-bold" style="font-size:1rem">{{ proyectos|length }}</small></h2>
+            {% for p in proyectos %}
+                <article class="proyecto-card" id="proyecto-{{ p.id }}" data-tipo="{{ p.tipo.clave }}">
+                    <div class="pc-cabeza">
+                        <span class="pc-icono" aria-hidden="true">{{ p.tipo.emoji }}</span>
+                        <div class="min-w-0 flex-grow-1">
+                            <h3 class="pc-nombre">{{ p.nombre }}</h3>
+                            <div class="pc-datos">{{ p.tipo.nombre }} · {{ p.ultima.tamano|peso }} · guardado {{ p.actualizado|hace }}{% if p.clase and p.clase.id != clase.id %} · {{ p.clase.icono }} {{ p.clase.nombre }}{% endif %}</div>
+                        </div>
+                        <div class="dropdown flex-shrink-0">
+                            <button type="button" class="hud-btn pc-menu" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Más opciones de «{{ p.nombre }}»"><i class="bi bi-three-dots"></i></button>
+                            <ul class="dropdown-menu dropdown-menu-end menu-g">
+                                <li><button type="button" class="dropdown-item" data-renombrar="{% url 'renombrar_proyecto' clase.id p.id %}" data-nombre="{{ p.nombre }}"><i class="bi bi-pencil-fill"></i> Cambiar el nombre</button></li>
+                                <li>
+                                    <form method="post" action="{% url 'borrar_proyecto' clase.id p.id %}" data-confirmar-g="Se borrará con {% if p.anteriores %}sus {{ p.anteriores|length|add:1 }} versiones{% else %}su archivo{% endif %} y no se puede recuperar." data-titulo="¿Borrar «{{ p.nombre }}»?" data-boton="Sí, borrarlo">
+                                        {% csrf_token %}
+                                        <button class="dropdown-item text-danger"><i class="bi bi-trash3-fill"></i> Borrar proyecto</button>
+                                    </form>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="pc-archivo text-truncate" title="{{ p.ultima.nombre_archivo }}"><i class="bi bi-file-earmark-fill"></i> {{ p.ultima.nombre_archivo }}</div>
+
+                    <div class="pc-acciones">
+                        <a href="{% url 'descargar_version' clase.id p.ultima.id %}" class="g-btn chico azul"><i class="bi bi-download"></i> Descargar</a>
+                        {% if abierto %}
+                            <form method="post" action="{% url 'guardar_proyecto' clase.id %}" enctype="multipart/form-data" class="pc-version-nueva"
+                                  data-subir-proyecto data-auto data-max="{{ tamano_max }}" data-max-texto="{{ tamano_max_texto }}" data-acepta="{{ acepta }}">
+                                {% csrf_token %}
+                                <input type="hidden" name="proyecto" value="{{ p.id }}">
+                                <label class="g-btn chico blanco mb-0">
+                                    <input type="file" name="archivo" accept="{{ acepta }}" class="visually-hidden" data-entrada>
+                                    <i class="bi bi-arrow-repeat"></i> Guardar versión nueva
+                                </label>
+                                <div class="subida-progreso" data-progreso hidden>
+                                    <div class="barra delgada"><span style="width:0%;transition:width .2s" data-progreso-barra></span></div>
+                                    <small data-progreso-texto>Subiendo…</small>
+                                </div>
+                                <div class="subida-error" data-error role="alert" hidden></div>
+                            </form>
+                        {% endif %}
+                    </div>
+
+                    {% if p.anteriores %}
+                        <details class="pc-versiones">
+                            <summary>🕘 Versiones anteriores ({{ p.anteriores|length }})</summary>
+                            {% for v in p.anteriores %}
+                                <div class="pc-version">
+                                    <span class="min-w-0 flex-grow-1"><b>{{ v.fecha|date:"j M, H:i" }}</b> · {{ v.tamano|peso }}<span class="d-none d-sm-inline texto-suave"> · {{ v.nombre_archivo }}</span></span>
+                                    <a href="{% url 'descargar_version' clase.id v.id %}" class="hud-btn" title="Descargar esta versión" aria-label="Descargar la versión del {{ v.fecha|date:'j M, H:i' }}"><i class="bi bi-download"></i></a>
+                                    <form method="post" action="{% url 'borrar_version' clase.id v.id %}" data-confirmar-g="Esta versión se borrará y no se puede recuperar. Las demás se quedan." data-titulo="¿Borrar la versión del {{ v.fecha|date:'j M, H:i' }}?" data-boton="Sí, borrarla">
+                                        {% csrf_token %}
+                                        <button class="hud-btn borrar" title="Borrar esta versión" aria-label="Borrar la versión del {{ v.fecha|date:'j M, H:i' }}"><i class="bi bi-trash3"></i></button>
+                                    </form>
+                                </div>
+                            {% endfor %}
+                        </details>
+                    {% endif %}
+                </article>
+            {% empty %}
+                <div class="g-card proyectos-vacio">
+                    <div class="e" aria-hidden="true">🗂️</div>
+                    <div class="t">Aún no guardas ningún proyecto</div>
+                    <p class="mb-0">{% if abierto %}Cuando termines una práctica, súbela aquí para no perderla al cambiar de compu.{% else %}Cuando tu profe lo abra, aquí podrás guardar tus prácticas.{% endif %}</p>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{{ iconos|json_script:"iconos-proyectos" }}
+{% endblock %}

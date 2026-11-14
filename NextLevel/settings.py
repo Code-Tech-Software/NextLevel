@@ -165,6 +165,11 @@ STORAGES = {
     "staticfiles": {
         "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
     },
+    # «Mis proyectos» de los alumnos (Scratch, Arduino, Word…): también en Cloudinary, pero como archivos «raw»
+    # porque no son imágenes. Ver Misiones/almacen.py y Misiones/proyectos.py.
+    "proyectos": {
+        "BACKEND": "Misiones.almacen.ProyectosCloudinary",
+    },
 }
 # WhiteNoise sirve los CSS/JS directo de las carpetas `static/` (como cuando DEBUG estaba encendido), aunque
 # `collectstatic` no haya corrido.

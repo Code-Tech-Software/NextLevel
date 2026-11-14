@@ -25,6 +25,7 @@
             <a href="{% url 'dashboard_alumno' clase.id %}" class="{% if seccion == 'mapa' %}activo{% endif %}"><i class="bi bi-map-fill"></i> Mapa</a>
             <a href="{% url 'tienda_alumno' clase.id %}" class="{% if seccion == 'tienda' %}activo{% endif %}{% if not clase.tienda_abierta %} cerrada{% endif %}"><i class="bi bi-shop"></i> Tienda{% if not clase.tienda_abierta %}<span class="nav-candado" title="Cerrada por tu profe">🔒</span>{% endif %}</a>
             {% if arcade_activo %}<a href="{% url 'arcade' clase.id %}" class="{% if seccion == 'arcade' %}activo{% endif %}{% if not clase.arcade_abierto %} cerrada{% endif %}"><i class="bi bi-controller"></i> Arcade{% if not clase.arcade_abierto %}<span class="nav-candado" title="Cerrado por tu profe">🔒</span>{% endif %}</a>{% endif %}
+            <a href="{% url 'mis_proyectos' clase.id %}" class="{% if seccion == 'proyectos' %}activo{% endif %}" title="Mis proyectos: tus archivos guardados"><i class="bi bi-folder-fill"></i> Proyectos</a>
             <a href="{% url 'ranking' clase.id %}" class="{% if seccion == 'ranking' %}activo{% endif %}"><i class="bi bi-trophy-fill"></i> Ranking</a>
             <a href="{% url 'mi_progreso' clase.id %}" class="{% if seccion == 'perfil' %}activo{% endif %}"><i class="bi bi-person-badge-fill"></i> Perfil</a>
         </nav>
@@ -83,6 +84,7 @@
     <a href="{% url 'dashboard_alumno' clase.id %}" class="{% if seccion == 'mapa' %}activo{% endif %}"><i class="bi bi-map-fill"></i>Mapa</a>
     <a href="{% url 'tienda_alumno' clase.id %}" class="{% if seccion == 'tienda' %}activo{% endif %}{% if not clase.tienda_abierta %} cerrada{% endif %}"><i class="bi bi-shop"></i>Tienda{% if not clase.tienda_abierta %}<span class="nav-candado" aria-label="cerrada">🔒</span>{% endif %}</a>
     {% if arcade_activo %}<a href="{% url 'arcade' clase.id %}" class="{% if seccion == 'arcade' %}activo{% endif %}{% if not clase.arcade_abierto %} cerrada{% endif %}"><i class="bi bi-controller"></i>Arcade{% if not clase.arcade_abierto %}<span class="nav-candado" aria-label="cerrado">🔒</span>{% endif %}</a>{% endif %}
+    <a href="{% url 'mis_proyectos' clase.id %}" class="{% if seccion == 'proyectos' %}activo{% endif %}"><i class="bi bi-folder-fill"></i>Proyectos</a>
     <a href="{% url 'ranking' clase.id %}" class="{% if seccion == 'ranking' %}activo{% endif %}"><i class="bi bi-trophy-fill"></i>Ranking</a>
     <a href="{% url 'mi_progreso' clase.id %}" class="{% if seccion == 'perfil' %}activo{% endif %}"><i class="bi bi-person-badge-fill"></i>Perfil</a>
     {% if not arcade_activo %}<a href="{% url 'salir_alumno' %}"><i class="bi bi-box-arrow-right"></i>Salir</a>{% endif %}

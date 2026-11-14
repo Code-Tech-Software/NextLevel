@@ -24,6 +24,7 @@ from . import familia
 from . import gamificacion as juego
 from . import inicio_profesor as inicio
 from . import minijuegos
+from . import proyectos as archivos
 from . import revisiones as bandeja
 from .forms import (
     AltaMasivaForm, AlumnoForm, AppExternaForm, ArticuloTiendaForm, ClaseForm, LogroForm, MisionDiariaForm, MisionForm,
@@ -281,7 +282,7 @@ def acceso_clase(request, clase_id):
 @require_POST
 @login_required
 def seccion_clase(request, clase_id):
-    """Abre o cierra la Tienda o el Arcade de un grupo (el resto de la plataforma no cambia)."""
+    """Abre o cierra la Tienda, el Arcade o los Proyectos de un grupo (el resto de la plataforma no cambia)."""
     clase = get_object_or_404(Clase, id=clase_id)
     seccion, abrir = request.POST.get('seccion'), request.POST.get('abrir')
     if seccion not in Clase.SECCIONES or abrir not in ('0', '1'):
@@ -290,11 +291,12 @@ def seccion_clase(request, clase_id):
     info = Clase.SECCIONES[seccion]
     setattr(clase, info['campo'], abrir == '1')
     clase.save(update_fields=[info['campo']])
+    quedo = info.get('quedo', 'quedó')
     if abrir == '1':
-        messages.success(request, f'🔓 {info["el"]} {info["nombre"]} de «{clase.nombre}» quedó {info["abierta"]}. '
+        messages.success(request, f'🔓 {info["el"]} {info["nombre"]} de «{clase.nombre}» {quedo} {info["abierta"]}. '
                                   f'{info["si_abre"]}')
     else:
-        messages.success(request, f'🔒 {info["el"]} {info["nombre"]} de «{clase.nombre}» quedó {info["cerrada"]}. '
+        messages.success(request, f'🔒 {info["el"]} {info["nombre"]} de «{clase.nombre}» {quedo} {info["cerrada"]}. '
                                   f'{info["si_cierra"]}')
     return redirect(_siguiente(request, reverse('clases_lista')))
 
@@ -1068,6 +1070,8 @@ def alumno_detalle(request, pk):
         'alumno': alumno,
         'ahorro': ArticuloTienda.objects.filter(pk=alumno.ahorro_id, activo=True).first() if alumno.ahorro_id else None,
         'url_familia': familia.url_enlace(request, alumno),
+        'proyectos_alumno': archivos.lista_de(alumno),
+        'espacio_proyectos': archivos.resumen_espacio(alumno),
         'por_entregar': alumno.compras.filter(estado='pendiente').count(),
         'stats': juego.estadisticas_alumno(alumno),
         'avance_clases': avance_clases,

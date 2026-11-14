@@ -1,0 +1,27 @@
+{% load nextlevel %}{% comment %}Un proyecto de «Mis proyectos» en el panel: descargar la última versión (o una anterior) y borrarlo.
+Uso: {% include 'Profesor/_proyecto_fila.html' with p=proyecto quien=alumno %}{% endcomment %}
+<div class="proyecto-fila">
+    <span class="ico" aria-hidden="true">{{ p.tipo.emoji }}</span>
+    <div class="min-w-0 flex-grow-1">
+        <div class="t text-truncate">{{ p.nombre }}</div>
+        <div class="f text-truncate" title="{{ p.ultima.nombre_archivo }}">{{ p.ultima.nombre_archivo }} · {{ p.ultima.tamano|peso }} · {{ p.actualizado|hace }}{% if p.anteriores %} · {{ p.anteriores|length|add:1 }} versiones{% endif %}</div>
+    </div>
+    <div class="d-flex gap-1 flex-shrink-0 align-items-center">
+        <a href="{% url 'descargar_version_profe' p.ultima.id %}" class="p-btn xs" title="Descargar la última versión ({{ p.ultima.fecha|date:'j M, H:i' }})"><i class="bi bi-download"></i><span class="d-none d-md-inline"> Descargar</span></a>
+        {% if p.anteriores %}
+            <div class="dropdown">
+                <button type="button" class="p-btn xs icono fantasma" data-bs-toggle="dropdown" aria-expanded="false" title="Versiones anteriores" aria-label="Versiones anteriores de «{{ p.nombre }}»"><i class="bi bi-clock-history"></i></button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><h6 class="dropdown-header">Versiones anteriores</h6></li>
+                    {% for v in p.anteriores %}
+                        <li><a class="dropdown-item" href="{% url 'descargar_version_profe' v.id %}"><i class="bi bi-download"></i> {{ v.fecha|date:"j M, H:i" }} · {{ v.tamano|peso }}</a></li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+        <form method="post" action="{% url 'borrar_proyecto_profe' p.id %}" data-confirmar="Se borrará con todas sus versiones y no se puede recuperar. {{ quien.nombre }} recibirá un aviso de que lo borraste." data-titulo="¿Borrar «{{ p.nombre }}»?" data-boton="Borrar" data-peligro>
+            {% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <button class="p-btn xs icono fantasma" title="Borrar proyecto" aria-label="Borrar «{{ p.nombre }}»"><i class="bi bi-trash3"></i></button>
+        </form>
+    </div>
+</div>

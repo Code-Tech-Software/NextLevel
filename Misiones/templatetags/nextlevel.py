@@ -316,3 +316,10 @@ def hace(fecha):
         return ''
     texto = timesince(fecha, depth=1)
     return 'hace un momento' if texto.startswith(('0\xa0', '0 ')) else f'hace {texto}'
+
+
+@register.filter
+def peso(num_bytes):
+    """1234567 → '1.2 MB' (para los archivos de «Mis proyectos»)."""
+    from Misiones.proyectos import peso as calcular_peso
+    return calcular_peso(num_bytes)

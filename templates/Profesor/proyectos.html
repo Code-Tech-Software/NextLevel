@@ -1,0 +1,64 @@
+{% extends 'Profesor/baseProfesor.html' %}
+{% load nextlevel %}
+{% block title %}Proyectos guardados{% endblock %}
+{% block titulo_pagina %}Proyectos guardados{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1>Proyectos guardados 📁</h1>
+        <p>Los archivos que tus alumnos guardan en «Mis proyectos» (Scratch, Arduino, Word…) para abrirlos en cualquier computadora. Aquí puedes descargarlos, ver quién guardó hoy y borrar lo que no deba estar.</p>
+    </div>
+</div>
+
+{% include 'Profesor/_secciones_grupos.html' with seccion='proyectos' titulo='📁 ¿Qué grupos pueden guardar proyectos?' ayuda='Ciérraselo a un grupo y sus alumnos ya no podrán subir archivos nuevos. Los que ya guardaron los siguen pudiendo descargar.' %}
+
+<div class="chips-filtro mb-3">
+    {% for c in clases %}
+        <a href="{% url 'proyectos_grupo' c.id %}" class="chip-f {% if c.id == clase.id %}activo{% endif %}">{{ c.icono }} {{ c.nombre }} <small class="opacity-75">{{ c.grado }} {{ c.grupo }}</small></a>
+    {% endfor %}
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-6 col-lg-3"><div class="p-card kpi"><span class="etiqueta"><i class="bi bi-check2-circle ico-verde"></i> Guardaron hoy</span><span class="valor">{{ guardaron_hoy }}<small class="text-muted-p" style="font-size:1rem"> de {{ alumnos|length }}</small></span><span class="nota">Útil al terminar la clase</span></div></div>
+    <div class="col-6 col-lg-3"><div class="p-card kpi"><span class="etiqueta"><i class="bi bi-folder2-open ico-azul"></i> Con proyectos</span><span class="valor">{{ con_proyectos }}</span><span class="nota">alumno{{ con_proyectos|pluralize }} de este grupo</span></div></div>
+    <div class="col-6 col-lg-3"><div class="p-card kpi"><span class="etiqueta"><i class="bi bi-hdd ico-violeta"></i> Espacio del grupo</span><span class="valor">{{ espacio_grupo }}</span><span class="nota">Hasta {{ espacio_alumno }} por alumno</span></div></div>
+    <div class="col-6 col-lg-3"><div class="p-card kpi"><span class="etiqueta"><i class="bi bi-cloud ico-ambar"></i> Todos tus grupos</span><span class="valor">{{ total.texto }}</span><span class="nota">{{ total.archivos }} archivo{{ total.archivos|pluralize }} en Cloudinary</span></div></div>
+</div>
+
+<section class="p-card">
+    <div class="p-card-head">
+        <div>
+            <h2>{{ clase.icono }} {{ clase.nombre }}</h2>
+            <div class="sub">{% if clase.proyectos_abierto %}Pueden guardar archivos de hasta {{ tamano_max }}, {{ max_proyectos }} proyectos y sus últimas {{ versiones_max }} versiones{% else %}🔒 «Mis proyectos» está cerrado para este grupo{% endif %}</div>
+        </div>
+    </div>
+    <div class="p-card-body sin-pad">
+        {% for a in alumnos %}
+            <details class="proyectos-alumno">
+                <summary class="feed-item">
+                    <span class="persona min-w-0 flex-grow-1">
+                        <img src="{{ a|avatar_url }}" alt="">
+                        <span class="min-w-0"><span class="n d-block text-truncate">{{ a.nombre }} {{ a.apellido }}</span>
+                            <span class="s">{% if a.lista_proyectos %}{{ a.lista_proyectos|length }} proyecto{{ a.lista_proyectos|length|pluralize }} · {{ a.espacio|peso }} · último {{ a.ultimo_guardado|hace }}{% else %}Aún no guarda nada{% endif %}</span></span>
+                    </span>
+                    {% if a.guardo_hoy %}<span class="p-badge verde flex-shrink-0"><i class="bi bi-check2"></i> Hoy</span>{% endif %}
+                    {% if a.espacio_pct >= 85 %}<span class="p-badge ambar flex-shrink-0" title="Usa el {{ a.espacio_pct }} % de su espacio">{{ a.espacio_pct }} %</span>{% endif %}
+                    {% if a.lista_proyectos %}<i class="bi bi-chevron-down flecha flex-shrink-0" aria-hidden="true"></i>{% endif %}
+                </summary>
+                {% if a.lista_proyectos %}
+                    <div class="proyectos-lista">
+                        {% for p in a.lista_proyectos %}
+                            {% include 'Profesor/_proyecto_fila.html' with quien=a %}
+                        {% endfor %}
+                        <a href="{% url 'alumno_detalle' a.id %}" class="ver-ficha"><i class="bi bi-person"></i> Ver la ficha de {{ a.nombre }}</a>
+                    </div>
+                {% endif %}
+            </details>
+        {% empty %}
+            <div class="vacio-p"><i class="bi bi-people"></i>Este grupo aún no tiene alumnos.</div>
+        {% endfor %}
+    </div>
+</section>
+<p class="text-muted-p mt-3" style="font-size:.8rem"><i class="bi bi-info-circle"></i> El plan gratis de Cloudinary trae unos 25 créditos al mes que se reparten entre lo guardado y lo descargado (también las fotos de evidencias y los avatares). Revisa tu consumo en la sección «Usage» de Cloudinary.</p>
+{% endblock %}

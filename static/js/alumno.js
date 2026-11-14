@@ -528,6 +528,215 @@
         }
     }
 
+    // ---------- Mis proyectos: subir con barra de avance, versión nueva, cambiar nombre y borrar ----------
+    function iniciarProyectos() {
+        const formularios = $$('form[data-subir-proyecto]');
+        let iconos = {};
+        try { iconos = JSON.parse($('#iconos-proyectos')?.textContent || '{}'); } catch (e) { iconos = {}; }
+        const extension = n => (n.includes('.') ? n.split('.').pop().toLowerCase() : '');
+        const peso = b => (b < 1e6 ? `${Math.max(1, Math.round(b / 1000))} KB` : `${(b / 1e6).toFixed(1).replace(/\.0$/, '')} MB`);
+        const sugerido = n => {
+            const base = n.replace(/\.[^.]+$/, '').replace(/_/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80);
+            return base ? base[0].toUpperCase() + base.slice(1) : '';
+        };
+        // Recarga la página aunque solo cambie el #ancla (si no, el navegador solo se desplaza y no se ve el cambio)
+        const irA = url => {
+            const destino = new URL(url, window.location.href);
+            if (destino.pathname === window.location.pathname) {
+                history.replaceState(null, '', destino.pathname + destino.search + destino.hash);
+                window.location.reload();
+            } else {
+                window.location.href = destino.href;
+            }
+        };
+
+        formularios.forEach(form => {
+            const entrada = $('[data-entrada]', form);
+            const zona = $('[data-zona]', form);
+            const destino = $('[data-destino]', form);
+            const nombre = $('[data-nombre]', form);
+            const pista = $('[data-pista]', form);
+            const campoNombre = $('[data-campo-nombre]', form);
+            const error = $('[data-error]', form);
+            const progreso = $('[data-progreso]', form);
+            const barra = $('[data-progreso-barra]', form);
+            const textoProgreso = $('[data-progreso-texto]', form);
+            const boton = $('[data-boton-guardar]', form);
+            const automatico = form.hasAttribute('data-auto');
+            const maximo = Number(form.dataset.max || 0);
+            const aceptadas = (form.dataset.acepta || '').split(',').map(e => e.replace('.', '')).filter(Boolean);
+            let enviando = false;
+
+            const mostrarError = texto => {
+                if (!error) return;
+                error.textContent = texto || '';
+                error.hidden = !texto;
+                if (texto) Sonido.play('error');
+            };
+            const actualizarDestino = () => {
+                if (campoNombre) campoNombre.hidden = Boolean(destino && destino.value);
+            };
+            const problema = archivo => {
+                const ext = extension(archivo.name);
+                if (!ext) return 'Ese archivo no tiene extensión (como .sb3 o .ino). Guárdalo desde su programa y vuelve a intentar.';
+                if (aceptadas.length && !aceptadas.includes(ext)) return `Los archivos .${ext} no se pueden guardar aquí. Abre «¿Qué archivos puedo guardar?» para ver cuáles sí.`;
+                if (!archivo.size) return 'Ese archivo está vacío. Ábrelo en su programa, guárdalo otra vez y vuelve a intentar.';
+                if (maximo && archivo.size > maximo) return `Tu archivo pesa ${peso(archivo.size)} y lo más que se puede guardar es ${form.dataset.maxTexto || peso(maximo)} por archivo.`;
+                return '';
+            };
+
+            function elegir() {
+                const archivo = entrada.files[0];
+                mostrarError('');
+                zona?.classList.toggle('con-archivo', Boolean(archivo));
+                if (!archivo) return;
+                const fallo = problema(archivo);
+                if (fallo) {
+                    mostrarError(fallo);
+                    entrada.value = '';
+                    zona?.classList.remove('con-archivo');
+                    return;
+                }
+                if (zona) {
+                    $('[data-nombre-archivo]', zona).textContent = archivo.name;
+                    $('[data-peso]', zona).textContent = peso(archivo.size);
+                    $('[data-icono]', zona).textContent = iconos[extension(archivo.name)] || '📦';
+                }
+                Sonido.play('pop');
+                if (automatico) return enviar();
+                // ¿Ya tiene un proyecto con este mismo archivo? Entonces es su versión nueva
+                if (destino) {
+                    const igual = Array.from(destino.options).find(o => o.dataset.archivo && o.dataset.archivo === archivo.name.toLowerCase());
+                    if (igual) destino.value = igual.value;
+                    if (pista) {
+                        pista.hidden = !igual;
+                        pista.textContent = igual ? `🔁 Ya tienes «${igual.textContent.trim()}» con este archivo: se guardará como su versión nueva. Si es otro proyecto, cámbialo arriba.` : '';
+                    }
+                    actualizarDestino();
+                }
+                if (nombre && (!nombre.value.trim() || nombre.dataset.auto === '1')) {
+                    nombre.value = sugerido(archivo.name);
+                    nombre.dataset.auto = '1';
+                }
+            }
+
+            function terminar(mensaje) {
+                enviando = false;
+                form.classList.remove('enviando');
+                if (boton) boton.disabled = false;
+                if (progreso) progreso.hidden = true;
+                if (automatico) entrada.value = '';   // para poder elegir el mismo archivo otra vez
+                mostrarError(mensaje);
+            }
+
+            function enviar() {
+                if (enviando) return;
+                const archivo = entrada.files[0];
+                if (!archivo) { mostrarError('📂 Primero elige el archivo de tu proyecto.'); return; }
+                const fallo = problema(archivo);
+                if (fallo) { mostrarError(fallo); return; }
+                enviando = true;
+                mostrarError('');
+                form.classList.add('enviando');
+                if (boton) boton.disabled = true;
+                if (progreso) progreso.hidden = false;
+                if (barra) barra.style.width = '0%';
+                if (textoProgreso) textoProgreso.textContent = 'Subiendo…';
+
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', form.action);
+                xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+                xhr.setRequestHeader('X-CSRFToken', csrf());
+                xhr.upload.addEventListener('progress', e => {
+                    if (!e.lengthComputable) return;
+                    const pct = Math.round(e.loaded * 100 / e.total);
+                    if (barra) barra.style.width = `${pct}%`;
+                    if (textoProgreso) textoProgreso.textContent = pct < 100 ? `Subiendo… ${pct} %` : 'Guardando en tu carpeta…';
+                });
+                xhr.addEventListener('load', () => {
+                    let datos = null;
+                    try { datos = JSON.parse(xhr.responseText); } catch (e) { datos = null; }
+                    if (xhr.status >= 200 && xhr.status < 300 && datos && datos.ok) {
+                        if (barra) barra.style.width = '100%';
+                        if (textoProgreso) textoProgreso.textContent = '¡Guardado! ✅';
+                        irA(datos.redirect);
+                    } else {
+                        terminar((datos && datos.mensaje) || 'No se pudo guardar tu archivo. Inténtalo otra vez en un momento.');
+                    }
+                });
+                xhr.addEventListener('error', () => terminar('Se cortó el internet mientras subías tu archivo. Revisa la conexión e inténtalo otra vez.'));
+                xhr.send(new FormData(form));
+            }
+
+            entrada.addEventListener('change', elegir);
+            destino?.addEventListener('change', () => { if (pista) pista.hidden = true; actualizarDestino(); });
+            nombre?.addEventListener('input', () => { nombre.dataset.auto = ''; });
+            form.addEventListener('submit', e => { e.preventDefault(); enviar(); });
+            if (zona) {
+                ['dragenter', 'dragover'].forEach(t => zona.addEventListener(t, () => zona.classList.add('arrastrando')));
+                ['dragleave', 'drop'].forEach(t => zona.addEventListener(t, () => zona.classList.remove('arrastrando')));
+            }
+        });
+
+        // Si suelta el archivo en cualquier parte de la página, va al formulario principal (y no se abre en el navegador)
+        const principal = formularios.find(f => !f.hasAttribute('data-auto'));
+        if (principal) {
+            window.addEventListener('dragover', e => { if (!e.target.closest?.('input[type=file]')) e.preventDefault(); });
+            window.addEventListener('drop', e => {
+                if (e.target.closest?.('input[type=file]') || !e.dataTransfer?.files?.length) return;
+                e.preventDefault();
+                const entrada = $('[data-entrada]', principal);
+                try { entrada.files = e.dataTransfer.files; } catch (err) { return; }
+                entrada.dispatchEvent(new Event('change'));
+                principal.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            });
+        }
+
+        $$('[data-renombrar]').forEach(btn => btn.addEventListener('click', async () => {
+            if (typeof Swal === 'undefined') return;
+            const r = await Swal.fire({
+                title: '✏️ Nuevo nombre',
+                input: 'text',
+                inputValue: btn.dataset.nombre,
+                inputAttributes: { maxlength: 80, 'aria-label': 'Nuevo nombre del proyecto' },
+                showCancelButton: true,
+                reverseButtons: true,
+                buttonsStyling: false,
+                confirmButtonText: 'Guardar',
+                cancelButtonText: 'Cancelar',
+                customClass: { popup: 'swal-juego', confirmButton: 'g-btn', cancelButton: 'g-btn blanco' },
+                inputValidator: valor => (!valor.trim() ? 'Escribe el nuevo nombre.' : undefined),
+            });
+            if (!r.isConfirmed) return;
+            try {
+                const datos = await postJSON(btn.dataset.renombrar, { nombre: r.value });
+                if (datos.ok) return irA(datos.redirect);
+                Swal.fire({ icon: 'error', title: '¡Ups!', text: datos.mensaje, buttonsStyling: false, customClass: { popup: 'swal-juego', confirmButton: 'g-btn rojo' } });
+            } catch (e) {
+                Swal.fire({ icon: 'error', title: '¡Ups!', text: 'No se pudo cambiar el nombre. Inténtalo otra vez.', buttonsStyling: false, customClass: { popup: 'swal-juego', confirmButton: 'g-btn rojo' } });
+            }
+        }));
+
+        $$('form[data-confirmar-g]').forEach(form => form.addEventListener('submit', e => {
+            if (form.dataset.confirmado) return;
+            e.preventDefault();
+            const enviar = () => { form.dataset.confirmado = '1'; form.submit(); };
+            if (typeof Swal === 'undefined') { if (window.confirm(form.dataset.confirmarG)) enviar(); return; }
+            Sonido.play('pop');
+            Swal.fire({
+                title: form.dataset.titulo || '¿Seguro?',
+                text: form.dataset.confirmarG,
+                icon: 'warning',
+                showCancelButton: true,
+                reverseButtons: true,
+                buttonsStyling: false,
+                confirmButtonText: form.dataset.boton || 'Sí',
+                cancelButtonText: 'Mejor no',
+                customClass: { popup: 'swal-juego', confirmButton: 'g-btn rojo', cancelButton: 'g-btn blanco' },
+            }).then(r => { if (r.isConfirmed) enviar(); });
+        }));
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
         // Los modales viven en <body> para que ningún contenedor con z-index los tape
         $$('.modal').forEach(modal => document.body.appendChild(modal));
@@ -542,6 +751,7 @@
         iniciarClicks();
         iniciarAvisoBatalla();
         iniciarAvisosProfe();
+        iniciarProyectos();
         mostrarCelebracionesPendientes();
         $$('.barra > span[data-ancho]').forEach(barra => {
             requestAnimationFrame(() => { barra.style.width = barra.dataset.ancho + '%'; });

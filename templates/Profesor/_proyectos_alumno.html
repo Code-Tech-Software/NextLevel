@@ -1,0 +1,14 @@
+{% load nextlevel %}{% comment %}«Mis proyectos» en la ficha del alumno: los archivos de sus prácticas que guardó en su cuenta.{% endcomment %}
+<section class="p-card mb-3" id="proyectos">
+    <div class="p-card-head">
+        <h2>📁 Proyectos guardados</h2>
+        <span class="sub">{% if proyectos_alumno %}{{ proyectos_alumno|length }} · {{ espacio_proyectos.usado_texto }} de {{ espacio_proyectos.maximo_texto }}{% else %}Ninguno aún{% endif %}</span>
+    </div>
+    <div class="p-card-body sin-pad">
+        {% for p in proyectos_alumno %}
+            {% include 'Profesor/_proyecto_fila.html' with quien=alumno %}
+        {% empty %}
+            <div class="vacio-p" style="padding:1.4rem 1rem"><i class="bi bi-folder2-open"></i>Cuando guarde los archivos de sus prácticas en «Mis proyectos», aparecerán aquí.</div>
+        {% endfor %}
+    </div>
+</section>

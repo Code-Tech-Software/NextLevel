@@ -6,6 +6,7 @@ from . import views_batalla as batalla
 from . import views_clase as aula
 from . import views_juegos as juegos
 from . import views_profesor as profe
+from . import views_proyectos as archivos
 
 urlpatterns = [
     # ===== Alumnos =====
@@ -24,6 +25,15 @@ urlpatterns = [
     path('clase/<int:clase_id>/tienda/comprar/<int:articulo_id>/', views.comprar_articulo, name='comprar_articulo'),
     path('clase/<int:clase_id>/tienda/ahorrar/<int:articulo_id>/', views.ahorrar_para, name='ahorrar_para'),
     path('familia/<str:token>/', views.portal_familia, name='portal_familia'),
+    path('clase/<int:clase_id>/proyectos/', archivos.mis_proyectos, name='mis_proyectos'),
+    path('clase/<int:clase_id>/proyectos/guardar/', archivos.guardar_proyecto, name='guardar_proyecto'),
+    path('clase/<int:clase_id>/proyectos/<int:proyecto_id>/renombrar/', archivos.renombrar_proyecto,
+         name='renombrar_proyecto'),
+    path('clase/<int:clase_id>/proyectos/<int:proyecto_id>/borrar/', archivos.borrar_proyecto, name='borrar_proyecto'),
+    path('clase/<int:clase_id>/proyectos/version/<int:version_id>/descargar/', archivos.descargar_version,
+         name='descargar_version'),
+    path('clase/<int:clase_id>/proyectos/version/<int:version_id>/borrar/', archivos.borrar_version,
+         name='borrar_version'),
     path('clase/<int:clase_id>/progreso/', views.mi_progreso, name='mi_progreso'),
     path('clase/<int:clase_id>/avatar/<int:compra_id>/', views.equipar_avatar, name='equipar_avatar'),
     path('clase/<int:clase_id>/ranking/', views.ranking, name='ranking'),
@@ -99,6 +109,11 @@ urlpatterns = [
     path('profesor/alumnos/<int:pk>/familia/', profe.enlace_familia, name='enlace_familia'),
     path('profesor/familias/', profe.familias_grupo, name='familias_inicio'),
     path('profesor/familias/<int:clase_id>/', profe.familias_grupo, name='familias_grupo'),
+    path('profesor/proyectos/', archivos.proyectos_grupo, name='proyectos_inicio'),
+    path('profesor/proyectos/<int:clase_id>/', archivos.proyectos_grupo, name='proyectos_grupo'),
+    path('profesor/proyectos/version/<int:version_id>/descargar/', archivos.descargar_version_profe,
+         name='descargar_version_profe'),
+    path('profesor/proyectos/<int:proyecto_id>/borrar/', archivos.borrar_proyecto_profe, name='borrar_proyecto_profe'),
 
     path('economia-alumnos/', profe.gestionar_monedas, name='gestionar_monedas'),
     path('api/actualizar-monedas/', profe.api_actualizar_monedas, name='api_actualizar_monedas'),

@@ -9,7 +9,9 @@ from .models import (
 )
 
 # Las pruebas no dependen del manifiesto generado por collectstatic
-ALMACEN_PRUEBAS = {**settings.STORAGES, 'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'}}
+ALMACEN_PRUEBAS = {**settings.STORAGES, 'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'},
+                   # Los archivos de «Mis proyectos» nunca se suben a Cloudinary desde las pruebas
+                   'proyectos': {'BACKEND': 'django.core.files.storage.InMemoryStorage'}}
 
 
 @override_settings(STORAGES=ALMACEN_PRUEBAS)
@@ -2653,3 +2655,356 @@ class PortalFamiliaTests(BaseJuego):
         peticion = RequestFactory().get('/', HTTP_HOST='next-level.up.railway.app')
         with override_settings(DEBUG=False):
             self.assertEqual(url_enlace(peticion, self.alumno), f'https://next-level.up.railway.app/familia/{token}/')
+
+
+class MisProyectosTests(BaseJuego):
+    """«Mis proyectos»: el alumno guarda los archivos de sus prácticas para abrirlos en cualquier compu.
+    (El almacenamiento «proyectos» de las pruebas es en memoria: nada se sube a Cloudinary.)"""
+
+    def setUp(self):
+        super().setUp()
+        self.profe = User.objects.create_superuser('profe_proy', 'p@x.com', 'x')
+        self.url = f'/clase/{self.clase.id}/proyectos/'
+        self.url_guardar = f'/clase/{self.clase.id}/proyectos/guardar/'
+
+    def archivo(self, nombre='semaforo.sb3', contenido=b'PK\x03\x04 proyecto de scratch'):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        return SimpleUploadedFile(nombre, contenido, content_type='application/octet-stream')
+
+    def guardar(self, archivo=None, ajax=False, **datos):
+        extra = {'HTTP_X_REQUESTED_WITH': 'XMLHttpRequest'} if ajax else {}
+        return self.client.post(self.url_guardar, {'archivo': archivo or self.archivo(), **datos}, **extra)
+
+    def guardado(self, nombre):
+        from .almacen import almacen_proyectos
+        return almacen_proyectos().exists(nombre)
+
+    def test_guarda_el_archivo_y_lo_descarga_con_su_nombre_original(self):
+        from .models import ProyectoAlumno
+        self.entrar()
+        contenido = b'PK\x03\x04 mi juego de la nave'
+        r = self.guardar(self.archivo('Nave espacial_final.sb3', contenido))
+        proyecto = ProyectoAlumno.objects.get(alumno=self.alumno)
+        self.assertRedirects(r, f'{self.url}#proyecto-{proyecto.id}', fetch_redirect_response=False)
+        self.assertEqual(proyecto.nombre, 'Nave espacial final')        # sale del nombre del archivo
+        self.assertEqual(proyecto.clase, self.clase)
+        version = proyecto.versiones.get()
+        self.assertEqual((version.nombre_archivo, version.tamano), ('Nave espacial_final.sb3', len(contenido)))
+        # En la nube va sin acentos ni espacios, dentro de una carpeta al azar del alumno
+        self.assertRegex(version.archivo.name, rf'^proyectos/{self.alumno.id}/[\w-]{{16}}/nave-espacial_final\.sb3$')
+        self.assertTrue(self.guardado(version.archivo.name))
+
+        pagina = self.client.get(self.url)
+        self.assertContains(pagina, 'Nave espacial final')
+        self.assertContains(pagina, '🐱')   # se reconoce que es de Scratch
+
+        descarga = self.client.get(f'/clase/{self.clase.id}/proyectos/version/{version.id}/descargar/')
+        self.assertEqual(descarga.status_code, 200)
+        self.assertEqual(b''.join(descarga.streaming_content), contenido)
+        self.assertEqual(descarga['Content-Type'], 'application/octet-stream')   # siempre se descarga
+        self.assertIn('attachment', descarga['Content-Disposition'])
+        self.assertIn('Nave espacial_final.sb3', descarga['Content-Disposition'])
+        self.assertIn('no-store', descarga['Cache-Control'])
+
+    def test_el_nombre_con_acentos_se_descarga_igual(self):
+        self.entrar()
+        self.guardar(self.archivo('Semáforo.ino', b'void setup() {}'), nombre='Mi semáforo')
+        from .models import VersionProyecto
+        version = VersionProyecto.objects.get()
+        self.assertEqual(version.proyecto.nombre, 'Mi semáforo')
+        self.assertTrue(version.archivo.name.endswith('/semaforo.ino'))
+        descarga = self.client.get(f'/clase/{self.clase.id}/proyectos/version/{version.id}/descargar/')
+        self.assertIn("filename*=utf-8''Sem%C3%A1foro.ino", descarga['Content-Disposition'])
+
+    def test_solo_acepta_archivos_de_proyectos_y_de_hasta_10_mb(self):
+        from . import proyectos
+        from .models import ProyectoAlumno
+        self.entrar()
+        casos = [
+            (self.archivo('juego.exe'), 'Los archivos .exe no se pueden guardar'),
+            (self.archivo('sin_extension'), 'no tiene extensión'),
+            (self.archivo('vacio.sb3', b''), 'está vacío'),
+            (self.archivo('enorme.sb3', b'x' * (proyectos.TAMANO_MAX + 1)), 'lo más que se puede guardar es 10 MB'),
+        ]
+        for archivo, mensaje in casos:
+            r = self.guardar(archivo, ajax=True)
+            self.assertEqual(r.status_code, 400, archivo.name)
+            self.assertIn(mensaje, r.json()['mensaje'])
+        self.assertFalse(ProyectoAlumno.objects.exists())
+        # Justo en el límite sí se guarda (en memoria: en Windows el almacenamiento de prueba no puede mover el temporal)
+        with self.settings(FILE_UPLOAD_MAX_MEMORY_SIZE=proyectos.TAMANO_MAX * 2):
+            r = self.guardar(ajax=True, archivo=self.archivo('limite.sb3', b'x' * proyectos.TAMANO_MAX))
+        self.assertEqual(r.status_code, 200)
+
+    def test_con_fetch_responde_json_y_el_mensaje_sale_en_la_pagina(self):
+        self.entrar()
+        r = self.guardar(ajax=True)
+        datos = r.json()
+        self.assertTrue(datos['ok'])
+        self.assertIn('#proyecto-', datos['redirect'])
+        self.assertContains(self.client.get(datos['redirect'].split('#')[0]), 'quedó guardado')
+
+    def test_versiones_nuevas_y_solo_se_guardan_las_ultimas_cinco(self):
+        from . import proyectos
+        from .models import ProyectoAlumno, VersionProyecto
+        self.entrar()
+        self.guardar(self.archivo('robot.ino', b'v1'))
+        proyecto = ProyectoAlumno.objects.get()
+        primera = proyecto.versiones.get().archivo.name
+        with self.captureOnCommitCallbacks(execute=True):
+            for n in range(2, 8):
+                self.guardar(self.archivo('robot.ino', f'v{n}'.encode()), proyecto=proyecto.id)
+        self.assertEqual(ProyectoAlumno.objects.count(), 1)
+        versiones = list(proyecto.versiones.order_by('-fecha', '-id'))
+        self.assertEqual(len(versiones), proyectos.VERSIONES_GUARDADAS)
+        self.assertEqual(versiones[0].archivo.open().read(), b'v7')     # la más nueva es la que se descarga
+        self.assertFalse(self.guardado(primera))                         # la vieja también se borró de la nube
+        self.assertEqual(VersionProyecto.objects.filter(proyecto=proyecto).count(), 5)
+        pagina = self.client.get(self.url)
+        self.assertContains(pagina, 'Versiones anteriores (4)')
+
+    def test_cada_alumno_tiene_su_espacio_y_un_maximo_de_proyectos(self):
+        from unittest import mock
+        from . import proyectos
+        from .models import ProyectoAlumno
+        self.entrar()
+        with mock.patch.object(proyectos, 'ESPACIO_POR_ALUMNO', 30):
+            self.assertEqual(self.guardar(self.archivo('a.py', b'x' * 20), ajax=True).status_code, 200)
+            r = self.guardar(self.archivo('b.py', b'x' * 20), ajax=True)
+            self.assertEqual(r.status_code, 400)
+            self.assertIn('Ya no te cabe', r.json()['mensaje'])
+        with mock.patch.object(proyectos, 'MAX_PROYECTOS', 1):
+            r = self.guardar(self.archivo('c.py'), ajax=True)
+            self.assertIn('Ya tienes 1 proyectos, el máximo', r.json()['mensaje'])
+            # …pero sí puede guardar una versión nueva del que ya tiene
+            proyecto = ProyectoAlumno.objects.get()
+            self.assertEqual(self.guardar(self.archivo('a.py', b'nuevo'), ajax=True, proyecto=proyecto.id).status_code, 200)
+        # Si la versión nueva reemplaza a la más vieja, cuenta el espacio que se libera
+        with mock.patch.object(proyectos, 'ESPACIO_POR_ALUMNO', 30), mock.patch.object(proyectos, 'VERSIONES_GUARDADAS', 1):
+            self.assertEqual(self.guardar(self.archivo('a.py', b'x' * 29), ajax=True, proyecto=proyecto.id).status_code, 200)
+
+    def test_nadie_mas_puede_descargar_ni_borrar_sus_archivos(self):
+        from .models import VersionProyecto
+        otro = Alumno.objects.create(nombre='Beto', apellido='Ruiz', pin='5555')
+        otro.clases.add(self.clase)
+        self.entrar()
+        self.guardar(self.archivo('mio.sb3'))
+        mia = VersionProyecto.objects.get()
+        self.client.get('/salir/')
+        self.client.post(f'/clase/{self.clase.id}/alumno/{otro.id}/ingresar/', {'pin': '5555'})
+        base = f'/clase/{self.clase.id}/proyectos/'
+        self.assertEqual(self.client.get(f'{base}version/{mia.id}/descargar/').status_code, 404)
+        self.assertEqual(self.client.post(f'{base}version/{mia.id}/borrar/').status_code, 404)
+        self.assertEqual(self.client.post(f'{base}{mia.proyecto_id}/borrar/').status_code, 404)
+        self.assertEqual(self.client.post(f'{base}{mia.proyecto_id}/renombrar/', {'nombre': 'Jeje'}).status_code, 404)
+        r = self.client.post(self.url_guardar, {'archivo': self.archivo('mio.sb3'), 'proyecto': mia.proyecto_id},
+                             HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(r.status_code, 400)                      # no se puede meter una versión en el proyecto ajeno
+        self.assertNotContains(self.client.get(self.url), 'mio.sb3')
+        self.assertEqual(VersionProyecto.objects.get().proyecto.alumno, self.alumno)
+        # Sin sesión no se ve nada
+        self.client.get('/salir/')
+        self.assertEqual(self.client.get(f'{base}version/{mia.id}/descargar/').status_code, 302)
+
+    def test_renombrar_y_borrar_una_version_o_todo_el_proyecto(self):
+        from .models import ProyectoAlumno, VersionProyecto
+        self.entrar()
+        self.guardar(self.archivo('casa.stl', b'v1'))
+        proyecto = ProyectoAlumno.objects.get()
+        self.guardar(self.archivo('casa.stl', b'v2'), proyecto=proyecto.id)
+        self.client.post(f'{self.url}{proyecto.id}/renombrar/', {'nombre': '  Casa   en 3D  '})
+        proyecto.refresh_from_db()
+        self.assertEqual(proyecto.nombre, 'Casa en 3D')
+        vieja, nueva = proyecto.versiones.order_by('fecha', 'id')
+        with self.captureOnCommitCallbacks(execute=True):
+            self.client.post(f'{self.url}version/{vieja.id}/borrar/')
+        self.assertFalse(self.guardado(vieja.archivo.name))
+        self.assertEqual(list(proyecto.versiones.all()), [nueva])
+        with self.captureOnCommitCallbacks(execute=True):
+            self.client.post(f'{self.url}version/{nueva.id}/borrar/')   # la única que quedaba: se va el proyecto
+        self.assertFalse(ProyectoAlumno.objects.exists())
+        self.assertFalse(self.guardado(nueva.archivo.name))
+        self.guardar(self.archivo('otra.py'))
+        otro = ProyectoAlumno.objects.get()
+        nombre = otro.versiones.get().archivo.name
+        with self.captureOnCommitCallbacks(execute=True):
+            self.client.post(f'{self.url}{otro.id}/borrar/')
+        self.assertFalse(VersionProyecto.objects.exists())
+        self.assertFalse(self.guardado(nombre))
+
+    def test_al_borrar_al_alumno_tambien_se_borran_sus_archivos(self):
+        from .models import VersionProyecto
+        self.entrar()
+        self.guardar()
+        nombre = VersionProyecto.objects.get().archivo.name
+        with self.captureOnCommitCallbacks(execute=True):
+            Alumno.objects.filter(pk=self.alumno.pk).delete()
+        self.assertFalse(self.guardado(nombre))
+
+    def test_si_la_nube_falla_no_queda_nada_a_medias(self):
+        from unittest import mock
+        from .almacen import AlmacenProyectos
+        from .models import ProyectoAlumno
+        self.entrar()
+        with mock.patch.object(AlmacenProyectos, 'save', side_effect=ConnectionError('sin internet')), \
+                self.assertLogs('Misiones.proyectos', level='ERROR'):
+            r = self.guardar(ajax=True)
+        self.assertEqual(r.status_code, 400)
+        self.assertIn('problema de conexión', r.json()['mensaje'])
+        self.assertFalse(ProyectoAlumno.objects.exists())
+
+    def test_con_la_seccion_cerrada_no_sube_pero_si_descarga(self):
+        from .models import VersionProyecto
+        self.entrar()
+        self.guardar()
+        version = VersionProyecto.objects.get()
+        self.clase.proyectos_abierto = False
+        self.clase.save()
+        r = self.guardar(self.archivo('otro.sb3'), ajax=True)
+        self.assertEqual(r.status_code, 400)
+        self.assertIn('cerró «Mis proyectos»', r.json()['mensaje'])
+        self.assertEqual(VersionProyecto.objects.count(), 1)
+        pagina = self.client.get(self.url)
+        self.assertContains(pagina, 'Tu profe cerró «Mis proyectos» por ahora')
+        self.assertNotContains(pagina, 'Arrastra aquí tu archivo')
+        self.assertEqual(self.client.get(f'{self.url}version/{version.id}/descargar/').status_code, 200)
+
+    def test_el_profe_abre_y_cierra_la_seccion_por_grupo(self):
+        self.client.force_login(self.profe)
+        r = self.client.post(f'/profesor/clases/{self.clase.id}/secciones/', {'seccion': 'proyectos', 'abrir': '0'},
+                             follow=True)
+        self.assertContains(r, 'Los Proyectos de «Robótica» quedaron cerrados')
+        self.clase.refresh_from_db()
+        self.assertFalse(self.clase.proyectos_abierto)
+        self.assertContains(self.client.get('/profesor/clases/'), 'Sin proyectos')
+
+    def test_en_la_vista_de_alumno_no_se_guarda_nada(self):
+        from .models import ProyectoAlumno
+        self.client.force_login(self.profe)
+        self.client.get(f'/profesor/clases/{self.clase.id}/vista-alumno/')
+        self.assertContains(self.client.get(self.url), 'Mis proyectos')
+        r = self.guardar(ajax=True)
+        self.assertEqual(r.status_code, 403)
+        self.assertFalse(ProyectoAlumno.objects.exists())
+
+    def test_el_menu_del_alumno_lleva_a_sus_proyectos(self):
+        self.entrar()
+        self.assertContains(self.client.get(f'/clase/{self.clase.id}/dashboard/'), f'href="{self.url}"', count=2)
+
+    def test_el_profe_ve_quien_guardo_descarga_y_puede_borrar(self):
+        from .models import Notificacion, ProyectoAlumno, VersionProyecto
+        self.entrar()
+        self.guardar(self.archivo('ciudad.sb3', b'ciudad'), nombre='Ciudad inteligente')
+        version = VersionProyecto.objects.get()
+        self.client.force_login(self.profe)
+        grupo = self.client.get(f'/profesor/proyectos/{self.clase.id}/')
+        self.assertContains(grupo, 'Ciudad inteligente')
+        self.assertContains(grupo, '<i class="bi bi-check2"></i> Hoy', html=False)
+        self.assertEqual(grupo.context['guardaron_hoy'], 1)
+        self.assertContains(self.client.get(f'/profesor/alumnos/{self.alumno.id}/'), 'Ciudad inteligente')
+        descarga = self.client.get(f'/profesor/proyectos/version/{version.id}/descargar/')
+        self.assertEqual(b''.join(descarga.streaming_content), b'ciudad')
+        with self.captureOnCommitCallbacks(execute=True):
+            self.client.post(f'/profesor/proyectos/{version.proyecto_id}/borrar/')
+        self.assertFalse(ProyectoAlumno.objects.exists())
+        self.assertFalse(self.guardado(version.archivo.name))
+        self.assertTrue(Notificacion.objects.filter(alumno=self.alumno, titulo__contains='Ciudad inteligente').exists())
+        self.client.logout()
+        self.assertEqual(self.client.get(f'/profesor/proyectos/version/{version.id}/descargar/').status_code, 302)
+
+    def test_la_pagina_del_profe_no_hace_mas_consultas_con_mas_alumnos(self):
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+        from . import proyectos
+        from .models import ProyectoAlumno, VersionProyecto
+
+        def con_proyectos(alumno, n):
+            for i in range(n):
+                p = ProyectoAlumno.objects.create(alumno=alumno, clase=self.clase, nombre=f'P{i}')
+                VersionProyecto.objects.create(proyecto=p, archivo=f'proyectos/x/{alumno.id}-{i}.sb3',
+                                               nombre_archivo='p.sb3', tamano=10)
+        con_proyectos(self.alumno, 2)
+        with CaptureQueriesContext(connection) as pocos:
+            proyectos.resumen_grupo(self.clase)
+        for k in range(5):
+            nuevo = Alumno.objects.create(nombre=f'N{k}', apellido='X', pin='1')
+            nuevo.clases.add(self.clase)
+            con_proyectos(nuevo, 3)
+        with CaptureQueriesContext(connection) as muchos:
+            alumnos = proyectos.resumen_grupo(self.clase)
+        self.assertEqual(len(muchos), len(pocos))
+        self.assertEqual(sum(len(a.lista_proyectos) for a in alumnos), 17)
+
+    def test_si_cloudinary_no_entrega_un_pdf_lo_explica(self):
+        from unittest import mock
+        from .almacen import AlmacenProyectos, ArchivoNoDisponible
+        from .models import VersionProyecto
+        self.entrar()
+        self.guardar(self.archivo('reporte.pdf', b'%PDF-1.4'))
+        version = VersionProyecto.objects.get()
+        with mock.patch.object(AlmacenProyectos, '_open', side_effect=ArchivoNoDisponible(401)), \
+                self.assertLogs('Misiones.views_proyectos', level='WARNING'):
+            r = self.client.get(f'{self.url}version/{version.id}/descargar/', follow=True)
+        self.assertContains(r, 'Avísale a tu profe')
+        self.client.force_login(self.profe)
+        with mock.patch.object(AlmacenProyectos, '_open', side_effect=ArchivoNoDisponible(401)), \
+                self.assertLogs('Misiones.views_proyectos', level='WARNING'):
+            r = self.client.get(f'/profesor/proyectos/version/{version.id}/descargar/', follow=True)
+        self.assertContains(r, 'Allow delivery of PDF and ZIP files')
+
+    def test_nombres_y_pesos(self):
+        from .proyectos import nombre_seguro, nombre_sugerido, peso, tipo_de
+        self.assertEqual(nombre_seguro('Semáforo Final (2).SB3'), 'semaforo-final-2.sb3')
+        self.assertEqual(nombre_seguro('¿¿??.ino'), 'proyecto.ino')
+        self.assertEqual(nombre_sugerido('mi_robot_seguidor.ino'), 'Mi robot seguidor')
+        self.assertEqual(peso(0), '0 MB')
+        self.assertEqual(peso(532), '532 bytes')
+        self.assertEqual(peso(48_200), '48 KB')
+        self.assertEqual(peso(1_250_000), '1.2 MB')
+        self.assertEqual(peso(10_000_000), '10 MB')
+        self.assertEqual(tipo_de('x.MBLOCK')['nombre'], 'mBlock')
+        self.assertEqual(tipo_de('x.raro')['clave'], 'otro')
+
+
+class AlmacenCloudinaryProyectosTests(TestCase):
+    """Cómo se habla con Cloudinary (sin internet: se simulan sus respuestas)."""
+
+    def test_sube_como_raw_con_su_nombre_exacto_y_sin_pisar_otro(self):
+        from unittest import mock
+        from django.core.files.base import ContentFile
+        from .almacen import ProyectosCloudinary
+        almacen = ProyectosCloudinary()
+        respuesta = {'public_id': 'media/proyectos/7/abc/robot.ino'}
+        with mock.patch('Misiones.almacen.cloudinary.uploader.upload', return_value=respuesta) as subir:
+            nombre = almacen.save('proyectos/7/abc/robot.ino', ContentFile(b'void loop(){}', name='robot.ino'))
+        self.assertEqual(nombre, 'media/proyectos/7/abc/robot.ino')
+        opciones = subir.call_args.kwargs
+        self.assertEqual(opciones['public_id'], 'media/proyectos/7/abc/robot.ino')
+        self.assertEqual(opciones['resource_type'], 'raw')
+        self.assertFalse(opciones['overwrite'])
+        with mock.patch('Misiones.almacen.cloudinary.uploader.upload', return_value={**respuesta, 'existing': True}):
+            with self.assertRaises(RuntimeError):
+                almacen.save('proyectos/7/abc/robot.ino', ContentFile(b'x', name='robot.ino'))
+
+    def test_descarga_poco_a_poco_y_avisa_si_no_lo_entrega(self):
+        import io
+        from unittest import mock
+        from .almacen import ArchivoNoDisponible, ProyectosCloudinary
+
+        class Crudo(io.BytesIO):
+            decode_content = False
+
+        almacen = ProyectosCloudinary()
+        ok = mock.Mock(status_code=200, headers={'Content-Length': '5'}, raw=Crudo(b'hola!'))
+        with mock.patch.object(ProyectosCloudinary, 'url', return_value='https://res.cloudinary.com/x/raw/upload/a.ino'), \
+                mock.patch('Misiones.almacen.requests.get', return_value=ok) as pedir:
+            archivo = almacen.open('media/proyectos/1/a/a.ino')
+            self.assertEqual(archivo.read(), b'hola!')
+            self.assertEqual(archivo.largo, 5)
+            self.assertTrue(ok.raw.decode_content)
+            self.assertTrue(pedir.call_args.kwargs['stream'])
+            self.assertIn('timeout', pedir.call_args.kwargs)
+            pedir.return_value = mock.Mock(status_code=401)
+            with self.assertRaises(ArchivoNoDisponible) as error:
+                almacen.open('media/proyectos/1/a/a.pdf')
+            self.assertEqual(error.exception.estado, 401)
